@@ -1820,6 +1820,9 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [csSheet, setCSSheet] = useState(loadCSSheet);
   const [agentSheets, setAgentSheets] = useState(loadAgentSheets);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [onBreak, setOnBreak] = useState(false);
+  const [breakType, setBreakType] = useState(null);
+  const [breakStart, setBreakStart] = useState(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
