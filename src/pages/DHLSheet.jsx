@@ -521,7 +521,7 @@ const LoginScreen = ({ onLogin }) => {
 };
 
 // ============================================================================
-// EXCEL-LIKE SHEET COMPONENT
+// EXCEL-LIKE SHEET COMPONENT (Virtualized for Performance)
 // ============================================================================
 
 const ExcelSheet = ({ 
@@ -535,17 +535,24 @@ const ExcelSheet = ({
   editableCols,
   blinkRows,
   regionFilter,
-  csSheetData
+  csSheetData,
+  onSort,
+  onFilter
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [selection, setSelection] = useState({ r1: 0, c1: 0, r2: 0, c2: 0 });
   const [selecting, setSelecting] = useState(false);
+  const [dragSelecting, setDragSelecting] = useState(false);
+  const [copiedData, setCopiedData] = useState(null);
   const [colWidths, setColWidths] = useState(columns.map(() => 130));
   const [resizing, setResizing] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
+  const [filterText, setFilterText] = useState('');
   const gridRef = useRef(null);
   const editorRef = useRef(null);
+  const containerRef = useRef(null);
 
   const getRunningMs = useCallback((r) => {
     const t = timers[r];
