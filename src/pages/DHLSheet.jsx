@@ -607,6 +607,37 @@ const ExcelSheet = ({
     setEditValue("");
   };
 
+  const handleCopy = useCallback(() => {
+    const { r1, c1, r2, c2 } = selection;
+    const copied = [];
+    for (let r = r1; r <= r2; r++) {
+      const row = [];
+      for (let c = c1; c <= c2; c++) {
+        row.push(data[r]?.[c] || '');
+      }
+      copied.push(row);
+    }
+    setCopiedData(copied);
+    toast.success(`Copied ${(r2-r1+1) * (c2-c1+1)} cells`);
+  }, [selection, data]);
+
+  const handlePaste = useCallback(() => {
+    if (!copiedData) return;
+    const startR = activeCell.r;
+    const startC = activeCell.c;
+    
+    copiedData.forEach((row, ri) => {
+      row.forEach((cell, ci) => {
+        const targetR = startR + ri;
+        const targetC = startC + ci;
+        if (targetR < ROWS_COUNT && targetC < columns.length && canEdit(targetR, targetC)) {
+          onCellChange(targetR, targetC, cell);
+        }
+      });
+    });
+    toast.success('Pasted data');
+  }, [copiedData, activeCell, canEdit, onCellChange, columns.length]);
+
   const handleKeyDown = (e) => {
     if (editingCell) {
       if (e.key === 'Enter') {
@@ -624,22 +655,54 @@ const ExcelSheet = ({
       return;
     }
 
+    // Copy/Paste
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      e.preventDefault();
+      handleCopy();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      e.preventDefault();
+      handlePaste();
+      return;
+    }
+
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
         setActiveCell(prev => ({ r: Math.max(0, prev.r - 1), c: prev.c }));
+        if (e.shiftKey) {
+          setSelection(prev => ({ ...prev, r2: Math.max(0, prev.r2 - 1) }));
+        } else {
+          setSelection(prev => ({ r1: activeCell.r - 1, c1: activeCell.c, r2: activeCell.r - 1, c2: activeCell.c }));
+        }
         break;
       case 'ArrowDown':
         e.preventDefault();
         setActiveCell(prev => ({ r: Math.min(ROWS_COUNT - 1, prev.r + 1), c: prev.c }));
+        if (e.shiftKey) {
+          setSelection(prev => ({ ...prev, r2: Math.min(ROWS_COUNT - 1, prev.r2 + 1) }));
+        } else {
+          setSelection(prev => ({ r1: activeCell.r + 1, c1: activeCell.c, r2: activeCell.r + 1, c2: activeCell.c }));
+        }
         break;
       case 'ArrowLeft':
         e.preventDefault();
         setActiveCell(prev => ({ r: prev.r, c: Math.max(0, prev.c - 1) }));
+        if (e.shiftKey) {
+          setSelection(prev => ({ ...prev, c2: Math.max(0, prev.c2 - 1) }));
+        } else {
+          setSelection(prev => ({ r1: activeCell.r, c1: activeCell.c - 1, r2: activeCell.r, c2: activeCell.c - 1 }));
+        }
         break;
       case 'ArrowRight':
         e.preventDefault();
         setActiveCell(prev => ({ r: prev.r, c: Math.min(columns.length - 1, prev.c + 1) }));
+        if (e.shiftKey) {
+          setSelection(prev => ({ ...prev, c2: Math.min(columns.length - 1, prev.c2 + 1) }));
+        } else {
+          setSelection(prev => ({ r1: activeCell.r, c1: activeCell.c + 1, r2: activeCell.r, c2: activeCell.c + 1 }));
+        }
         break;
       case 'Enter':
       case 'F2':
@@ -651,8 +714,13 @@ const ExcelSheet = ({
       case 'Delete':
       case 'Backspace':
         e.preventDefault();
-        if (canEdit(activeCell.r, activeCell.c) && activeCell.c !== COL_STATUS) {
-          onCellChange(activeCell.r, activeCell.c, '');
+        const { r1, c1, r2, c2 } = selection;
+        for (let r = r1; r <= r2; r++) {
+          for (let c = c1; c <= c2; c++) {
+            if (canEdit(r, c) && c !== COL_STATUS) {
+              onCellChange(r, c, '');
+            }
+          }
         }
         break;
       default:
