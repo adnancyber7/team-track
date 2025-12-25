@@ -1509,34 +1509,93 @@ const AdminDashboard = ({ username, onLogout }) => {
 
           {/* CS Sheet Tab */}
           <TabsContent value="cs-sheet" className="mt-4 space-y-4">
-            {/* Analytics */}
+            {/* Analytics & Upload */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
-              <CardContent className="p-4 flex items-center gap-4 flex-wrap">
-                <Badge className="bg-yellow-400 text-black font-black px-3 py-1">CS SHEET VIEW</Badge>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-                  <span className="text-sm font-medium">AWB:</span>
-                  <span className="font-mono font-bold">{csMetrics.awb}</span>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <Badge className="bg-yellow-400 text-black font-black px-3 py-1">CS SHEET VIEW</Badge>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
+                    <span className="text-sm font-medium">AWB:</span>
+                    <span className="font-mono font-bold">{csMetrics.awb}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
+                    <span className="text-sm font-medium">LINE SUM:</span>
+                    <span className="font-mono font-bold">{csMetrics.lineSum}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
+                    <span className="text-sm font-medium text-green-800">DONE:</span>
+                    <span className="font-mono font-bold text-green-800">{csMetrics.done}</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                    <span className="text-sm font-medium text-red-800">REJECTED:</span>
+                    <span className="font-mono font-bold text-red-800">{csMetrics.rej}</span>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button 
+                      onClick={() => fileInputRef.current?.click()} 
+                      variant="outline" 
+                      size="sm" 
+                      className="font-bold bg-green-50 hover:bg-green-100 border-green-300"
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-2" />
+                      )}
+                      Upload Excel/CSV
+                    </Button>
+                    <Button onClick={downloadAllCSData} variant="outline" size="sm" className="font-bold">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-                  <span className="text-sm font-medium">LINE SUM:</span>
-                  <span className="font-mono font-bold">{csMetrics.lineSum}</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
-                  <span className="text-sm font-medium text-green-800">DONE:</span>
-                  <span className="font-mono font-bold text-green-800">{csMetrics.done}</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-                  <span className="text-sm font-medium text-red-800">REJECTED:</span>
-                  <span className="font-mono font-bold text-red-800">{csMetrics.rej}</span>
-                </div>
-                <div className="ml-auto">
-                  <Button onClick={downloadAllCSData} variant="outline" size="sm" className="font-bold">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download CSV
-                  </Button>
+                
+                <div className="text-xs text-black/50 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                  <b>Upload Format:</b> AGENT, AWB'S, REASON, REGION, CONFIRMATION, AGENT2, 2ND REJECTION, 2ND CONFIRMATION, etc. 
+                  Data will auto-assign to agent profiles.
                 </div>
               </CardContent>
             </Card>
+
+            {/* Agent Break Notifications */}
+            {Object.entries(csSheet.agentBreaks || {}).filter(([agent, breakData]) => breakData.active).length > 0 && (
+              <Card className="bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300 shadow-lg">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Clock className="w-5 h-5 text-orange-600 animate-pulse" />
+                    <span className="font-bold text-orange-900">Active Breaks</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(csSheet.agentBreaks || {})
+                      .filter(([agent, breakData]) => breakData.active)
+                      .map(([agent, breakData]) => {
+                        const breakType = BREAK_TYPES.find(b => b.id === breakData.type);
+                        const Icon = breakType?.icon || Clock;
+                        const duration = breakData.start ? Math.floor((Date.now() - breakData.start) / 1000 / 60) : 0;
+                        
+                        return (
+                          <div key={agent} className={`flex items-center gap-3 p-3 rounded-lg border ${breakType?.color || 'bg-gray-100'}`}>
+                            <Icon className="w-5 h-5" />
+                            <div className="flex-1">
+                              <div className="font-bold text-sm">{agent}</div>
+                              <div className="text-xs opacity-75">{breakType?.label || 'Break'} • {duration}m</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* CS Sheet */}
             <ExcelSheet
