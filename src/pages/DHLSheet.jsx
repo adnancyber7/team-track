@@ -58,7 +58,14 @@ const COL_REJ5 = 17;
 const COL_CONF5 = 18;
 const COL_CONF6 = 19;
 
-const ROWS_COUNT = 200;
+const ROWS_COUNT = 600;
+
+const BREAK_TYPES = [
+  { id: 'prayer', label: 'Prayer Break', icon: Moon, color: 'bg-purple-100 text-purple-800 border-purple-300' },
+  { id: 'lunch', label: 'Lunch Break', icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-800 border-orange-300' },
+  { id: 'tea', label: 'Tea Break', icon: Coffee, color: 'bg-amber-100 text-amber-800 border-amber-300' },
+  { id: 'washroom', label: 'Washroom Break', icon: Droplet, color: 'bg-blue-100 text-blue-800 border-blue-300' }
+];
 
 const ADMIN_EDITABLE_IN_CS = new Set([
   COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB, 
