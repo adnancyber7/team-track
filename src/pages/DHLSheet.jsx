@@ -1983,6 +1983,11 @@ const AgentDashboard = ({ username, onLogout }) => {
   };
 
   const metrics = getAgentMetrics();
+  
+  const getBreakDuration = () => {
+    if (!onBreak || !breakStart) return 0;
+    return Math.floor((Date.now() - breakStart) / 1000 / 60);
+  };
 
   return (
     <div className="min-h-screen p-4" style={{
@@ -1995,15 +2000,43 @@ const AgentDashboard = ({ username, onLogout }) => {
       <div className="max-w-[1600px] mx-auto space-y-4">
         {/* Top Bar */}
         <Card className="bg-white/95 border-black/10 shadow-xl">
-          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <Badge className="bg-yellow-400 text-black font-black border-black/10">AGENT</Badge>
-              <span className="font-bold">Welcome, {username}</span>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
+              <div className="flex items-center gap-3">
+                <Badge className="bg-yellow-400 text-black font-black border-black/10">AGENT</Badge>
+                <span className="font-bold">Welcome, {username}</span>
+                {onBreak && (
+                  <Badge className="bg-orange-400 text-white font-black border-orange-500 animate-pulse">
+                    ON BREAK • {getBreakDuration()}m
+                  </Badge>
+                )}
+              </div>
+              <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
             </div>
-            <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            
+            {/* Break Buttons */}
+            <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-black/10">
+              <span className="text-sm font-medium text-black/60 mr-2">Quick Breaks:</span>
+              {BREAK_TYPES.map(bt => {
+                const Icon = bt.icon;
+                const isActive = onBreak && breakType === bt.id;
+                return (
+                  <Button
+                    key={bt.id}
+                    onClick={() => handleBreakToggle(bt.id)}
+                    size="sm"
+                    variant="outline"
+                    className={`font-bold transition-all ${isActive ? bt.color + ' border-2' : 'bg-white hover:bg-gray-50'}`}
+                  >
+                    {isActive ? <Pause className="w-4 h-4 mr-1" /> : <Icon className="w-4 h-4 mr-1" />}
+                    {bt.label}
+                  </Button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
