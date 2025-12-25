@@ -194,6 +194,101 @@ const downloadCSV = (data, filename) => {
   document.body.removeChild(link);
 };
 
+const parseUploadedFile = async (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+        resolve(jsonData);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+const colToName = (c) => {
+  let n = c + 1, s = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+};
+
+const evaluateFormula = (formula, data, currentRow, currentCol) => {
+  try {
+    if (!formula.startsWith('=')) return formula;
+    
+    let expr = formula.slice(1).toUpperCase();
+    
+    // Handle SUM function
+    const sumMatch = expr.match(/SUM\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)/);
+    if (sumMatch) {
+      const [, startCol, startRow, endCol, endRow] = sumMatch;
+      let sum = 0;
+      const sc = startCol.charCodeAt(0) - 65;
+      const ec = endCol.charCodeAt(0) - 65;
+      const sr = parseInt(startRow) - 1;
+      const er = parseInt(endRow) - 1;
+      
+      for (let r = sr; r <= er && r < data.length; r++) {
+        for (let c = sc; c <= ec && c < (data[r]?.length || 0); c++) {
+          const val = parseFloat(data[r][c]);
+          if (!isNaN(val)) sum += val;
+        }
+      }
+      return sum.toString();
+    }
+    
+    // Handle AVERAGE function
+    const avgMatch = expr.match(/AVERAGE\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)/);
+    if (avgMatch) {
+      const [, startCol, startRow, endCol, endRow] = avgMatch;
+      let sum = 0, count = 0;
+      const sc = startCol.charCodeAt(0) - 65;
+      const ec = endCol.charCodeAt(0) - 65;
+      const sr = parseInt(startRow) - 1;
+      const er = parseInt(endRow) - 1;
+      
+      for (let r = sr; r <= er && r < data.length; r++) {
+        for (let c = sc; c <= ec && c < (data[r]?.length || 0); c++) {
+          const val = parseFloat(data[r][c]);
+          if (!isNaN(val)) {
+            sum += val;
+            count++;
+          }
+        }
+      }
+      return count > 0 ? (sum / count).toString() : '0';
+    }
+    
+    // Handle cell references like A1, B2, etc.
+    expr = expr.replace(/([A-Z]+)(\d+)/g, (match, col, row) => {
+      const c = col.charCodeAt(0) - 65;
+      const r = parseInt(row) - 1;
+      if (r >= 0 && r < data.length && c >= 0 && c < (data[r]?.length || 0)) {
+        const val = data[r][c];
+        return isNaN(parseFloat(val)) ? `"${val}"` : val;
+      }
+      return '0';
+    });
+    
+    // Evaluate simple arithmetic
+    const result = Function(`"use strict"; return (${expr})`)();
+    return isNaN(result) ? formula : result.toString();
+  } catch {
+    return formula;
+  }
+};
+
 // ============================================================================
 // BROADCAST CHANNEL FOR REALTIME SYNC
 // ============================================================================
