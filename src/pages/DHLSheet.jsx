@@ -782,7 +782,51 @@ const ExcelSheet = ({
     
     if (!isRowVisible(r) && !isAdmin) classes.push('hidden-row');
     
+    // Alternate row colors for better readability
+    if (r % 2 === 0) classes.push('even-row');
+    
     return classes.join(' ');
+  };
+
+  const handleSort = (colIndex) => {
+    if (!isAdmin) return;
+    const direction = sortConfig.column === colIndex && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    setSortConfig({ column: colIndex, direction });
+    if (onSort) onSort(colIndex, direction);
+    toast.success(`Sorted by ${columns[colIndex]} (${direction})`);
+  };
+
+  const handleMouseDown = (r, c, e) => {
+    if (e.target.closest('.status-btn')) return;
+    
+    setActiveCell({ r, c });
+    if (e.shiftKey) {
+      setSelection(prev => ({
+        r1: Math.min(prev.r1, r),
+        c1: Math.min(prev.c1, c),
+        r2: Math.max(prev.r2, r),
+        c2: Math.max(prev.c2, c)
+      }));
+    } else {
+      setSelection({ r1: r, c1: c, r2: r, c2: c });
+      setDragSelecting(true);
+    }
+  };
+
+  const handleMouseEnter = (r, c) => {
+    if (dragSelecting) {
+      setSelection(prev => ({
+        r1: Math.min(prev.r1, r),
+        c1: Math.min(prev.c1, c),
+        r2: Math.max(prev.r2, r),
+        c2: Math.max(prev.c2, c)
+      }));
+      setActiveCell({ r, c });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragSelecting(false);
   };
 
   const renderStatusCell = (r) => {
