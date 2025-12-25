@@ -1184,6 +1184,8 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [newAdminPass, setNewAdminPass] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const state = loadState();
