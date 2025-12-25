@@ -1103,8 +1103,16 @@ const ExcelSheet = ({
               key={`col-${c}`} 
               className="col-header" 
               style={{ gridRow: 1, gridColumn: c + 2, position: 'relative' }}
+              onClick={() => handleSort(c)}
+              title={`Click to sort by ${col}`}
             >
-              {col}
+              <span>{colToName(c)}</span>
+              <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}>{col}</span>
+              {sortConfig.column === c && (
+                <span style={{ marginLeft: '4px' }}>
+                  {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                </span>
+              )}
               <div className="col-resizer" data-c={c} />
             </div>
           ))}
@@ -1123,7 +1131,9 @@ const ExcelSheet = ({
                   key={`cell-${r}-${c}`}
                   className={getCellClass(r, c)}
                   style={{ gridRow: r + 2, gridColumn: c + 2 }}
-                  onClick={() => handleCellClick(r, c)}
+                  onMouseDown={(e) => handleMouseDown(r, c, e)}
+                  onMouseEnter={() => handleMouseEnter(r, c)}
+                  onMouseUp={handleMouseUp}
                   onDoubleClick={() => handleCellDoubleClick(r, c)}
                 >
                   {renderCellContent(r, c)}
