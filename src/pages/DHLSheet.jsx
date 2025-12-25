@@ -137,16 +137,19 @@ const loadCSSheet = () => {
         raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
         timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
         colWidths: CS_COLUMNS.map(() => 140),
-        blinkRows: {}
+        blinkRows: {},
+        agentBreaks: {}
       };
     }
+    if (!data.agentBreaks) data.agentBreaks = {};
     return data;
   } catch {
     return {
       raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
       timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
       colWidths: CS_COLUMNS.map(() => 140),
-      blinkRows: {}
+      blinkRows: {},
+      agentBreaks: {}
     };
   }
 };
