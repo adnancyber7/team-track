@@ -1827,11 +1827,50 @@ const AgentDashboard = ({ username, onLogout }) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
-      setCSSheet(loadCSSheet());
+      const updated = loadCSSheet();
+      setCSSheet(updated);
+      
+      // Check if agent is on break
+      const agentBreak = updated.agentBreaks?.[username];
+      if (agentBreak?.active) {
+        setOnBreak(true);
+        setBreakType(agentBreak.type);
+        setBreakStart(agentBreak.start);
+      } else if (onBreak) {
+        setOnBreak(false);
+        setBreakType(null);
+        setBreakStart(null);
+      }
     }, 500);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [username, onBreak]);
+
+  const handleBreakToggle = (type) => {
+    const newSheet = deepCopy(csSheet);
+    if (!newSheet.agentBreaks) newSheet.agentBreaks = {};
+    
+    if (onBreak && breakType === type) {
+      // End break
+      newSheet.agentBreaks[username] = { active: false, type: null, start: null };
+      setOnBreak(false);
+      setBreakType(null);
+      setBreakStart(null);
+      toast.success("Break ended");
+    } else {
+      // Start new break
+      newSheet.agentBreaks[username] = { active: true, type, start: Date.now() };
+      setOnBreak(true);
+      setBreakType(type);
+      setBreakStart(Date.now());
+      const breakLabel = BREAK_TYPES.find(b => b.id === type)?.label || 'Break';
+      toast.success(`${breakLabel} started`);
+    }
+    
+    setCSSheet(newSheet);
+    saveCSSheet(newSheet);
+    CHANNEL.postMessage({ type: "app:sync" });
+  };
 
   useEffect(() => {
     const handleSync = (ev) => {
