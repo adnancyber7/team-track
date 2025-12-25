@@ -1366,6 +1366,88 @@ const AdminDashboard = ({ username, onLogout }) => {
     toast.success("Downloaded CS Sheet data");
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const parsedData = await parseUploadedFile(file);
+      
+      if (parsedData.length === 0) {
+        toast.error("File is empty");
+        setUploading(false);
+        return;
+      }
+      
+      // First row should be headers
+      const headers = parsedData[0];
+      const dataRows = parsedData.slice(1);
+      
+      // Map uploaded columns to CS sheet columns
+      const colMapping = {};
+      headers.forEach((header, idx) => {
+        const headerUpper = String(header).toUpperCase().trim();
+        const csIdx = CS_COLUMNS.findIndex(col => col.toUpperCase() === headerUpper);
+        if (csIdx !== -1) {
+          colMapping[idx] = csIdx;
+        }
+      });
+      
+      const newSheet = deepCopy(csSheet);
+      let rowsAdded = 0;
+      
+      // Find first empty row in CS sheet
+      let startRow = 0;
+      for (let r = 0; r < ROWS_COUNT; r++) {
+        if (csSheet.raw[r].every(cell => !cell.trim())) {
+          startRow = r;
+          break;
+        }
+      }
+      
+      // Add data rows
+      dataRows.forEach((row, idx) => {
+        const targetRow = startRow + idx;
+        if (targetRow >= ROWS_COUNT) return;
+        
+        row.forEach((cell, colIdx) => {
+          const targetCol = colMapping[colIdx];
+          if (targetCol !== undefined) {
+            newSheet.raw[targetRow][targetCol] = String(cell || '').trim();
+          }
+        });
+        
+        // Check if this row has agent assigned and AWB
+        const agentName = String(newSheet.raw[targetRow][COL_AGENTS] || '').trim().toLowerCase();
+        const awb = newSheet.raw[targetRow][COL_AWB];
+        
+        // If AWB is valid, start timer
+        if (isValidAwb(awb)) {
+          newSheet.timers[targetRow] = {
+            elapsed: 0,
+            start: Date.now(),
+            doneClicks: 0,
+            rejClicks: 0,
+            state: ""
+          };
+        }
+        
+        rowsAdded++;
+      });
+      
+      setCSSheet(newSheet);
+      saveCSSheet(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success(`Uploaded ${rowsAdded} rows successfully`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to upload file. Please check the format.");
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const getCSMetrics = () => {
     let awb = 0, lineSum = 0, done = 0, rej = 0;
     
