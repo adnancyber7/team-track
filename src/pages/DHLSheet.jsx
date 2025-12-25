@@ -312,6 +312,8 @@ const LoginScreen = ({ onLogin }) => {
   const [adminPass, setAdminPass] = useState("");
   const [agentUser, setAgentUser] = useState("");
   const [agentPass, setAgentPass] = useState("");
+  const [csUser, setCSUser] = useState("");
+  const [csPass, setCSPass] = useState("");
   const [error, setError] = useState("");
 
   const handleAdminLogin = () => {
@@ -342,6 +344,22 @@ const LoginScreen = ({ onLogin }) => {
       onLogin("agent", agentUser);
     } else {
       setError("Invalid agent credentials.");
+    }
+  };
+
+  const handleCSLogin = () => {
+    const state = loadState();
+    if (!csUser.trim() || !csPass) {
+      setError("Please enter CS Allocator username and password.");
+      return;
+    }
+    const found = state.csAllocators.find(a => a.username === csUser && a.password === csPass);
+    if (found) {
+      state.session = { role: "cs_allocator", username: csUser };
+      saveState(state);
+      onLogin("cs_allocator", csUser);
+    } else {
+      setError("Invalid CS Allocator credentials.");
     }
   };
 
@@ -395,20 +413,27 @@ const LoginScreen = ({ onLogin }) => {
 
         {/* Login Panel */}
         <Card className="bg-white/90 border-black/10 shadow-2xl overflow-hidden">
-          <div className="flex gap-3 p-4 bg-yellow-400/25 border-b border-black/10">
+          <div className="flex gap-2 p-4 bg-yellow-400/25 border-b border-black/10">
             <Button
               variant={activeTab === "admin" ? "default" : "outline"}
               onClick={() => { setActiveTab("admin"); setError(""); }}
-              className={`flex-1 font-black ${activeTab === "admin" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
+              className={`flex-1 font-black text-xs ${activeTab === "admin" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
             >
-              Admin Login
+              Admin
             </Button>
             <Button
               variant={activeTab === "agent" ? "default" : "outline"}
               onClick={() => { setActiveTab("agent"); setError(""); }}
-              className={`flex-1 font-black ${activeTab === "agent" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
+              className={`flex-1 font-black text-xs ${activeTab === "agent" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
             >
-              Agent Login
+              Agent
+            </Button>
+            <Button
+              variant={activeTab === "cs_allocator" ? "default" : "outline"}
+              onClick={() => { setActiveTab("cs_allocator"); setError(""); }}
+              className={`flex-1 font-black text-xs ${activeTab === "cs_allocator" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
+            >
+              CS Allocator
             </Button>
           </div>
 
@@ -518,7 +543,59 @@ const LoginScreen = ({ onLogin }) => {
                     </div>
                   )}
                 </motion.div>
-              )}
+              ) : activeTab === "cs_allocator" ? (
+                <motion.div
+                  key="cs_allocator"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <h2 className="text-xl font-bold mb-1">CS Allocator Login</h2>
+                    <p className="text-sm text-black/60">Only CS Allocators created by Admin can login.</p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-black/60">CS Allocator Username</Label>
+                      <Input
+                        value={csUser}
+                        onChange={(e) => setCSUser(e.target.value)}
+                        placeholder="Enter CS Allocator username"
+                        className="mt-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-black/60">CS Allocator Password</Label>
+                      <Input
+                        type="password"
+                        value={csPass}
+                        onChange={(e) => setCSPass(e.target.value)}
+                        placeholder="Enter CS Allocator password"
+                        className="mt-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button onClick={handleCSLogin} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black">
+                      Login
+                    </Button>
+                    <Button onClick={() => setActiveTab("admin")} variant="outline" className="flex-1 font-bold">
+                      Go Admin
+                    </Button>
+                  </div>
+
+                  {error && (
+                    <div className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm">
+                      {error}
+                    </div>
+                  )}
+                </motion.div>
+              ) : null}
             </AnimatePresence>
           </CardContent>
         </Card>
