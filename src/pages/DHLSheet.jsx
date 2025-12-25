@@ -928,12 +928,20 @@ const ExcelSheet = ({
     gridTemplateRows: `30px repeat(${ROWS_COUNT}, 30px)`,
   };
 
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setDragSelecting(false);
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
+
   return (
     <div 
+      ref={containerRef}
       className="excel-sheet-container"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      onMouseDown={handleMouseDown}
     >
       <style>{`
         .excel-sheet-container {
@@ -962,7 +970,7 @@ const ExcelSheet = ({
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 900;
           color: #111;
           text-align: center;
@@ -976,18 +984,21 @@ const ExcelSheet = ({
           top: 0; 
           z-index: 6; 
           position: sticky;
-          cursor: default;
+          cursor: pointer;
+          transition: background 0.15s;
         }
-        .col-header:hover { background: rgba(255,204,0,0.7); }
+        .col-header:hover { background: rgba(255,204,0,0.75); }
         .row-header { 
           left: 0; 
           z-index: 5; 
           position: sticky;
-          background: rgba(255,255,255,0.95);
+          background: rgba(240,240,240,0.98);
+          font-size: 10px;
+          color: #666;
         }
         .cell {
-          border-right: 1px solid rgba(17,17,17,0.08);
-          border-bottom: 1px solid rgba(17,17,17,0.08);
+          border-right: 1px solid rgba(17,17,17,0.06);
+          border-bottom: 1px solid rgba(17,17,17,0.06);
           padding: 2px 6px;
           display: flex;
           align-items: center;
@@ -1000,25 +1011,30 @@ const ExcelSheet = ({
           cursor: cell;
           transition: background 0.1s;
         }
-        .cell:hover { background: rgba(255,204,0,0.15); }
-        .cell.selected { background: rgba(255,204,0,0.25); }
+        .cell.even-row { background: rgba(250,250,250,0.98); }
+        .cell:hover { background: rgba(255,204,0,0.12) !important; }
+        .cell.selected { 
+          background: rgba(180,200,255,0.3) !important;
+          box-shadow: inset 0 0 0 1px rgba(37,99,235,0.3);
+        }
         .cell.active { 
-          box-shadow: inset 0 0 0 2px #111;
-          background: rgba(255,204,0,0.3);
+          box-shadow: inset 0 0 0 2px #2563eb !important;
+          background: rgba(255,255,255,0.98) !important;
           z-index: 2;
         }
-        .cell.row-done { background: rgba(22,163,74,0.15) !important; }
-        .cell.row-rejected { background: rgba(220,38,38,0.15) !important; }
+        .cell.row-done { background: rgba(22,163,74,0.12) !important; }
+        .cell.row-rejected { background: rgba(220,38,38,0.12) !important; }
         .cell.hidden-row { 
-          color: transparent;
+          background: rgba(240,240,240,0.5) !important;
+          color: transparent !important;
           pointer-events: none;
         }
         .cell.blink-row {
-          animation: blink-anim 0.5s ease-in-out infinite alternate;
+          animation: blink-anim 0.6s ease-in-out infinite alternate;
         }
         @keyframes blink-anim {
-          0% { background: rgba(255,204,0,0.3); }
-          100% { background: rgba(255,204,0,0.7); }
+          0% { background: rgba(255,204,0,0.35) !important; }
+          100% { background: rgba(255,204,0,0.75) !important; }
         }
         .col-resizer {
           position: absolute;
@@ -1030,7 +1046,7 @@ const ExcelSheet = ({
           background: transparent;
           z-index: 10;
         }
-        .col-resizer:hover { background: rgba(0,0,0,0.1); }
+        .col-resizer:hover { background: rgba(0,0,0,0.15); }
         .cell-editor {
           position: fixed;
           z-index: 9999;
@@ -1038,12 +1054,12 @@ const ExcelSheet = ({
           height: 30px;
           padding: 0 6px;
           border-radius: 4px;
-          border: 2px solid #111;
+          border: 2px solid #2563eb;
           background: #fff;
           color: #111;
           font-size: 12px;
           outline: none;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+          box-shadow: 0 8px 24px rgba(37,99,235,0.25);
         }
         .status-wrap {
           display: flex;
