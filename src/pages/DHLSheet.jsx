@@ -491,7 +491,7 @@ const LoginScreen = ({ onLogin }) => {
                     </div>
                   )}
                 </motion.div>
-              ) : (
+              ) : activeTab === "agent" ? (
                 <motion.div
                   key="agent"
                   initial={{ opacity: 0, x: 20 }}
