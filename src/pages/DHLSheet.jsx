@@ -1131,9 +1131,9 @@ const ExcelSheet = ({
                   key={`cell-${r}-${c}`}
                   className={getCellClass(r, c)}
                   style={{ gridRow: r + 2, gridColumn: c + 2 }}
-                  onMouseDown={(e) => handleMouseDown(r, c, e)}
+                  onMouseDown={(e) => handleCellMouseDown(r, c, e)}
                   onMouseEnter={() => handleMouseEnter(r, c)}
-                  onMouseUp={handleMouseUp}
+                  onMouseUp={handleCellMouseUp}
                   onDoubleClick={() => handleCellDoubleClick(r, c)}
                 >
                   {renderCellContent(r, c)}
