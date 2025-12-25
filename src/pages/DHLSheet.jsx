@@ -1320,9 +1320,15 @@ const AdminDashboard = ({ username, onLogout }) => {
     return { awb, lineSum, done, rej };
   };
 
-  const getUniqueRegions = () => {
+  const getUniqueRegions = (agentUser = null) => {
     const regions = new Set();
     for (let r = 0; r < ROWS_COUNT; r++) {
+      // If agent specified, only get regions for that agent's rows
+      if (agentUser) {
+        const rowAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+        if (rowAgent !== agentUser.toLowerCase()) continue;
+      }
+      
       const region = String(csSheet.raw[r]?.[COL_REGION] || '').trim();
       if (region) {
         region.split(/[\s,;|]+/).forEach(s => {
@@ -1340,8 +1346,25 @@ const AdminDashboard = ({ username, onLogout }) => {
     sheets.agentFilters[agent].region = region;
     saveAgentSheets(sheets);
     setAgentSheets(sheets);
+    setRegionFilter(region);
     CHANNEL.postMessage({ type: "app:sync" });
-    toast.success(`Region filter "${region || 'ALL'}" applied to ${agent}`);
+    toast.success(`Region filter "${region || 'ALL'}" applied to ${agent}${region ? ' - Agent will only see rows with this region' : ' - Agent will see all their rows'}`);
+  };
+
+  const clearAllData = () => {
+    if (confirm('Are you sure you want to clear all CS Sheet data? This cannot be undone.')) {
+      const newSheet = {
+        raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
+        timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
+        colWidths: CS_COLUMNS.map(() => 140),
+        blinkRows: {},
+        agentBreaks: {}
+      };
+      setCSSheet(newSheet);
+      saveCSSheet(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success("All data cleared");
+    }
   };
 
   const downloadAgentData = (agentUser) => {
