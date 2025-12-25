@@ -1757,8 +1757,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                           <SelectValue placeholder="Region Filter" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={null}>ALL</SelectItem>
-                          {getUniqueRegions().map(r => (
+                          <SelectItem value={null}>ALL REGIONS</SelectItem>
+                          {getUniqueRegions(selectedAgent).map(r => (
                             <SelectItem key={r} value={r}>{r}</SelectItem>
                           ))}
                         </SelectContent>
