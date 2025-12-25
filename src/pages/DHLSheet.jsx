@@ -796,7 +796,7 @@ const ExcelSheet = ({
     toast.success(`Sorted by ${columns[colIndex]} (${direction})`);
   };
 
-  const handleMouseDown = (r, c, e) => {
+  const handleCellMouseDown = (r, c, e) => {
     if (e.target.closest('.status-btn')) return;
     
     setActiveCell({ r, c });
@@ -825,7 +825,7 @@ const ExcelSheet = ({
     }
   };
 
-  const handleMouseUp = () => {
+  const handleCellMouseUp = () => {
     setDragSelecting(false);
   };
 
