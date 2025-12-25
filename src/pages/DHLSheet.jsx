@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare } from 'lucide-react';
 import DailyReportDialog from '../components/DailyReportDialog';
+import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,10 +146,12 @@ const loadCSSheet = () => {
         timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
         colWidths: CS_COLUMNS.map(() => 140),
         blinkRows: {},
-        agentBreaks: {}
+        agentBreaks: {},
+        savedFilters: []
       };
     }
     if (!data.agentBreaks) data.agentBreaks = {};
+    if (!data.savedFilters) data.savedFilters = [];
     return data;
   } catch {
     return {
@@ -156,7 +159,8 @@ const loadCSSheet = () => {
       timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
       colWidths: CS_COLUMNS.map(() => 140),
       blinkRows: {},
-      agentBreaks: {}
+      agentBreaks: {},
+      savedFilters: []
     };
   }
 };
@@ -1314,6 +1318,8 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [uploading, setUploading] = useState(false);
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [fastEditMode, setFastEditMode] = useState(false);
+  const [activeFilters, setActiveFilters] = useState(null);
+  const [filteredData, setFilteredData] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -1688,6 +1694,105 @@ const AdminDashboard = ({ username, onLogout }) => {
     }
   };
 
+  const applyFilters = (filters) => {
+    setActiveFilters(filters);
+    
+    if (!filters || (!filters.remarkKeyword && !filters.reasonKeyword && !filters.timeFrom && !filters.timeTo && (!filters.sortColumns || filters.sortColumns.length === 0))) {
+      setFilteredData(null);
+      return;
+    }
+
+    let filtered = csSheet.raw.map((row, idx) => ({ row, idx, timer: csSheet.timers[idx] }));
+
+    // Keyword filters
+    if (filters.remarkKeyword) {
+      const keyword = filters.remarkKeyword.toLowerCase();
+      filtered = filtered.filter(item => 
+        String(item.row[COL_REMARKS] || '').toLowerCase().includes(keyword)
+      );
+    }
+    if (filters.reasonKeyword) {
+      const keyword = filters.reasonKeyword.toLowerCase();
+      filtered = filtered.filter(item => 
+        String(item.row[COL_REASON] || '').toLowerCase().includes(keyword)
+      );
+    }
+
+    // Time range filter
+    if (filters.timeFrom || filters.timeTo) {
+      filtered = filtered.filter(item => {
+        const elapsed = item.timer.elapsed || 0;
+        const running = item.timer.start ? (elapsed + (Date.now() - item.timer.start)) : elapsed;
+        if (filters.timeFrom && running < filters.timeFrom) return false;
+        if (filters.timeTo && running > filters.timeTo) return false;
+        return true;
+      });
+    }
+
+    // Multi-column sort
+    if (filters.sortColumns && filters.sortColumns.length > 0) {
+      filtered.sort((a, b) => {
+        for (const sort of filters.sortColumns) {
+          if (!sort.column) continue;
+          const colIdx = CS_COLUMNS.indexOf(sort.column);
+          if (colIdx === -1) continue;
+          
+          const valA = String(a.row[colIdx] || '').toLowerCase();
+          const valB = String(b.row[colIdx] || '').toLowerCase();
+          
+          let comparison = 0;
+          if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
+            comparison = parseFloat(valA) - parseFloat(valB);
+          } else {
+            comparison = valA.localeCompare(valB);
+          }
+          
+          if (comparison !== 0) {
+            return sort.direction === 'asc' ? comparison : -comparison;
+          }
+        }
+        return 0;
+      });
+    }
+
+    setFilteredData(filtered);
+  };
+
+  const saveFilter = (filter) => {
+    const newSheet = deepCopy(csSheet);
+    if (!newSheet.savedFilters) newSheet.savedFilters = [];
+    newSheet.savedFilters.push(filter);
+    setCSSheet(newSheet);
+    saveCSSheet(newSheet);
+  };
+
+  const deleteFilter = (index) => {
+    const newSheet = deepCopy(csSheet);
+    newSheet.savedFilters.splice(index, 1);
+    setCSSheet(newSheet);
+    saveCSSheet(newSheet);
+    toast.success('Filter deleted');
+  };
+
+  const getDisplayData = () => {
+    if (filteredData) {
+      const result = Array(ROWS_COUNT).fill(null).map(() => Array(CS_COLUMNS.length).fill(''));
+      const resultTimers = Array(ROWS_COUNT).fill(null).map(() => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" }));
+      
+      filteredData.forEach((item, newIdx) => {
+        if (newIdx < ROWS_COUNT) {
+          result[newIdx] = item.row;
+          resultTimers[newIdx] = item.timer;
+        }
+      });
+      
+      return { raw: result, timers: resultTimers };
+    }
+    return { raw: csSheet.raw, timers: csSheet.timers };
+  };
+
+  const displayData = getDisplayData();
+
   return (
     <div className="min-h-screen p-4" style={{
       background: `
@@ -1821,6 +1926,15 @@ const AdminDashboard = ({ username, onLogout }) => {
               </Card>
             )}
 
+            {/* Advanced Filters */}
+            <AdvancedFilterPanel 
+              onApplyFilters={applyFilters}
+              savedFilters={csSheet.savedFilters}
+              onSaveFilter={saveFilter}
+              onDeleteFilter={deleteFilter}
+              onLoadFilter={(f) => applyFilters(f)}
+            />
+
             {/* Bulk Actions */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4">
@@ -1870,10 +1984,22 @@ const AdminDashboard = ({ username, onLogout }) => {
             </Card>
 
             {/* CS Sheet */}
+            {activeFilters && filteredData && (
+              <Card className="bg-blue-50 border-blue-300">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-bold text-blue-900">
+                      Filters Active - Showing {filteredData.length} of {csSheet.raw.filter(r => r.some(c => c.trim())).length} rows
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <ExcelSheet
               columns={CS_COLUMNS}
-              data={csSheet.raw}
-              timers={csSheet.timers}
+              data={displayData.raw}
+              timers={displayData.timers}
               onCellChange={handleCSCellChange}
               onStatusClick={handleCSStatusClick}
               isAdmin={true}
