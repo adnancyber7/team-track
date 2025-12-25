@@ -621,7 +621,10 @@ const ExcelSheet = ({
   regionFilter,
   csSheetData,
   onSort,
-  onFilter
+  onFilter,
+  selectedRows,
+  onRowSelect,
+  fastEditMode
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -634,9 +637,11 @@ const ExcelSheet = ({
   const [resizing, setResizing] = useState(null);
   const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
   const [filterText, setFilterText] = useState('');
+  const [typingCell, setTypingCell] = useState(null);
   const gridRef = useRef(null);
   const editorRef = useRef(null);
   const containerRef = useRef(null);
+  const typingTimerRef = useRef(null);
 
   const getRunningMs = useCallback((r) => {
     const t = timers[r];
@@ -678,11 +683,32 @@ const ExcelSheet = ({
     setTimeout(() => editorRef.current?.focus(), 0);
   };
 
+  const handleCellSingleClick = (r, c) => {
+    if (fastEditMode && canEdit(r, c) && c !== COL_STATUS) {
+      setEditingCell({ r, c });
+      setEditValue(data[r]?.[c] || '');
+      setTimeout(() => editorRef.current?.focus(), 0);
+    }
+  };
+
   const commitEdit = () => {
     if (editingCell) {
       onCellChange(editingCell.r, editingCell.c, editValue);
       setEditingCell(null);
       setEditValue("");
+      setTypingCell(null);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    }
+  };
+
+  const handleEditValueChange = (value) => {
+    setEditValue(value);
+    if (fastEditMode && editingCell) {
+      setTypingCell({ r: editingCell.r, c: editingCell.c });
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        setTypingCell(null);
+      }, 1000);
     }
   };
 
@@ -866,8 +892,11 @@ const ExcelSheet = ({
     
     if (!isRowVisible(r) && !isAdmin) classes.push('hidden-row');
     
-    // Alternate row colors for better readability
     if (r % 2 === 0) classes.push('even-row');
+    
+    if (selectedRows && selectedRows.has(r)) classes.push('row-selected');
+    
+    if (typingCell && typingCell.r === r && typingCell.c === c) classes.push('typing-indicator');
     
     return classes.join(' ');
   };
@@ -1120,6 +1149,14 @@ const ExcelSheet = ({
           0% { background: rgba(255,204,0,0.35) !important; }
           100% { background: rgba(255,204,0,0.75) !important; }
         }
+        .cell.row-selected {
+          background: rgba(59,130,246,0.15) !important;
+          border-left: 3px solid #3b82f6 !important;
+        }
+        .cell.typing-indicator {
+          border: 2px solid #10b981 !important;
+          box-shadow: 0 0 8px rgba(16,185,129,0.3);
+        }
         .col-resizer {
           position: absolute;
           right: -2px;
@@ -1206,9 +1243,14 @@ const ExcelSheet = ({
             <React.Fragment key={`row-${r}`}>
               <div 
                 className="row-header" 
-                style={{ gridRow: r + 2, gridColumn: 1 }}
+                style={{ gridRow: r + 2, gridColumn: 1, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
+                onClick={() => isAdmin && onRowSelect && onRowSelect(r)}
               >
-                {r + 1}
+                {isAdmin && onRowSelect && selectedRows ? (
+                  selectedRows.has(r) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" />
+                ) : (
+                  r + 1
+                )}
               </div>
               {columns.map((_, c) => (
                 <div
@@ -1218,6 +1260,7 @@ const ExcelSheet = ({
                   onMouseDown={(e) => handleCellMouseDown(r, c, e)}
                   onMouseEnter={() => handleMouseEnter(r, c)}
                   onMouseUp={handleCellMouseUp}
+                  onClick={() => handleCellSingleClick(r, c)}
                   onDoubleClick={() => handleCellDoubleClick(r, c)}
                 >
                   {renderCellContent(r, c)}
@@ -1239,7 +1282,7 @@ const ExcelSheet = ({
             width: colWidths[editingCell.c],
           }}
           value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
+          onChange={(e) => handleEditValueChange(e.target.value)}
           onBlur={commitEdit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
@@ -1269,6 +1312,8 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [regionFilter, setRegionFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [selectedRows, setSelectedRows] = useState(new Set());
+  const [fastEditMode, setFastEditMode] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -1572,6 +1617,77 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const csMetrics = getCSMetrics();
 
+  const handleRowSelect = (rowIndex) => {
+    const newSelected = new Set(selectedRows);
+    if (newSelected.has(rowIndex)) {
+      newSelected.delete(rowIndex);
+    } else {
+      newSelected.add(rowIndex);
+    }
+    setSelectedRows(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    const allRows = new Set();
+    for (let r = 0; r < ROWS_COUNT; r++) {
+      if (csSheet.raw[r].some(cell => cell.trim())) {
+        allRows.add(r);
+      }
+    }
+    setSelectedRows(allRows);
+    toast.success(`Selected ${allRows.size} rows`);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRows(new Set());
+    toast.success('Deselected all rows');
+  };
+
+  const handleClearSelected = () => {
+    if (selectedRows.size === 0) {
+      toast.error('No rows selected');
+      return;
+    }
+    
+    if (confirm(`Clear ${selectedRows.size} selected rows?`)) {
+      const newSheet = deepCopy(csSheet);
+      selectedRows.forEach(r => {
+        newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
+        newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" };
+      });
+      setCSSheet(newSheet);
+      saveCSSheet(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
+      setSelectedRows(new Set());
+      toast.success(`Cleared ${selectedRows.size} rows`);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedRows.size === 0) {
+      toast.error('No rows selected');
+      return;
+    }
+    
+    if (confirm(`Delete ${selectedRows.size} selected rows? This will shift rows up.`)) {
+      const newSheet = deepCopy(csSheet);
+      const sortedRows = Array.from(selectedRows).sort((a, b) => b - a);
+      
+      sortedRows.forEach(r => {
+        newSheet.raw.splice(r, 1);
+        newSheet.timers.splice(r, 1);
+        newSheet.raw.push(Array(CS_COLUMNS.length).fill(''));
+        newSheet.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
+      });
+      
+      setCSSheet(newSheet);
+      saveCSSheet(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
+      setSelectedRows(new Set());
+      toast.success(`Deleted ${selectedRows.size} rows`);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4" style={{
       background: `
@@ -1657,12 +1773,13 @@ const AdminDashboard = ({ username, onLogout }) => {
                       ) : (
                         <Upload className="w-4 h-4 mr-2" />
                       )}
-                      Upload Excel/CSV
+                      Upload
                     </Button>
                     <Button onClick={downloadAllCSData} variant="outline" size="sm" className="font-bold">
                       <Download className="w-4 h-4 mr-2" />
                       Download
                     </Button>
+                    <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
                   </div>
                 </div>
                 
@@ -1704,6 +1821,54 @@ const AdminDashboard = ({ username, onLogout }) => {
               </Card>
             )}
 
+            {/* Bulk Actions */}
+            <Card className="bg-white/95 border-black/10 shadow-lg">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Badge className="bg-blue-100 text-blue-800 font-black">BULK ACTIONS</Badge>
+                  <Button onClick={handleSelectAll} size="sm" variant="outline" className="font-bold">
+                    <CheckSquare className="w-4 h-4 mr-2" />
+                    Select All
+                  </Button>
+                  <Button onClick={handleDeselectAll} size="sm" variant="outline" className="font-bold">
+                    <Square className="w-4 h-4 mr-2" />
+                    Deselect All
+                  </Button>
+                  <Button 
+                    onClick={handleClearSelected} 
+                    size="sm" 
+                    variant="outline" 
+                    className="font-bold text-orange-600 hover:bg-orange-50"
+                    disabled={selectedRows.size === 0}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear Selected ({selectedRows.size})
+                  </Button>
+                  <Button 
+                    onClick={handleDeleteSelected} 
+                    size="sm" 
+                    variant="outline" 
+                    className="font-bold text-red-600 hover:bg-red-50"
+                    disabled={selectedRows.size === 0}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Delete Selected ({selectedRows.size})
+                  </Button>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Button 
+                      onClick={() => setFastEditMode(!fastEditMode)} 
+                      size="sm" 
+                      variant={fastEditMode ? "default" : "outline"}
+                      className={`font-bold ${fastEditMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Fast Edit Mode {fastEditMode ? 'ON' : 'OFF'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* CS Sheet */}
             <ExcelSheet
               columns={CS_COLUMNS}
@@ -1715,6 +1880,9 @@ const AdminDashboard = ({ username, onLogout }) => {
               agentUsername=""
               editableCols={ADMIN_EDITABLE_IN_CS}
               blinkRows={csSheet.blinkRows}
+              selectedRows={selectedRows}
+              onRowSelect={handleRowSelect}
+              fastEditMode={fastEditMode}
             />
           </TabsContent>
 
