@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause } from 'lucide-react';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare } from 'lucide-react';
+import DailyReportDialog from '../components/DailyReportDialog';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,9 +78,14 @@ const AGENT_EDITABLE = new Set([
   COL_LINE, COL_LOT, COL_REMARKS, COL_REASON, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5
 ]);
 
+const CS_ALLOCATOR_EDITABLE = new Set([
+  COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6
+]);
+
 const DEFAULT_STATE = {
   admin: { username: "admin", password: "admin123" },
   agents: [],
+  csAllocators: [],
   session: { role: null, username: null }
 };
 
@@ -119,6 +125,7 @@ const loadState = () => {
     if (!parsed || typeof parsed !== "object") throw new Error("Bad");
     if (!parsed.admin) throw new Error("Bad");
     if (!Array.isArray(parsed.agents)) parsed.agents = [];
+    if (!Array.isArray(parsed.csAllocators)) parsed.csAllocators = [];
     if (!parsed.session) parsed.session = { role: null, username: null };
     return parsed;
   } catch {
