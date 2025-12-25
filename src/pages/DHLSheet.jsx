@@ -734,7 +734,7 @@ const ExcelSheet = ({
     }
   };
 
-  const handleMouseDown = (e) => {
+  const handleResizerMouseDown = (e) => {
     const resizer = e.target.closest('.col-resizer');
     if (resizer) {
       const c = parseInt(resizer.dataset.c);
