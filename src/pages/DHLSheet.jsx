@@ -2270,6 +2270,144 @@ const AdminDashboard = ({ username, onLogout }) => {
 };
 
 // ============================================================================
+// CS ALLOCATOR DASHBOARD COMPONENT
+// ============================================================================
+
+const CSAllocatorDashboard = ({ username, onLogout }) => {
+  const [csSheet, setCSSheet] = useState(loadCSSheet);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey(k => k + 1);
+      const updated = loadCSSheet();
+      setCSSheet(updated);
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleSync = (ev) => {
+      if (ev?.data?.type === "app:sync") {
+        setCSSheet(loadCSSheet());
+      }
+    };
+    CHANNEL.addEventListener('message', handleSync);
+    return () => CHANNEL.removeEventListener('message', handleSync);
+  }, []);
+
+  const handleCellChange = (r, c, value) => {
+    // CS Allocator can only edit confirmation columns
+    if (!CS_ALLOCATOR_EDITABLE.has(c)) return;
+    
+    const newSheet = deepCopy(csSheet);
+    newSheet.raw[r][c] = value;
+    
+    // If CS team adds confirmation, blink for agent and clear rejected state
+    if (value.trim()) {
+      if (!newSheet.blinkRows) newSheet.blinkRows = {};
+      newSheet.blinkRows[r] = true;
+      
+      if (newSheet.timers[r]?.state === "REJECTED") {
+        newSheet.timers[r].state = "";
+        newSheet.raw[r][COL_STATUS] = "";
+      }
+      
+      setTimeout(() => {
+        const updated = loadCSSheet();
+        if (updated.blinkRows) {
+          updated.blinkRows[r] = false;
+          saveCSSheet(updated);
+          CHANNEL.postMessage({ type: "app:sync" });
+        }
+      }, 5000);
+    }
+    
+    setCSSheet(newSheet);
+    saveCSSheet(newSheet);
+    CHANNEL.postMessage({ type: "app:sync" });
+  };
+
+  const getRejectedCount = () => {
+    return csSheet.raw.filter(row => {
+      const status = String(row[COL_STATUS] || '').toUpperCase();
+      return status === 'REJECT' || status === 'REJECTED';
+    }).length;
+  };
+
+  const downloadCSData = () => {
+    const headers = CS_COLUMNS;
+    const rows = [headers, ...csSheet.raw.filter(row => row.some(cell => cell.trim()))];
+    downloadCSV(rows, 'cs_team_sheet.csv');
+    toast.success("Downloaded CS Team sheet");
+  };
+
+  return (
+    <div className="min-h-screen p-4" style={{
+      background: `
+        radial-gradient(900px 500px at 15% 10%, rgba(255,204,0,.55), transparent 60%),
+        radial-gradient(700px 400px at 85% 20%, rgba(255,204,0,.35), transparent 55%),
+        linear-gradient(180deg, #fff 0%, #fff7d1 100%)
+      `
+    }}>
+      <div className="max-w-[1600px] mx-auto space-y-4">
+        {/* Top Bar */}
+        <Card className="bg-white/95 border-black/10 shadow-xl">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <Badge className="bg-blue-400 text-white font-black border-blue-500">CS TEAM</Badge>
+                <span className="font-bold">Welcome, {username}</span>
+              </div>
+              <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Analytics */}
+        <Card className="bg-white/95 border-black/10 shadow-lg">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4 flex-wrap mb-2">
+              <Badge className="bg-blue-400 text-white font-black px-3 py-1">CS TEAM SHEET</Badge>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                <span className="text-sm font-medium text-red-800">REJECTED ITEMS:</span>
+                <span className="font-mono font-bold text-red-800">{getRejectedCount()}</span>
+              </div>
+              <div className="ml-auto">
+                <Button onClick={downloadCSData} variant="outline" size="sm" className="font-bold">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download CSV
+                </Button>
+              </div>
+            </div>
+            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+              <b>CS Team View:</b> Shows all rows, especially rejected ones. Add confirmation values (2ND CONFIRMATION, 3RD CONFIRMATION, etc.) to send back to agents.
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CS Team Sheet */}
+        <ExcelSheet
+          columns={CS_COLUMNS}
+          data={csSheet.raw}
+          timers={csSheet.timers}
+          onCellChange={handleCellChange}
+          onStatusClick={() => {}}
+          isAdmin={true}
+          agentUsername=""
+          editableCols={CS_ALLOCATOR_EDITABLE}
+          blinkRows={csSheet.blinkRows}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // AGENT DASHBOARD COMPONENT
 // ============================================================================
 
@@ -2431,7 +2569,14 @@ const AgentDashboard = ({ username, onLogout }) => {
       
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
+      
+      // Set STATUS column to REJECT
       newSheet.raw[r][COL_STATUS] = "REJECT";
+      
+      // Add agent name to AGENT2 column if empty (for CS team tracking)
+      if (!newSheet.raw[r][COL_AGENT2]?.trim()) {
+        newSheet.raw[r][COL_AGENT2] = username;
+      }
       
       // Set blink for CS sheet when agent rejects
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
@@ -2626,6 +2771,10 @@ export default function DHLSheet() {
 
   if (session.role === "admin") {
     return <AdminDashboard username={session.username} onLogout={handleLogout} />;
+  }
+
+  if (session.role === "cs_allocator") {
+    return <CSAllocatorDashboard username={session.username} onLogout={handleLogout} />;
   }
 
   return <AgentDashboard username={session.username} onLogout={handleLogout} />;
