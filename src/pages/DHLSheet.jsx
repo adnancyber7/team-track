@@ -86,7 +86,7 @@ const CS_ALLOCATOR_EDITABLE = new Set([
 const DEFAULT_STATE = {
   admin: { username: "admin", password: "admin123" },
   agents: [],
-  csAllocators: [],
+  csAllocators: [{ username: "cs1", password: "cs123" }],
   session: { role: null, username: null }
 };
 
@@ -381,40 +381,7 @@ const LoginScreen = ({ onLogin }) => {
         linear-gradient(180deg, #fff 0%, #fff7d1 100%)
       `
     }}>
-      <div className="w-full max-w-5xl grid md:grid-cols-2 gap-6">
-        {/* Brand Section */}
-        <Card className="bg-gradient-to-b from-yellow-100/50 to-yellow-50/30 border-black/10 shadow-2xl overflow-hidden">
-          <CardContent className="p-8">
-            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-black/10 bg-white/70 mb-6">
-              <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_0_4px_rgba(255,204,0,.25)]" />
-              <span className="font-black text-sm tracking-wide">DHL Yellow Sheet Access</span>
-            </div>
-            
-            <h1 className="text-4xl font-black text-black mb-4">Admin & Agent Login</h1>
-            <p className="text-black/70 text-sm leading-relaxed mb-6">
-              Complete sheet management system with CS Sheet for admin control and agent-specific views. 
-              Real-time synchronization with rejection workflow and timer tracking.
-            </p>
-            
-            <Separator className="my-6 bg-black/20" style={{ borderStyle: 'dashed' }} />
-            
-            <div className="space-y-4">
-              <div className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-lg bg-yellow-400/50 border border-black/10 flex items-center justify-center text-xs font-black flex-shrink-0">1</div>
-                <div className="text-sm"><b>Admin:</b> <code className="px-2 py-0.5 bg-white/70 rounded border text-xs">admin</code> / <code className="px-2 py-0.5 bg-white/70 rounded border text-xs">admin123</code></div>
-              </div>
-              <div className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-lg bg-yellow-400/50 border border-black/10 flex items-center justify-center text-xs font-black flex-shrink-0">2</div>
-                <div className="text-sm"><b>CS Sheet:</b> Admin controls all data, assigns to agents via AGENTS column.</div>
-              </div>
-              <div className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-lg bg-yellow-400/50 border border-black/10 flex items-center justify-center text-xs font-black flex-shrink-0">3</div>
-                <div className="text-sm"><b>Rejection Flow:</b> Agent must fill rejection reason before rejecting.</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="w-full max-w-md">
         {/* Login Panel */}
         <Card className="bg-white/90 border-black/10 shadow-2xl overflow-hidden">
           <div className="flex gap-2 p-4 bg-yellow-400/25 border-b border-black/10">
@@ -658,8 +625,17 @@ const ExcelSheet = ({
     if (isAdmin) return true;
     if (!agentUsername) return false;
     const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
-    return agentCell === agentUsername.toLowerCase();
-  }, [isAdmin, agentUsername, data]);
+    const agentMatch = agentCell === agentUsername.toLowerCase();
+    
+    // Apply region filter if set
+    if (regionFilter && agentMatch) {
+      const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
+      const filterUpper = regionFilter.toUpperCase();
+      return regionCell === filterUpper || regionCell.includes(filterUpper);
+    }
+    
+    return agentMatch;
+  }, [isAdmin, agentUsername, data, regionFilter]);
 
   const shouldBlink = useCallback((r) => {
     return blinkRows && blinkRows[r] === true;
@@ -688,7 +664,7 @@ const ExcelSheet = ({
   };
 
   const handleCellSingleClick = (r, c) => {
-    if (fastEditMode && canEdit(r, c) && c !== COL_STATUS) {
+    if (canEdit(r, c) && c !== COL_STATUS) {
       setEditingCell({ r, c });
       setEditValue(data[r]?.[c] || '');
       setTimeout(() => editorRef.current?.focus(), 0);
@@ -1320,11 +1296,15 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [fastEditMode, setFastEditMode] = useState(false);
   const [activeFilters, setActiveFilters] = useState(null);
   const [filteredData, setFilteredData] = useState(null);
+  const [csAllocators, setCSAllocators] = useState([]);
+  const [newCSUser, setNewCSUser] = useState("");
+  const [newCSPass, setNewCSPass] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     const state = loadState();
     setAgents(state.agents || []);
+    setCSAllocators(state.csAllocators || []);
     setNewAdminUser(state.admin.username);
     
     const interval = setInterval(() => {
@@ -1419,6 +1399,38 @@ const AdminDashboard = ({ username, onLogout }) => {
     saveState(state);
     setAgents(state.agents);
     toast.success(`Agent "${username}" deleted`);
+  };
+
+  const createCSAllocator = () => {
+    if (!newCSUser.trim() || !newCSPass.trim()) {
+      toast.error("Please enter CS Allocator username and password");
+      return;
+    }
+    if (newCSPass.length < 4) {
+      toast.error("Password must be at least 4 characters");
+      return;
+    }
+    
+    const state = loadState();
+    if (state.csAllocators.some(a => a.username === newCSUser)) {
+      toast.error("CS Allocator already exists");
+      return;
+    }
+    
+    state.csAllocators.push({ username: newCSUser, password: newCSPass });
+    saveState(state);
+    setCSAllocators(state.csAllocators);
+    setNewCSUser("");
+    setNewCSPass("");
+    toast.success(`CS Allocator "${newCSUser}" created`);
+  };
+
+  const deleteCSAllocator = (username) => {
+    const state = loadState();
+    state.csAllocators = state.csAllocators.filter(a => a.username !== username);
+    saveState(state);
+    setCSAllocators(state.csAllocators);
+    toast.success(`CS Allocator "${username}" deleted`);
   };
 
   const saveAdminCreds = () => {
@@ -1926,15 +1938,6 @@ const AdminDashboard = ({ username, onLogout }) => {
               </Card>
             )}
 
-            {/* Advanced Filters */}
-            <AdvancedFilterPanel 
-              onApplyFilters={applyFilters}
-              savedFilters={csSheet.savedFilters}
-              onSaveFilter={saveFilter}
-              onDeleteFilter={deleteFilter}
-              onLoadFilter={(f) => applyFilters(f)}
-            />
-
             {/* Bulk Actions */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4">
@@ -1984,22 +1987,10 @@ const AdminDashboard = ({ username, onLogout }) => {
             </Card>
 
             {/* CS Sheet */}
-            {activeFilters && filteredData && (
-              <Card className="bg-blue-50 border-blue-300">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-bold text-blue-900">
-                      Filters Active - Showing {filteredData.length} of {csSheet.raw.filter(r => r.some(c => c.trim())).length} rows
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
             <ExcelSheet
               columns={CS_COLUMNS}
-              data={displayData.raw}
-              timers={displayData.timers}
+              data={csSheet.raw}
+              timers={csSheet.timers}
               onCellChange={handleCSCellChange}
               onStatusClick={handleCSStatusClick}
               isAdmin={true}
@@ -2014,7 +2005,7 @@ const AdminDashboard = ({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               {/* Create Agent */}
               <Card className="bg-white/95 border-black/10 shadow-lg">
                 <CardHeader className="pb-2">
@@ -2045,6 +2036,40 @@ const AdminDashboard = ({ username, onLogout }) => {
                   </div>
                   <Button onClick={createAgent} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
                     Create Agent
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Create CS Allocator */}
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Plus className="w-5 h-5" />
+                    Create CS Allocator
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-black/60">CS Username</Label>
+                    <Input
+                      value={newCSUser}
+                      onChange={(e) => setNewCSUser(e.target.value)}
+                      placeholder="e.g. cs01"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-black/60">CS Password</Label>
+                    <Input
+                      type="password"
+                      value={newCSPass}
+                      onChange={(e) => setNewCSPass(e.target.value)}
+                      placeholder="Min 4 characters"
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button onClick={createCSAllocator} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
+                    Create CS Allocator
                   </Button>
                 </CardContent>
               </Card>
@@ -2109,6 +2134,37 @@ const AdminDashboard = ({ username, onLogout }) => {
               </Card>
             </div>
 
+            {/* CS Allocators List */}
+            <Card className="bg-white/95 border-black/10 shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  CS Allocators ({csAllocators.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {csAllocators.length === 0 ? (
+                  <p className="text-sm text-black/50 text-center py-4">No CS Allocators created yet</p>
+                ) : (
+                  <div className="grid md:grid-cols-3 gap-2">
+                    {csAllocators.map(cs => (
+                      <div key={cs.username} className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200">
+                        <div className="font-bold">{cs.username}</div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => deleteCSAllocator(cs.username)}
+                          className="font-bold text-red-600 hover:bg-red-50 h-7 w-7 p-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Agent Profile View */}
             {selectedAgent && (
               <Card className="bg-white/95 border-black/10 shadow-lg">
@@ -2119,9 +2175,11 @@ const AdminDashboard = ({ username, onLogout }) => {
                       <span className="font-bold text-lg">{selectedAgent}</span>
                       {(() => {
                         const m = getAgentMetrics(selectedAgent);
+                        const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
                         return (
                           <span className="text-sm text-black/50">
                             AWB: {m.awb} | LINE SUM: {m.lineSum} | DONE: {m.done} | REJ: {m.rej}
+                            {currentFilter && ` | Region: ${currentFilter}`}
                           </span>
                         );
                       })()}
@@ -2129,10 +2187,13 @@ const AdminDashboard = ({ username, onLogout }) => {
                     <div className="flex items-center gap-2">
                       <Select 
                         value={agentSheets.agentFilters?.[selectedAgent]?.region || ""} 
-                        onValueChange={(v) => applyRegionFilter(selectedAgent, v)}
+                        onValueChange={(v) => {
+                          applyRegionFilter(selectedAgent, v);
+                          setRegionFilter(v);
+                        }}
                       >
                         <SelectTrigger className="w-[150px]">
-                          <SelectValue placeholder="Region Filter" />
+                          <SelectValue placeholder="ALL REGIONS" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={null}>ALL REGIONS</SelectItem>
@@ -2145,7 +2206,10 @@ const AdminDashboard = ({ username, onLogout }) => {
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </Button>
-                      <Button onClick={() => setSelectedAgent(null)} variant="outline" size="sm" className="font-bold">
+                      <Button onClick={() => {
+                        setSelectedAgent(null);
+                        setRegionFilter("");
+                      }} variant="outline" size="sm" className="font-bold">
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
@@ -2162,7 +2226,7 @@ const AdminDashboard = ({ username, onLogout }) => {
                     agentUsername={selectedAgent}
                     editableCols={ADMIN_EDITABLE_IN_CS}
                     blinkRows={csSheet.blinkRows}
-                    regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region}
+                    regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
                   />
                 </CardContent>
               </Card>
@@ -2224,12 +2288,21 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [onBreak, setOnBreak] = useState(false);
   const [breakType, setBreakType] = useState(null);
   const [breakStart, setBreakStart] = useState(null);
+  const [regionFilter, setRegionFilter] = useState("");
 
   useEffect(() => {
+    const sheets = loadAgentSheets();
+    const filter = sheets.agentFilters?.[username]?.region || "";
+    setRegionFilter(filter);
+    
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
       const updated = loadCSSheet();
       setCSSheet(updated);
+      
+      const updatedSheets = loadAgentSheets();
+      const updatedFilter = updatedSheets.agentFilters?.[username]?.region || "";
+      setRegionFilter(updatedFilter);
       
       // Check if agent is on break
       const agentBreak = updated.agentBreaks?.[username];
@@ -2478,6 +2551,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           agentUsername={username}
           editableCols={AGENT_EDITABLE}
           blinkRows={csSheet.blinkRows}
+          regionFilter={regionFilter}
         />
       </div>
     </div>
