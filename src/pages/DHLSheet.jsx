@@ -2338,10 +2338,37 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
 
   const downloadCSData = () => {
     const headers = CS_COLUMNS;
-    const rows = [headers, ...csSheet.raw.filter(row => row.some(cell => cell.trim()))];
-    downloadCSV(rows, 'cs_team_sheet.csv');
-    toast.success("Downloaded CS Team sheet");
+    const rejectedRows = csSheet.raw.filter(row => {
+      const status = String(row[COL_STATUS] || '').toUpperCase();
+      return status === 'REJECT' || status === 'REJECTED';
+    });
+    const rows = [headers, ...rejectedRows];
+    downloadCSV(rows, 'cs_team_rejected_items.csv');
+    toast.success("Downloaded rejected items");
   };
+
+  const getFilteredData = () => {
+    const filtered = [];
+    const filteredTimers = [];
+    
+    csSheet.raw.forEach((row, idx) => {
+      const status = String(row[COL_STATUS] || '').toUpperCase();
+      if (status === 'REJECT' || status === 'REJECTED') {
+        filtered.push(row);
+        filteredTimers.push(csSheet.timers[idx]);
+      }
+    });
+    
+    // Fill remaining with empty rows
+    while (filtered.length < ROWS_COUNT) {
+      filtered.push(Array(CS_COLUMNS.length).fill(''));
+      filteredTimers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
+    }
+    
+    return { data: filtered, timers: filteredTimers };
+  };
+
+  const { data: filteredData, timers: filteredTimers } = getFilteredData();
 
   return (
     <div className="min-h-screen p-4" style={{
@@ -2372,7 +2399,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         <Card className="bg-white/95 border-black/10 shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center gap-4 flex-wrap mb-2">
-              <Badge className="bg-blue-400 text-white font-black px-3 py-1">CS TEAM SHEET</Badge>
+              <Badge className="bg-blue-400 text-white font-black px-3 py-1">CS TEAM SHEET - REJECTED ITEMS ONLY</Badge>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
                 <span className="text-sm font-medium text-red-800">REJECTED ITEMS:</span>
                 <span className="font-mono font-bold text-red-800">{getRejectedCount()}</span>
@@ -2385,7 +2412,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
               </div>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-              <b>CS Team View:</b> Shows all rows, especially rejected ones. Add confirmation values (2ND CONFIRMATION, 3RD CONFIRMATION, etc.) to send back to agents.
+              <b>CS Team View:</b> Shows ONLY rejected rows. Add confirmation values (2ND CONFIRMATION, 3RD CONFIRMATION, etc.) to send back to agents.
             </div>
           </CardContent>
         </Card>
@@ -2393,8 +2420,8 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         {/* CS Team Sheet */}
         <ExcelSheet
           columns={CS_COLUMNS}
-          data={csSheet.raw}
-          timers={csSheet.timers}
+          data={filteredData}
+          timers={filteredTimers}
           onCellChange={handleCellChange}
           onStatusClick={() => {}}
           isAdmin={true}
