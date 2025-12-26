@@ -83,6 +83,12 @@ const CS_ALLOCATOR_EDITABLE = new Set([
   COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6
 ]);
 
+const CS_TEAM_EDITABLE = new Set([
+  COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB, 
+  COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3, 
+  COL_CONF4, COL_CONF5, COL_CONF6
+]);
+
 const DEFAULT_STATE = {
   admin: { username: "admin", password: "admin123" },
   agents: [],
@@ -935,36 +941,31 @@ const ExcelSheet = ({
 
     const handleReject = (e) => {
       e.stopPropagation();
-      // Check if rejection reason is filled for the current rejection level
       const rej2 = data[r]?.[COL_REJ2] || '';
       const rej3 = data[r]?.[COL_REJ3] || '';
       const rej4 = data[r]?.[COL_REJ4] || '';
       const rej5 = data[r]?.[COL_REJ5] || '';
       
       const rejCount = timer.rejClicks || 0;
-      let canReject = false;
       
-      if (rejCount === 0 && rej2.trim()) canReject = true;
-      else if (rejCount === 1 && rej3.trim()) canReject = true;
-      else if (rejCount === 2 && rej4.trim()) canReject = true;
-      else if (rejCount === 3 && rej5.trim()) canReject = true;
-      else if (rejCount >= 4) canReject = false;
-      else if (rejCount === 0 && !rej2.trim()) {
+      if (rejCount === 0 && !rej2.trim()) {
         toast.error("Please fill 2ND REJECTION reason first");
         return;
-      } else if (rejCount === 1 && !rej3.trim()) {
+      }
+      if (rejCount === 1 && !rej3.trim()) {
         toast.error("Please fill 3RD REJECTION reason first");
         return;
-      } else if (rejCount === 2 && !rej4.trim()) {
+      }
+      if (rejCount === 2 && !rej4.trim()) {
         toast.error("Please fill 4TH REJECTION reason first");
         return;
-      } else if (rejCount === 3 && !rej5.trim()) {
+      }
+      if (rejCount === 3 && !rej5.trim()) {
         toast.error("Please fill 5TH REJECTION reason first");
         return;
       }
-      
-      if (!canReject && rejCount === 0 && !rej2.trim()) {
-        toast.error("Please fill 2ND REJECTION reason first");
+      if (rejCount >= 4) {
+        toast.error("Maximum rejections reached");
         return;
       }
       
@@ -972,6 +973,7 @@ const ExcelSheet = ({
     };
 
     const timeStr = formatMs(getRunningMs(r));
+    const statusText = data[r]?.[COL_STATUS] || '';
 
     return (
       <div className="status-wrap">
@@ -993,6 +995,9 @@ const ExcelSheet = ({
             </button>
           </>
         )}
+        {isAdmin && statusText && (
+          <span className="text-xs font-bold text-red-600">{statusText}</span>
+        )}
         <span className="status-label">
           D:{timer.doneClicks || 0} R:{timer.rejClicks || 0} T:{timeStr}
         </span>
@@ -1011,6 +1016,12 @@ const ExcelSheet = ({
     
     const visible = isRowVisible(r) || isAdmin;
     if (!visible) return '';
+    
+    // Hide rejection columns if no value
+    if ([COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5].includes(c)) {
+      const val = data[r]?.[c] || '';
+      if (!val.trim() && !isAdmin) return '';
+    }
     
     return data[r]?.[c] || '';
   };
@@ -1342,10 +1353,17 @@ const AdminDashboard = ({ username, onLogout }) => {
       };
     }
     
-    // If admin puts value in any confirmation column, set blink for agent
-    if ([COL_CONF1, COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c) && value.trim()) {
+    // If CS team adds value to confirmation columns, blink for agent and update state
+    if ([COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c) && value.trim()) {
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
+      
+      // Clear rejected state if CS team confirms
+      if (newSheet.timers[r]?.state === "REJECTED") {
+        newSheet.timers[r].state = "";
+        newSheet.raw[r][COL_STATUS] = "";
+      }
+      
       setTimeout(() => {
         const updated = loadCSSheet();
         if (updated.blinkRows) {
@@ -1907,36 +1925,7 @@ const AdminDashboard = ({ username, onLogout }) => {
               </CardContent>
             </Card>
 
-            {/* Agent Break Notifications */}
-            {Object.entries(csSheet.agentBreaks || {}).filter(([agent, breakData]) => breakData.active).length > 0 && (
-              <Card className="bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300 shadow-lg">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Clock className="w-5 h-5 text-orange-600 animate-pulse" />
-                    <span className="font-bold text-orange-900">Active Breaks</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(csSheet.agentBreaks || {})
-                      .filter(([agent, breakData]) => breakData.active)
-                      .map(([agent, breakData]) => {
-                        const breakType = BREAK_TYPES.find(b => b.id === breakData.type);
-                        const Icon = breakType?.icon || Clock;
-                        const duration = breakData.start ? Math.floor((Date.now() - breakData.start) / 1000 / 60) : 0;
-                        
-                        return (
-                          <div key={agent} className={`flex items-center gap-3 p-3 rounded-lg border ${breakType?.color || 'bg-gray-100'}`}>
-                            <Icon className="w-5 h-5" />
-                            <div className="flex-1">
-                              <div className="font-bold text-sm">{agent}</div>
-                              <div className="text-xs opacity-75">{breakType?.label || 'Break'} • {duration}m</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+
 
             {/* Bulk Actions */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
@@ -1995,7 +1984,7 @@ const AdminDashboard = ({ username, onLogout }) => {
               onStatusClick={handleCSStatusClick}
               isAdmin={true}
               agentUsername=""
-              editableCols={ADMIN_EDITABLE_IN_CS}
+              editableCols={CS_TEAM_EDITABLE}
               blinkRows={csSheet.blinkRows}
               selectedRows={selectedRows}
               onRowSelect={handleRowSelect}
@@ -2216,6 +2205,9 @@ const AdminDashboard = ({ username, onLogout }) => {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
+                  <div className="text-xs text-blue-600 mb-2 font-bold">
+                    Showing only rows assigned to {selectedAgent} {regionFilter && `with region: ${regionFilter}`}
+                  </div>
                   <ExcelSheet
                     columns={AGENT_COLUMNS}
                     data={csSheet.raw}
@@ -2385,6 +2377,33 @@ const AgentDashboard = ({ username, onLogout }) => {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
         timer.start = null;
       }
+      
+      // Check if all rows in current region filter are done
+      const sheets = loadAgentSheets();
+      const currentFilter = sheets.agentFilters?.[username]?.region;
+      if (currentFilter) {
+        let allDone = true;
+        for (let i = 0; i < ROWS_COUNT; i++) {
+          const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
+          const rowRegion = String(newSheet.raw[i]?.[COL_REGION] || '').trim().toUpperCase();
+          const rowState = newSheet.timers[i]?.state?.toUpperCase() || '';
+          
+          if (rowAgent === username.toLowerCase() && 
+              (rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
+              rowState !== 'DONE') {
+            allDone = false;
+            break;
+          }
+        }
+        
+        if (allDone) {
+          // Remove region filter
+          sheets.agentFilters[username].region = "";
+          saveAgentSheets(sheets);
+          CHANNEL.postMessage({ type: "app:sync" });
+          toast.success(`All items in ${currentFilter} completed! Filter removed.`);
+        }
+      }
     } else if (action === 'reject') {
       // Validate rejection reason is filled
       const rejCount = timer.rejClicks || 0;
@@ -2412,6 +2431,7 @@ const AgentDashboard = ({ username, onLogout }) => {
       
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
+      newSheet.raw[r][COL_STATUS] = "REJECT";
       
       // Set blink for CS sheet when agent rejects
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
@@ -2475,7 +2495,7 @@ const AgentDashboard = ({ username, onLogout }) => {
         {/* Top Bar */}
         <Card className="bg-white/95 border-black/10 shadow-xl">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between flex-wrap gap-4 mb-3">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
                 <Badge className="bg-yellow-400 text-black font-black border-black/10">AGENT</Badge>
                 <span className="font-bold">Welcome, {username}</span>
@@ -2485,57 +2505,59 @@ const AgentDashboard = ({ username, onLogout }) => {
                   </Badge>
                 )}
               </div>
-              <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-            
-            {/* Break Buttons */}
-            <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-black/10">
-              <span className="text-sm font-medium text-black/60 mr-2">Quick Breaks:</span>
-              {BREAK_TYPES.map(bt => {
-                const Icon = bt.icon;
-                const isActive = onBreak && breakType === bt.id;
-                return (
-                  <Button
-                    key={bt.id}
-                    onClick={() => handleBreakToggle(bt.id)}
-                    size="sm"
-                    variant="outline"
-                    className={`font-bold transition-all ${isActive ? bt.color + ' border-2' : 'bg-white hover:bg-gray-50'}`}
-                  >
-                    {isActive ? <Pause className="w-4 h-4 mr-1" /> : <Icon className="w-4 h-4 mr-1" />}
-                    {bt.label}
-                  </Button>
-                );
-              })}
+              <div className="flex items-center gap-2">
+                {BREAK_TYPES.map(bt => {
+                  const Icon = bt.icon;
+                  const isActive = onBreak && breakType === bt.id;
+                  return (
+                    <Button
+                      key={bt.id}
+                      onClick={() => handleBreakToggle(bt.id)}
+                      size="sm"
+                      variant="outline"
+                      className={`font-bold transition-all ${isActive ? bt.color + ' border-2' : 'bg-white hover:bg-gray-50'}`}
+                    >
+                      {isActive ? <Pause className="w-4 h-4 mr-1" /> : <Icon className="w-4 h-4 mr-1" />}
+                      {bt.label}
+                    </Button>
+                  );
+                })}
+                <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Analytics */}
         <Card className="bg-white/95 border-black/10 shadow-lg">
-          <CardContent className="p-4 flex items-center gap-4 flex-wrap">
-            <Badge className="bg-yellow-400 text-black font-black px-3 py-1">AGENT VIEW ({username})</Badge>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-              <span className="text-sm font-medium">AWB:</span>
-              <span className="font-mono font-bold">{metrics.awb}</span>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4 flex-wrap mb-2">
+              <Badge className="bg-yellow-400 text-black font-black px-3 py-1">AGENT VIEW ({username})</Badge>
+              {regionFilter && (
+                <Badge className="bg-blue-100 text-blue-800 font-bold">Region: {regionFilter}</Badge>
+              )}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
+                <span className="text-sm font-medium">AWB:</span>
+                <span className="font-mono font-bold">{metrics.awb}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
+                <span className="text-sm font-medium">LINE SUM:</span>
+                <span className="font-mono font-bold">{metrics.lineSum}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
+                <span className="text-sm font-medium text-green-800">DONE:</span>
+                <span className="font-mono font-bold text-green-800">{metrics.done}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                <span className="text-sm font-medium text-red-800">REJECTED:</span>
+                <span className="font-mono font-bold text-red-800">{metrics.rej}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-              <span className="text-sm font-medium">LINE SUM:</span>
-              <span className="font-mono font-bold">{metrics.lineSum}</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
-              <span className="text-sm font-medium text-green-800">DONE:</span>
-              <span className="font-mono font-bold text-green-800">{metrics.done}</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-              <span className="text-sm font-medium text-red-800">REJECTED:</span>
-              <span className="font-mono font-bold text-red-800">{metrics.rej}</span>
-            </div>
-            <div className="ml-auto text-xs text-black/50">
-              Agent sees only assigned rows. Fill rejection reason before rejecting.
+            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+              Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done.
             </div>
           </CardContent>
         </Card>
