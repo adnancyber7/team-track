@@ -601,7 +601,8 @@ const ExcelSheet = ({
   onFilter,
   selectedRows,
   onRowSelect,
-  fastEditMode
+  fastEditMode,
+  priorityList
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -636,6 +637,12 @@ const ExcelSheet = ({
     // Hide rejected rows from agent view
     if (agentMatch && timers[r]?.hidden) return false;
 
+    // Apply priority filter if set (highest priority)
+    if (priorityList && priorityList.length > 0) {
+      const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
+      if (agentMatch && !priorityList.includes(rowAwb)) return false;
+    }
+
     // Apply region filter if set
     if (regionFilter && agentMatch) {
       const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
@@ -644,7 +651,7 @@ const ExcelSheet = ({
     }
 
     return agentMatch;
-  }, [isAdmin, agentUsername, data, regionFilter, timers]);
+  }, [isAdmin, agentUsername, data, regionFilter, timers, priorityList]);
 
   const shouldBlink = useCallback((r) => {
     return blinkRows && blinkRows[r] === true;
@@ -1351,6 +1358,8 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [csAllocators, setCSAllocators] = useState([]);
   const [newCSUser, setNewCSUser] = useState("");
   const [newCSPass, setNewCSPass] = useState("");
+  const [priorityNumbers, setPriorityNumbers] = useState("");
+  const [csUploads, setCSUploads] = useState([]);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -1358,6 +1367,10 @@ const AdminDashboard = ({ username, onLogout }) => {
     setAgents(state.agents || []);
     setCSAllocators(state.csAllocators || []);
     setNewAdminUser(state.admin.username);
+
+    const sheets = loadAgentSheets();
+    setCSUploads(sheets.csUploads || []);
+    setPriorityNumbers(sheets.priorityNumbers || "");
 
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
@@ -1370,7 +1383,15 @@ const AdminDashboard = ({ username, onLogout }) => {
     const handleSync = (ev) => {
       if (ev?.data?.uploadNotification) {
         const notif = ev.data.uploadNotification;
-        toast.success(`🔔 New Upload: ${notif.csUser} uploaded ${notif.filename} with ${notif.rowCount} rows`);
+        toast.success(`🔔 CS Upload: ${notif.csUser} uploaded ${notif.filename} with ${notif.rowCount} rows`, { duration: 8000 });
+        const sheets = loadAgentSheets();
+        setCSUploads(sheets.csUploads || []);
+      }
+      if (ev?.data?.type === "app:sync") {
+        setCSSheet(loadCSSheet());
+        setAgentSheets(loadAgentSheets());
+        const state = loadState();
+        setAgents(state.agents || []);
       }
     };
     CHANNEL.addEventListener('message', handleSync);
@@ -1875,6 +1896,33 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const displayData = getDisplayData();
 
+  const handleSetPriority = () => {
+    const numbers = priorityNumbers.split(/[\s,;\n]+/).map(n => n.trim()).filter(n => /^\d{10}$/.test(n));
+    if (numbers.length === 0) {
+      toast.error("Please enter valid 10-digit AWB numbers");
+      return;
+    }
+    
+    const sheets = loadAgentSheets();
+    sheets.priorityNumbers = priorityNumbers;
+    sheets.priorityList = numbers;
+    saveAgentSheets(sheets);
+    CHANNEL.postMessage({ type: "app:sync" });
+    toast.success(`🚨 Priority set for ${numbers.length} AWBs - All agents notified!`);
+  };
+
+  const handleClearPriority = () => {
+    if (confirm('Clear all priority/emergency clearance?')) {
+      const sheets = loadAgentSheets();
+      sheets.priorityNumbers = "";
+      sheets.priorityList = [];
+      saveAgentSheets(sheets);
+      setPriorityNumbers("");
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success("Priority clearance removed");
+    }
+  };
+
   return (
     <div className="min-h-screen p-4" style={{
       background: `
@@ -1910,6 +1958,20 @@ const AdminDashboard = ({ username, onLogout }) => {
             <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Users className="w-4 h-4 mr-2" />
               Agents ({agents.length})
+            </TabsTrigger>
+            <TabsTrigger value="priority" className="font-bold data-[state=active]:bg-yellow-400/60">
+              <Zap className="w-4 h-4 mr-2" />
+              Priority
+              {agentSheets.priorityList?.length > 0 && (
+                <Badge className="ml-2 bg-red-500 text-white">{agentSheets.priorityList.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="uploads" className="font-bold data-[state=active]:bg-yellow-400/60">
+              <Upload className="w-4 h-4 mr-2" />
+              CS Uploads
+              {csUploads.length > 0 && (
+                <Badge className="ml-2 bg-blue-500 text-white">{csUploads.length}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="settings" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Settings className="w-4 h-4 mr-2" />
@@ -2289,6 +2351,114 @@ const AdminDashboard = ({ username, onLogout }) => {
             )}
           </TabsContent>
 
+          {/* Priority Tab */}
+          <TabsContent value="priority" className="mt-4 space-y-4">
+            <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-red-300 shadow-xl">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl font-bold flex items-center gap-3">
+                  <Zap className="w-6 h-6 text-red-600" />
+                  🚨 Emergency / Urgent Clearance
+                </CardTitle>
+                <p className="text-sm text-red-700 font-medium">
+                  Set priority AWBs that ALL agents must complete first. Other data will be hidden until these are done.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-bold text-red-800">Priority AWB Numbers (10 digits each)</Label>
+                  <p className="text-xs text-gray-600 mb-2">Enter one or multiple AWBs separated by comma, space, or new line</p>
+                  <Textarea
+                    value={priorityNumbers}
+                    onChange={(e) => setPriorityNumbers(e.target.value)}
+                    placeholder="1234567890, 9876543210, 5555555555..."
+                    className="mt-1 min-h-[120px] font-mono text-sm"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={handleSetPriority} 
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black"
+                  >
+                    <Zap className="w-5 h-5 mr-2" />
+                    SET PRIORITY
+                  </Button>
+                  <Button 
+                    onClick={handleClearPriority} 
+                    variant="outline" 
+                    className="font-bold"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+
+                {agentSheets.priorityList && agentSheets.priorityList.length > 0 && (
+                  <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
+                    <div className="font-bold text-red-900 mb-2 flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5" />
+                      Active Priority: {agentSheets.priorityList.length} AWBs
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {agentSheets.priorityList.slice(0, 20).map((num, idx) => (
+                        <Badge key={idx} className="bg-red-600 text-white font-mono">{num}</Badge>
+                      ))}
+                      {agentSheets.priorityList.length > 20 && (
+                        <Badge className="bg-red-400 text-white">+{agentSheets.priorityList.length - 20} more</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* CS Uploads Tab */}
+          <TabsContent value="uploads" className="mt-4">
+            <Card className="bg-white/95 border-black/10 shadow-lg">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  CS Team Upload History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {csUploads.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Upload className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>No uploads yet from CS team</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[500px]">
+                    <div className="space-y-3">
+                      {csUploads.map((upload, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge className="bg-blue-600 text-white font-bold">{upload.csUser}</Badge>
+                                <Badge variant="outline" className="text-xs">{new Date(upload.timestamp).toLocaleString()}</Badge>
+                              </div>
+                              <div className="font-bold text-gray-900">{upload.filename}</div>
+                              <div className="text-sm text-gray-600">
+                                {upload.rowCount} rows uploaded
+                              </div>
+                            </div>
+                            <CheckCircle2 className="w-6 h-6 text-green-600" />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Settings Tab */}
           <TabsContent value="settings" className="mt-4">
             <Card className="bg-white/95 border-black/10 shadow-lg max-w-lg">
@@ -2354,7 +2524,12 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
   useEffect(() => {
     const handleSync = (ev) => {
       if (ev?.data?.type === "app:sync") {
-        setCSSheet(loadCSSheet());
+        const updated = loadCSSheet();
+        setCSSheet(updated);
+      }
+      if (ev?.data?.rejectionNotification) {
+        const notif = ev.data.rejectionNotification;
+        toast.error(`🚨 New Rejection: ${notif.agent} rejected AWB ${notif.awb}`, { duration: 8000 });
       }
     };
     CHANNEL.addEventListener('message', handleSync);
@@ -2582,11 +2757,17 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [breakType, setBreakType] = useState(null);
   const [breakStart, setBreakStart] = useState(null);
   const [regionFilter, setRegionFilter] = useState("");
+  const [priorityMode, setPriorityMode] = useState(false);
+  const [priorityList, setPriorityList] = useState([]);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
     const filter = sheets.agentFilters?.[username]?.region || "";
     setRegionFilter(filter);
+    
+    const pList = sheets.priorityList || [];
+    setPriorityList(pList);
+    setPriorityMode(pList.length > 0);
     
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
@@ -2596,6 +2777,15 @@ const AgentDashboard = ({ username, onLogout }) => {
       const updatedSheets = loadAgentSheets();
       const updatedFilter = updatedSheets.agentFilters?.[username]?.region || "";
       setRegionFilter(updatedFilter);
+      
+      const updatedPList = updatedSheets.priorityList || [];
+      if (JSON.stringify(updatedPList) !== JSON.stringify(priorityList)) {
+        setPriorityList(updatedPList);
+        setPriorityMode(updatedPList.length > 0);
+        if (updatedPList.length > priorityList.length) {
+          toast.error(`🚨 PRIORITY ALERT: ${updatedPList.length} urgent AWBs assigned!`, { duration: 10000 });
+        }
+      }
       
       // Check if agent is on break
       const agentBreak = updated.agentBreaks?.[username];
@@ -2611,7 +2801,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     }, 500);
     
     return () => clearInterval(interval);
-  }, [username, onBreak]);
+  }, [username, onBreak, priorityList]);
 
   const handleBreakToggle = (type) => {
     const newSheet = deepCopy(csSheet);
@@ -2642,13 +2832,25 @@ const AgentDashboard = ({ username, onLogout }) => {
   useEffect(() => {
     const handleSync = (ev) => {
       if (ev?.data?.type === "app:sync") {
-        setCSSheet(loadCSSheet());
-        setAgentSheets(loadAgentSheets());
+        const updated = loadCSSheet();
+        setCSSheet(updated);
+        const sheets = loadAgentSheets();
+        setAgentSheets(sheets);
+        
+        // Check for cleared rejections (blink notification)
+        if (updated.blinkRows) {
+          Object.keys(updated.blinkRows).forEach(r => {
+            if (updated.blinkRows[r] && updated.raw[r]?.[COL_AGENTS]?.toLowerCase() === username.toLowerCase()) {
+              const awb = updated.raw[r]?.[COL_AWB] || '';
+              toast.info(`✅ Rejection cleared for AWB ${awb}`, { duration: 5000 });
+            }
+          });
+        }
       }
     };
     CHANNEL.addEventListener('message', handleSync);
     return () => CHANNEL.removeEventListener('message', handleSync);
-  }, []);
+  }, [username]);
 
   const handleCellChange = (r, c, value) => {
     // Agent can only edit their assigned rows
@@ -2780,6 +2982,16 @@ const AgentDashboard = ({ username, onLogout }) => {
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
 
+      // Notify CS team about rejection
+      CHANNEL.postMessage({ 
+        type: "app:sync",
+        rejectionNotification: {
+          agent: username,
+          awb: awb,
+          timestamp: new Date().toISOString()
+        }
+      });
+
       // Resume timer
       if (timer.start == null) {
         timer.start = Date.now();
@@ -2794,11 +3006,11 @@ const AgentDashboard = ({ username, onLogout }) => {
         }
       }, 5000);
       }
-    
-    newSheet.timers[r] = timer;
-    setCSSheet(newSheet);
-    saveCSSheet(newSheet);
-    CHANNEL.postMessage({ type: "app:sync" });
+
+      newSheet.timers[r] = timer;
+      setCSSheet(newSheet);
+      saveCSSheet(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
   };
 
   const getAgentMetrics = () => {
@@ -2807,6 +3019,15 @@ const AgentDashboard = ({ username, onLogout }) => {
     for (let r = 0; r < ROWS_COUNT; r++) {
       const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       if (agent !== username.toLowerCase()) continue;
+      
+      // Skip hidden rejected rows
+      if (csSheet.timers[r]?.hidden) continue;
+      
+      // Apply priority filter
+      if (priorityMode && priorityList.length > 0) {
+        const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
+        if (!priorityList.includes(rowAwb)) continue;
+      }
       
       if (csSheet.raw[r]?.[COL_AWB]?.trim()) awb++;
       lineSum += parseLineSum(csSheet.raw[r]?.[COL_LINE]);
@@ -2877,8 +3098,22 @@ const AgentDashboard = ({ username, onLogout }) => {
         {/* Analytics */}
         <Card className="bg-white/95 border-black/10 shadow-lg">
           <CardContent className="p-4">
+            {priorityMode && priorityList.length > 0 && (
+              <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 rounded-lg animate-pulse">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-red-600" />
+                  <span className="font-black text-red-900">🚨 PRIORITY MODE: {priorityList.length} urgent AWBs - Complete these first!</span>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-4 flex-wrap mb-2">
               <Badge className="bg-yellow-400 text-black font-black px-3 py-1">AGENT VIEW ({username})</Badge>
+              {priorityMode && (
+                <Badge className="bg-red-600 text-white font-black animate-pulse">
+                  <Zap className="w-3 h-3 mr-1" />
+                  PRIORITY MODE
+                </Badge>
+              )}
               {regionFilter && (
                 <Badge className="bg-blue-100 text-blue-800 font-bold">Region: {regionFilter}</Badge>
               )}
@@ -2928,7 +3163,11 @@ const AgentDashboard = ({ username, onLogout }) => {
               </Button>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-              Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done.
+              {priorityMode ? (
+                <b>🚨 PRIORITY MODE ACTIVE: Only showing urgent AWBs. All other data hidden until these are completed.</b>
+              ) : (
+                "Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done."
+              )}
             </div>
           </CardContent>
         </Card>
@@ -2945,6 +3184,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           editableCols={AGENT_EDITABLE}
           blinkRows={csSheet.blinkRows}
           regionFilter={regionFilter}
+          priorityList={priorityList}
         />
       </div>
     </div>
