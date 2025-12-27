@@ -632,16 +632,19 @@ const ExcelSheet = ({
     if (!agentUsername) return false;
     const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
     const agentMatch = agentCell === agentUsername.toLowerCase();
-    
+
+    // Hide rejected rows from agent view
+    if (agentMatch && timers[r]?.hidden) return false;
+
     // Apply region filter if set
     if (regionFilter && agentMatch) {
       const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
       const filterUpper = regionFilter.toUpperCase();
       return regionCell === filterUpper || regionCell.includes(filterUpper);
     }
-    
+
     return agentMatch;
-  }, [isAdmin, agentUsername, data, regionFilter]);
+  }, [isAdmin, agentUsername, data, regionFilter, timers]);
 
   const shouldBlink = useCallback((r) => {
     return blinkRows && blinkRows[r] === true;
@@ -670,11 +673,8 @@ const ExcelSheet = ({
   };
 
   const handleCellSingleClick = (r, c) => {
-    if (canEdit(r, c) && c !== COL_STATUS) {
-      setEditingCell({ r, c });
-      setEditValue(data[r]?.[c] || '');
-      setTimeout(() => editorRef.current?.focus(), 0);
-    }
+    // Single click to select only, don't open editor
+    handleCellClick(r, c);
   };
 
   const commitEdit = () => {
@@ -824,11 +824,17 @@ const ExcelSheet = ({
           if (canEdit(activeCell.r, activeCell.c) && activeCell.c !== COL_STATUS) {
             setEditingCell(activeCell);
             setEditValue(e.key);
-            setTimeout(() => editorRef.current?.focus(), 0);
+            e.preventDefault();
+            setTimeout(() => {
+              if (editorRef.current) {
+                editorRef.current.focus();
+                editorRef.current.setSelectionRange(1, 1);
+              }
+            }, 0);
           }
         }
-    }
-  };
+      }
+      };
 
   const handleResizerMouseDown = (e) => {
     const resizer = e.target.closest('.col-resizer');
@@ -1103,13 +1109,13 @@ const ExcelSheet = ({
           padding: 4px;
         }
         .cell {
-          border-right: 1px solid rgba(255,210,0,0.18);
-          border-bottom: 1px solid rgba(255,210,0,0.18);
+          border-right: 1px solid rgba(50,50,50,0.35);
+          border-bottom: 1px solid rgba(50,50,50,0.35);
           padding: 6px 10px;
           display: flex;
           align-items: center;
           background: rgba(255,255,255,0.01);
-          color: #0b0a03;
+          color: #000000;
           font-size: 13px;
           outline: none;
           overflow: hidden;
@@ -1352,12 +1358,23 @@ const AdminDashboard = ({ username, onLogout }) => {
     setAgents(state.agents || []);
     setCSAllocators(state.csAllocators || []);
     setNewAdminUser(state.admin.username);
-    
+
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
     }, 500);
-    
+
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleSync = (ev) => {
+      if (ev?.data?.uploadNotification) {
+        const notif = ev.data.uploadNotification;
+        toast.success(`🔔 New Upload: ${notif.csUser} uploaded ${notif.filename} with ${notif.rowCount} rows`);
+      }
+    };
+    CHANNEL.addEventListener('message', handleSync);
+    return () => CHANNEL.removeEventListener('message', handleSync);
   }, []);
 
   useEffect(() => {
@@ -2103,7 +2120,7 @@ const AdminDashboard = ({ username, onLogout }) => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Agents List
+                    Agents List & Status
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -2114,10 +2131,22 @@ const AdminDashboard = ({ username, onLogout }) => {
                       <div className="space-y-2">
                         {agents.map(agent => {
                           const metrics = getAgentMetrics(agent.username);
+                          const agentBreak = csSheet.agentBreaks?.[agent.username];
+                          const breakActive = agentBreak?.active;
+                          const breakType = breakActive ? BREAK_TYPES.find(b => b.id === agentBreak.type) : null;
+
                           return (
                             <div key={agent.username} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
-                              <div>
-                                <div className="font-bold">{agent.username}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="font-bold">{agent.username}</div>
+                                  {breakActive && breakType && (
+                                    <Badge className={`${breakType.color} text-xs animate-pulse`}>
+                                      {breakType.icon && <breakType.icon className="w-3 h-3 mr-1" />}
+                                      On {breakType.label}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <div className="text-xs text-black/50">
                                   AWB: {metrics.awb} | LINE: {metrics.lineSum} | D: {metrics.done} | R: {metrics.rej}
                                 </div>
@@ -2377,9 +2406,60 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
       return status === 'REJECT' || status === 'REJECTED';
     });
-    const rows = [headers, ...rejectedRows];
-    downloadCSV(rows, 'cs_team_rejected_items.csv');
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rejectedRows]);
+    XLSX.utils.book_append_sheet(wb, ws, 'CS Team Rejected');
+    XLSX.writeFile(wb, `cs_team_rejected_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success("Downloaded rejected items");
+  };
+
+  const handleClearSheet = () => {
+    if (confirm('Clear all rejected items from CS Team sheet? This will remove all REJECTED status rows.')) {
+      const newSheet = deepCopy(csSheet);
+      for (let r = 0; r < newSheet.raw.length; r++) {
+        const status = String(newSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
+        if (status === 'REJECT' || status === 'REJECTED') {
+          newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
+          newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "", hidden: false };
+        }
+      }
+      setCSSheet(newSheet);
+      saveCSSheet(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success('Cleared rejected items');
+    }
+  };
+
+  const handleUploadFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const parsedData = await parseUploadedFile(file);
+      if (parsedData.length === 0) {
+        toast.error("File is empty");
+        return;
+      }
+      
+      // Upload notification to admin
+      const state = loadState();
+      const uploadLog = {
+        csUser: username,
+        filename: file.name,
+        timestamp: new Date().toISOString(),
+        rowCount: parsedData.length - 1
+      };
+      
+      const sheets = loadAgentSheets();
+      if (!sheets.csUploads) sheets.csUploads = [];
+      sheets.csUploads.unshift(uploadLog);
+      saveAgentSheets(sheets);
+      
+      CHANNEL.postMessage({ type: "app:sync", uploadNotification: uploadLog });
+      toast.success(`File uploaded successfully. Admin has been notified.`);
+    } catch (error) {
+      toast.error("Failed to upload file");
+    }
   };
 
   const getFilteredData = () => {
@@ -2439,10 +2519,31 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
                 <span className="text-sm font-medium text-red-800">REJECTED ITEMS:</span>
                 <span className="font-mono font-bold text-red-800">{getRejectedCount()}</span>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex gap-2">
+                <input
+                  ref={React.useRef(null)}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleUploadFile}
+                  className="hidden"
+                  id="cs-upload"
+                />
+                <Button 
+                  onClick={() => document.getElementById('cs-upload').click()} 
+                  variant="outline" 
+                  size="sm" 
+                  className="font-bold bg-green-50 hover:bg-green-100"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </Button>
+                <Button onClick={handleClearSheet} variant="outline" size="sm" className="font-bold bg-orange-50 hover:bg-orange-100">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
                 <Button onClick={downloadCSData} variant="outline" size="sm" className="font-bold">
                   <Download className="w-4 h-4 mr-2" />
-                  Download CSV
+                  Download
                 </Button>
               </div>
             </div>
@@ -2566,20 +2667,40 @@ const AgentDashboard = ({ username, onLogout }) => {
   const handleStatusClick = (r, action) => {
     const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
     if (agent !== username.toLowerCase()) return;
-    
+
     const newSheet = deepCopy(csSheet);
-    const timer = newSheet.timers[r] || { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" };
-    
+    const timer = newSheet.timers[r] || { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "", hidden: false };
+
     if (action === 'done') {
+      // Show confirmation popup
+      const awb = newSheet.raw[r]?.[COL_AWB] || '';
+      const confirmed = confirm(`Please check: Is AWB ${awb} released before marking as DONE?\n\nClick OK if YES (released) to mark as DONE.\nClick Cancel if NO to keep as is.`);
+
+      if (!confirmed) {
+        return; // User cancelled, don't mark as done
+      }
+
       timer.doneClicks = (timer.doneClicks || 0) + 1;
       timer.state = "DONE";
       if (timer.start != null) {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
         timer.start = null;
       }
-      
-      // Check if all rows in current region filter are done
+
+      // Track in agent's Excel data
       const sheets = loadAgentSheets();
+      if (!sheets.agentStats) sheets.agentStats = {};
+      if (!sheets.agentStats[username]) sheets.agentStats[username] = { done: [], rejected: [] };
+      sheets.agentStats[username].done.push({
+        awb: awb,
+        line: newSheet.raw[r]?.[COL_LINE] || '',
+        lot: newSheet.raw[r]?.[COL_LOT] || '',
+        region: newSheet.raw[r]?.[COL_REGION] || '',
+        timestamp: new Date().toISOString()
+      });
+      saveAgentSheets(sheets);
+
+      // Check if all rows in current region filter are done
       const currentFilter = sheets.agentFilters?.[username]?.region;
       if (currentFilter) {
         let allDone = true;
@@ -2587,7 +2708,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
           const rowRegion = String(newSheet.raw[i]?.[COL_REGION] || '').trim().toUpperCase();
           const rowState = newSheet.timers[i]?.state?.toUpperCase() || '';
-          
+
           if (rowAgent === username.toLowerCase() && 
               (rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
               rowState !== 'DONE') {
@@ -2595,9 +2716,8 @@ const AgentDashboard = ({ username, onLogout }) => {
             break;
           }
         }
-        
+
         if (allDone) {
-          // Remove region filter
           sheets.agentFilters[username].region = "";
           saveAgentSheets(sheets);
           CHANNEL.postMessage({ type: "app:sync" });
@@ -2631,24 +2751,40 @@ const AgentDashboard = ({ username, onLogout }) => {
       
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
-      
+      timer.hidden = true; // Hide from agent view after rejection
+
       // Set STATUS column to REJECT
       newSheet.raw[r][COL_STATUS] = "REJECT";
-      
+
       // Add agent name to AGENT2 column if empty (for CS team tracking)
       if (!newSheet.raw[r][COL_AGENT2]?.trim()) {
         newSheet.raw[r][COL_AGENT2] = username;
       }
-      
+
+      // Track in agent's Excel data
+      const sheets = loadAgentSheets();
+      if (!sheets.agentStats) sheets.agentStats = {};
+      if (!sheets.agentStats[username]) sheets.agentStats[username] = { done: [], rejected: [] };
+      const awb = newSheet.raw[r]?.[COL_AWB] || '';
+      sheets.agentStats[username].rejected.push({
+        awb: awb,
+        line: newSheet.raw[r]?.[COL_LINE] || '',
+        lot: newSheet.raw[r]?.[COL_LOT] || '',
+        region: newSheet.raw[r]?.[COL_REGION] || '',
+        reason: newSheet.raw[r]?.[COL_REJ2] || newSheet.raw[r]?.[COL_REJ3] || newSheet.raw[r]?.[COL_REJ4] || newSheet.raw[r]?.[COL_REJ5] || '',
+        timestamp: new Date().toISOString()
+      });
+      saveAgentSheets(sheets);
+
       // Set blink for CS sheet when agent rejects
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
-      
+
       // Resume timer
       if (timer.start == null) {
         timer.start = Date.now();
       }
-      
+
       setTimeout(() => {
         const updated = loadCSSheet();
         if (updated.blinkRows) {
@@ -2657,7 +2793,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           CHANNEL.postMessage({ type: "app:sync" });
         }
       }, 5000);
-    }
+      }
     
     newSheet.timers[r] = timer;
     setCSSheet(newSheet);
@@ -2762,6 +2898,34 @@ const AgentDashboard = ({ username, onLogout }) => {
                 <span className="text-sm font-medium text-red-800">REJECTED:</span>
                 <span className="font-mono font-bold text-red-800">{metrics.rej}</span>
               </div>
+              <Button 
+                onClick={() => {
+                  const sheets = loadAgentSheets();
+                  const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
+                  const wb = XLSX.utils.book_new();
+
+                  // Done sheet
+                  const doneData = [['AWB', 'LINE', 'LOT', 'REGION', 'TIMESTAMP']];
+                  stats.done.forEach(item => doneData.push([item.awb, item.line, item.lot, item.region, item.timestamp]));
+                  const doneWs = XLSX.utils.aoa_to_sheet(doneData);
+                  XLSX.utils.book_append_sheet(wb, doneWs, 'Done');
+
+                  // Rejected sheet
+                  const rejData = [['AWB', 'LINE', 'LOT', 'REGION', 'REASON', 'TIMESTAMP']];
+                  stats.rejected.forEach(item => rejData.push([item.awb, item.line, item.lot, item.region, item.reason, item.timestamp]));
+                  const rejWs = XLSX.utils.aoa_to_sheet(rejData);
+                  XLSX.utils.book_append_sheet(wb, rejWs, 'Rejected');
+
+                  XLSX.writeFile(wb, `${username}_tracking_${new Date().toISOString().split('T')[0]}.xlsx`);
+                  toast.success('Downloaded tracking report');
+                }}
+                variant="outline" 
+                size="sm" 
+                className="font-bold ml-auto"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                My Report
+              </Button>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
               Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done.
