@@ -1822,18 +1822,20 @@ const AdminDashboard = ({ username, onLogout }) => {
       dataRows.forEach((row, idx) => {
         const targetRow = startRow + idx;
         if (targetRow >= ROWS_COUNT) return;
-        
+
         row.forEach((cell, colIdx) => {
           const targetCol = colMapping[colIdx];
           if (targetCol !== undefined) {
-            newSheet.raw[targetRow][targetCol] = String(cell || '').trim();
+            // Preserve original format for TIME column
+            const cellValue = String(cell || '').trim();
+            newSheet.raw[targetRow][targetCol] = cellValue;
           }
         });
-        
+
         // Check if this row has agent assigned and AWB
         const agentName = String(newSheet.raw[targetRow][COL_AGENTS] || '').trim().toLowerCase();
         const awb = newSheet.raw[targetRow][COL_AWB];
-        
+
         // Initialize timer but don't start it (agent will start it)
         if (isValidAwb(awb)) {
           newSheet.timers[targetRow] = {
@@ -1844,7 +1846,7 @@ const AdminDashboard = ({ username, onLogout }) => {
             state: ""
           };
         }
-        
+
         rowsAdded++;
       });
       
