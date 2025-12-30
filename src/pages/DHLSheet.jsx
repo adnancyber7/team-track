@@ -2298,7 +2298,7 @@ const AdminDashboard = ({ username, onLogout }) => {
                         {agents.map(agent => {
                           const metrics = getAgentMetrics(agent.username);
                           const agentBreak = csSheet.agentBreaks?.[agent.username];
-                          const breakActive = agentBreak?.active;
+                          const breakActive = agentBreak?.active && agentBreak?.start;
                           const breakType = breakActive ? BREAK_TYPES.find(b => b.id === agentBreak.type) : null;
                           const breakDuration = breakActive && agentBreak.start ? 
                             Math.floor((Date.now() - agentBreak.start) / 1000 / 60) : 0;
@@ -2986,14 +2986,16 @@ const AgentDashboard = ({ username, onLogout }) => {
       
       // Check if agent is on break
       const agentBreak = updated.agentBreaks?.[username];
-      if (agentBreak?.active) {
+      if (agentBreak?.active && agentBreak?.start) {
         setOnBreak(true);
         setBreakType(agentBreak.type);
         setBreakStart(agentBreak.start);
-      } else if (onBreak) {
-        setOnBreak(false);
-        setBreakType(null);
-        setBreakStart(null);
+      } else {
+        if (onBreak) {
+          setOnBreak(false);
+          setBreakType(null);
+          setBreakStart(null);
+        }
       }
     }, 500);
     
@@ -3005,14 +3007,14 @@ const AgentDashboard = ({ username, onLogout }) => {
     if (!newSheet.agentBreaks) newSheet.agentBreaks = {};
     
     if (onBreak && breakType === type) {
-      // End break
-      newSheet.agentBreaks[username] = { active: false, type: null, start: null };
+      // End break - completely remove from breaks object
+      delete newSheet.agentBreaks[username];
       setOnBreak(false);
       setBreakType(null);
       setBreakStart(null);
       toast.success("Break ended");
     } else {
-      // Start new break
+      // Start new break or switch to different break
       newSheet.agentBreaks[username] = { active: true, type, start: Date.now() };
       setOnBreak(true);
       setBreakType(type);
