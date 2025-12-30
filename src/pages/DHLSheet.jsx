@@ -1310,6 +1310,17 @@ const ExcelSheet = ({
           background: rgba(255,244,176,0.15);
           border: 1px solid rgba(255,210,0,0.2);
           color: #0b0a03;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .upload-time {
+          color: #0066cc;
+          font-weight: 900;
+          margin-right: 4px;
+          padding: 2px 4px;
+          background: rgba(0,102,204,0.1);
+          border-radius: 3px;
         }
       `}</style>
       
@@ -1602,21 +1613,39 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const getAgentMetrics = (agentUser) => {
     const sheet = csSheet;
-    let awb = 0, lineSum = 0, done = 0, rej = 0;
+    let awbPending = 0, lineSumPending = 0, done = 0, rej = 0, totalDoneLines = 0, totalRejectedLines = 0;
     
     for (let r = 0; r < ROWS_COUNT; r++) {
       const agent = String(sheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       if (agent !== agentUser.toLowerCase()) continue;
       
-      if (sheet.raw[r]?.[COL_AWB]?.trim()) awb++;
-      lineSum += parseLineSum(sheet.raw[r]?.[COL_LINE]);
-      
       const state = sheet.timers[r]?.state?.toUpperCase() || '';
-      if (state === 'DONE') done++;
-      if (state === 'REJECTED') rej++;
+      const lineSum = parseLineSum(sheet.raw[r]?.[COL_LINE]);
+      
+      if (state === 'DONE') {
+        done++;
+        totalDoneLines += lineSum;
+      }
+      if (state === 'REJECTED') {
+        rej++;
+        totalRejectedLines += lineSum;
+      }
+      
+      // Count pending (not done/rejected)
+      if (state !== 'DONE' && state !== 'REJECTED') {
+        if (sheet.raw[r]?.[COL_AWB]?.trim()) awbPending++;
+        lineSumPending += lineSum;
+      }
     }
     
-    return { awb, lineSum, done, rej };
+    return { 
+      awb: awbPending, 
+      lineSum: lineSumPending, 
+      done, 
+      rej,
+      totalDoneLines,
+      totalRejectedLines
+    };
   };
 
   const getUniqueRegions = (agentUser = null) => {
@@ -2257,6 +2286,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                           const agentBreak = csSheet.agentBreaks?.[agent.username];
                           const breakActive = agentBreak?.active;
                           const breakType = breakActive ? BREAK_TYPES.find(b => b.id === agentBreak.type) : null;
+                          const breakDuration = breakActive && agentBreak.start ? 
+                            Math.floor((Date.now() - agentBreak.start) / 1000 / 60) : 0;
 
                           return (
                             <div key={agent.username} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
@@ -2266,12 +2297,12 @@ const AdminDashboard = ({ username, onLogout }) => {
                                   {breakActive && breakType && (
                                     <Badge className={`${breakType.color} text-xs animate-pulse`}>
                                       {breakType.icon && <breakType.icon className="w-3 h-3 mr-1" />}
-                                      On {breakType.label}
+                                      {breakType.label} • {breakDuration}m
                                     </Badge>
                                   )}
                                 </div>
                                 <div className="text-xs text-black/50">
-                                  AWB: {metrics.awb} | LINE: {metrics.lineSum} | D: {metrics.done} | R: {metrics.rej}
+                                  Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -2354,7 +2385,7 @@ const AdminDashboard = ({ username, onLogout }) => {
                         const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
                         return (
                           <span className="text-sm text-black/50">
-                            AWB: {m.awb} | LINE SUM: {m.lineSum} | DONE: {m.done} | REJ: {m.rej}
+                            Pending: {m.awb} ({m.lineSum} lines) | Done: {m.done} ({m.totalDoneLines} lines) | Rej: {m.rej} ({m.totalRejectedLines} lines)
                             {currentFilter && ` | Region: ${currentFilter}`}
                           </span>
                         );
@@ -2498,7 +2529,7 @@ const AdminDashboard = ({ username, onLogout }) => {
                           animate={{ opacity: 1, x: 0 }}
                           className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
                         >
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <Badge className="bg-blue-600 text-white font-bold">{upload.csUser}</Badge>
@@ -2508,8 +2539,34 @@ const AdminDashboard = ({ username, onLogout }) => {
                               <div className="text-sm text-gray-600">
                                 {upload.rowCount} rows uploaded
                               </div>
+                              {upload.remarks && (
+                                <div className="mt-2 text-sm text-gray-700 bg-white p-2 rounded border border-blue-200">
+                                  <span className="font-semibold">Remarks:</span> {upload.remarks}
+                                </div>
+                              )}
                             </div>
-                            <CheckCircle2 className="w-6 h-6 text-green-600" />
+                            <div className="flex flex-col gap-2">
+                              {upload.fileData && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = upload.fileData;
+                                    link.download = upload.filename;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    toast.success(`Downloaded ${upload.filename}`);
+                                  }}
+                                  className="font-bold"
+                                >
+                                  <Download className="w-4 h-4 mr-1" />
+                                  File
+                                </Button>
+                              )}
+                              <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto" />
+                            </div>
                           </div>
                         </motion.div>
                       ))}
@@ -2677,13 +2734,25 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         return;
       }
       
+      // Convert file to base64 for storage
+      const fileReader = new FileReader();
+      const fileDataPromise = new Promise((resolve) => {
+        fileReader.onload = (event) => resolve(event.target.result);
+        fileReader.readAsDataURL(file);
+      });
+      const fileData = await fileDataPromise;
+      
+      // Prompt for remarks
+      const remarks = prompt("Add remarks for this upload (optional):");
+      
       // Upload notification to admin
-      const state = loadState();
       const uploadLog = {
         csUser: username,
         filename: file.name,
         timestamp: new Date().toISOString(),
-        rowCount: parsedData.length - 1
+        rowCount: parsedData.length - 1,
+        fileData: fileData,
+        remarks: remarks || ""
       };
       
       const sheets = loadAgentSheets();
@@ -2692,7 +2761,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
       saveAgentSheets(sheets);
       
       CHANNEL.postMessage({ type: "app:sync", uploadNotification: uploadLog });
-      toast.success(`File uploaded successfully. Admin has been notified.`);
+      toast.success(`✅ File uploaded successfully. Admin notified.`);
     } catch (error) {
       toast.error("Failed to upload file");
     }
@@ -3094,30 +3163,46 @@ const AgentDashboard = ({ username, onLogout }) => {
   };
 
   const getAgentMetrics = () => {
-    let awb = 0, lineSum = 0, done = 0, rej = 0;
+    let awbPending = 0, lineSumPending = 0, done = 0, rej = 0, totalDone = 0, totalRejected = 0, totalDoneLines = 0, totalRejectedLines = 0;
     
     for (let r = 0; r < ROWS_COUNT; r++) {
       const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       if (agent !== username.toLowerCase()) continue;
       
-      // Skip hidden rejected rows
-      if (csSheet.timers[r]?.hidden) continue;
+      const state = csSheet.timers[r]?.state?.toUpperCase() || '';
+      const lineSum = parseLineSum(csSheet.raw[r]?.[COL_LINE]);
       
-      // Apply priority filter
+      // Count total done/rejected
+      if (state === 'DONE') {
+        totalDone++;
+        totalDoneLines += lineSum;
+      }
+      if (state === 'REJECTED') {
+        totalRejected++;
+        totalRejectedLines += lineSum;
+      }
+      
+      // Skip hidden rows for pending count
+      if (csSheet.timers[r]?.hidden || state === 'DONE' || state === 'REJECTED') continue;
+      
+      // Apply priority filter for pending
       if (priorityMode && priorityList.length > 0) {
         const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
         if (!priorityList.includes(rowAwb)) continue;
       }
       
-      if (csSheet.raw[r]?.[COL_AWB]?.trim()) awb++;
-      lineSum += parseLineSum(csSheet.raw[r]?.[COL_LINE]);
-      
-      const state = csSheet.timers[r]?.state?.toUpperCase() || '';
-      if (state === 'DONE') done++;
-      if (state === 'REJECTED') rej++;
+      if (csSheet.raw[r]?.[COL_AWB]?.trim()) awbPending++;
+      lineSumPending += lineSum;
     }
     
-    return { awb, lineSum, done, rej };
+    return { 
+      awb: awbPending, 
+      lineSum: lineSumPending, 
+      done: totalDone, 
+      rej: totalRejected,
+      totalDoneLines,
+      totalRejectedLines
+    };
   };
 
   const metrics = getAgentMetrics();
@@ -3198,20 +3283,28 @@ const AgentDashboard = ({ username, onLogout }) => {
                 <Badge className="bg-blue-100 text-blue-800 font-bold">Region: {regionFilter}</Badge>
               )}
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-                <span className="text-sm font-medium">AWB:</span>
+                <span className="text-sm font-medium">Pending:</span>
                 <span className="font-mono font-bold">{metrics.awb}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-                <span className="text-sm font-medium">LINE SUM:</span>
+                <span className="text-sm font-medium">Pending Lines:</span>
                 <span className="font-mono font-bold">{metrics.lineSum}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
                 <span className="text-sm font-medium text-green-800">DONE:</span>
                 <span className="font-mono font-bold text-green-800">{metrics.done}</span>
               </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
+                <span className="text-sm font-medium text-green-800">Done Lines:</span>
+                <span className="font-mono font-bold text-green-800">{metrics.totalDoneLines}</span>
+              </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
                 <span className="text-sm font-medium text-red-800">REJECTED:</span>
                 <span className="font-mono font-bold text-red-800">{metrics.rej}</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                <span className="text-sm font-medium text-red-800">Rej Lines:</span>
+                <span className="font-mono font-bold text-red-800">{metrics.totalRejectedLines}</span>
               </div>
               <Button 
                 onClick={() => {
