@@ -1179,10 +1179,10 @@ const ExcelSheet = ({
           font-size: 12px;
           font-weight: 700;
           user-select: none;
-          color: var(--accent);
+          color: #000000;
           background: linear-gradient(180deg, rgba(255,244,176,0.12), rgba(255,235,120,0.04));
-          border-right: 1px solid var(--gridLine);
-          border-bottom: 1px solid var(--gridLine);
+          border-right: 1px solid rgba(0,0,0,0.3);
+          border-bottom: 1px solid rgba(0,0,0,0.3);
           box-sizing: border-box;
         }
 
@@ -1207,13 +1207,13 @@ const ExcelSheet = ({
         }
 
         .cell {
-          border-right: 1px solid var(--gridLine);
-          border-bottom: 1px solid var(--gridLine);
+          border-right: 1px solid rgba(0,0,0,0.3);
+          border-bottom: 1px solid rgba(0,0,0,0.3);
           padding: 6px 10px;
           display: flex;
           align-items: center;
           background: rgba(255,255,255,0.01);
-          color: var(--text);
+          color: #000000;
           font-size: 13px;
           outline: none;
           overflow: hidden;
