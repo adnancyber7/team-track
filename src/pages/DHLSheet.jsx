@@ -1129,15 +1129,31 @@ const ExcelSheet = ({
       onKeyDown={handleKeyDown}
     >
       <style>{`
+        :root {
+          --bg: #070a12;
+          --panel: #0b1220;
+          --text: #fff7d1;
+          --muted: rgba(255,247,209,.68);
+          --accent: #ffd33a;
+          --accent-2: #ffbf00;
+          --accent-3: #fff1a6;
+          --gridLine: rgba(255,210,0,0.20);
+          --select: rgba(255,208,0,0.14);
+          --selectBorder: rgba(255,208,0,0.96);
+          --activeBorder: rgba(255,214,0,0.98);
+          --shadow: 0 20px 70px rgba(0,0,0,0.55);
+        }
+
         .excel-sheet-container {
           outline: none;
           position: relative;
           background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.04));
           border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 18px 50px rgba(11,12,20,0.45);
+          box-shadow: var(--shadow);
           border: 1px solid rgba(255,215,0,0.06);
         }
+
         .sheet-scroll {
           overflow: auto;
           max-height: 78vh;
@@ -1146,11 +1162,14 @@ const ExcelSheet = ({
           box-sizing: border-box;
           background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
         }
+
         .sheet-grid {
           user-select: none;
           position: relative;
           background: transparent;
+          contain: layout paint;
         }
+
         .corner, .col-header, .row-header {
           position: sticky;
           z-index: 6;
@@ -1160,13 +1179,15 @@ const ExcelSheet = ({
           font-size: 12px;
           font-weight: 700;
           user-select: none;
-          color: #ffd33a;
+          color: var(--accent);
           background: linear-gradient(180deg, rgba(255,244,176,0.12), rgba(255,235,120,0.04));
-          border-right: 1px solid rgba(255,210,0,0.18);
-          border-bottom: 1px solid rgba(255,210,0,0.18);
+          border-right: 1px solid var(--gridLine);
+          border-bottom: 1px solid var(--gridLine);
           box-sizing: border-box;
         }
+
         .corner { left: 0; top: 0; z-index: 10; }
+
         .col-header { 
           top: 0; 
           z-index: 9; 
@@ -1176,6 +1197,7 @@ const ExcelSheet = ({
           padding: 4px;
         }
         .col-header:hover { background: rgba(255,244,176,0.22); }
+
         .row-header { 
           left: 0; 
           z-index: 9; 
@@ -1183,14 +1205,15 @@ const ExcelSheet = ({
           justify-content: center;
           padding: 4px;
         }
+
         .cell {
-          border-right: 1px solid rgba(50,50,50,0.35);
-          border-bottom: 1px solid rgba(50,50,50,0.35);
+          border-right: 1px solid var(--gridLine);
+          border-bottom: 1px solid var(--gridLine);
           padding: 6px 10px;
           display: flex;
           align-items: center;
           background: rgba(255,255,255,0.01);
-          color: #000000;
+          color: var(--text);
           font-size: 13px;
           outline: none;
           overflow: hidden;
@@ -1201,20 +1224,24 @@ const ExcelSheet = ({
           transition: background 0.12s ease, box-shadow 0.12s ease;
           cursor: default;
         }
+
         .cell:hover { background: rgba(255,245,200,0.02); }
+
         .cell.selected { 
-          background: rgba(255,208,0,0.12) !important;
-          box-shadow: inset 0 0 0 1px rgba(255,208,0,0.95);
+          background: var(--select) !important;
         }
+
         .cell.selected:not(.active) { 
-          box-shadow: inset 0 0 0 1px rgba(255,208,0,0.95);
+          box-shadow: inset 0 0 0 1px var(--selectBorder);
         }
+
         .cell.active { 
-          box-shadow: inset 0 0 0 2px rgba(255,214,0,0.95) !important;
+          box-shadow: inset 0 0 0 2px var(--activeBorder) !important;
           background: rgba(255,246,200,0.06) !important;
           position: relative;
           z-index: 2;
         }
+
         .cell.row-done { background: rgba(22,163,74,0.12) !important; }
         .cell.row-rejected { background: rgba(220,38,38,0.12) !important; }
         .cell.hidden-row { 
@@ -1222,28 +1249,33 @@ const ExcelSheet = ({
           color: transparent !important;
           pointer-events: none;
         }
+
         .cell.blink-row {
           animation: blink-anim 0.6s ease-in-out infinite alternate;
         }
+
         @keyframes blink-anim {
           0% { background: rgba(255,204,0,0.35) !important; }
           100% { background: rgba(255,204,0,0.75) !important; }
         }
+
         .cell.row-selected {
           background: rgba(255,208,0,0.08) !important;
-          border-left: 3px solid #ffd33a !important;
+          border-left: 3px solid var(--accent) !important;
         }
+
         .cell.typing-indicator {
           border: 2px solid #10b981 !important;
           box-shadow: 0 0 8px rgba(16,185,129,0.3);
         }
+
         .fillHandle {
           position: absolute;
           width: 10px;
           height: 10px;
           right: -2px;
           bottom: -2px;
-          background: linear-gradient(180deg, #ffd33a, #ffca1a);
+          background: linear-gradient(180deg, var(--accent), var(--accent-2));
           border: 1px solid rgba(0,0,0,0.35);
           border-radius: 2px;
           cursor: crosshair;
@@ -1251,7 +1283,9 @@ const ExcelSheet = ({
           display: none;
           box-shadow: 0 2px 6px rgba(0,0,0,0.25);
         }
+
         .cell.active .fillHandle { display: block; }
+
         .col-resizer {
           position: absolute;
           right: -4px;
@@ -1263,6 +1297,7 @@ const ExcelSheet = ({
           z-index: 10;
         }
         .col-resizer:hover { background: rgba(255,210,0,0.3); }
+
         .cell-editor {
           position: fixed;
           z-index: 9999;
@@ -1270,21 +1305,23 @@ const ExcelSheet = ({
           min-height: 30px;
           padding: 6px 10px;
           border-radius: 8px;
-          border: 2px solid rgba(255,214,0,0.95);
+          border: 2px solid var(--activeBorder);
           background: linear-gradient(180deg, #081026, #061021);
-          color: #ffd33a;
+          color: var(--text);
           font-size: 13px;
           outline: none;
           box-shadow: 0 12px 40px rgba(0,0,0,0.55);
           resize: none;
           min-width: 60px;
         }
+
         .status-wrap {
           display: flex;
           align-items: center;
           gap: 4px;
           width: 100%;
         }
+
         .status-btn {
           border: 1px solid rgba(255,210,0,0.3);
           background: rgba(255,244,176,0.1);
@@ -1296,22 +1333,27 @@ const ExcelSheet = ({
           cursor: pointer;
           transition: all 0.15s;
         }
+
         .status-btn:hover { 
           transform: scale(1.05);
           background: rgba(255,244,176,0.2);
         }
+
         .status-btn.done { 
           background: rgba(22,163,74,0.15); 
           border-color: rgba(22,163,74,0.3); 
         }
+
         .status-btn.reject { 
           background: rgba(220,38,38,0.15); 
           border-color: rgba(220,38,38,0.3); 
         }
+
         .status-btn.start { 
           background: rgba(59,130,246,0.15); 
           border-color: rgba(59,130,246,0.3); 
         }
+
         .status-label {
           margin-left: auto;
           font-size: 10px;
@@ -1325,6 +1367,7 @@ const ExcelSheet = ({
           align-items: center;
           gap: 4px;
         }
+
         .upload-time-status {
           color: #0066cc;
           font-weight: 900;
