@@ -2558,6 +2558,15 @@ const AdminDashboard = ({ username, onLogout }) => {
                                   <span className="font-semibold">Remarks:</span> {upload.remarks}
                                 </div>
                               )}
+                              {upload.downloadedBy && (
+                                <div className="mt-2 flex items-center gap-2 text-sm bg-green-50 p-2 rounded border border-green-200">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                  <div className="text-green-800">
+                                    <div className="font-semibold">✓ Downloaded</div>
+                                    <div className="text-xs">By {upload.downloadedBy} on {new Date(upload.downloadedAt).toLocaleString()}</div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             <div className="flex flex-col gap-2">
                               {upload.fileData && (
@@ -2571,6 +2580,20 @@ const AdminDashboard = ({ username, onLogout }) => {
                                     document.body.appendChild(link);
                                     link.click();
                                     document.body.removeChild(link);
+                                    
+                                    // Mark as downloaded
+                                    const sheets = loadAgentSheets();
+                                    const uploadIndex = sheets.csUploads.findIndex(u => 
+                                      u.timestamp === upload.timestamp && u.filename === upload.filename
+                                    );
+                                    if (uploadIndex !== -1) {
+                                      sheets.csUploads[uploadIndex].downloadedBy = username;
+                                      sheets.csUploads[uploadIndex].downloadedAt = new Date().toISOString();
+                                      saveAgentSheets(sheets);
+                                      setCSUploads(sheets.csUploads || []);
+                                      CHANNEL.postMessage({ type: "app:sync" });
+                                    }
+                                    
                                     toast.success(`Downloaded ${upload.filename}`);
                                   }}
                                   className="font-bold"
@@ -2579,7 +2602,11 @@ const AdminDashboard = ({ username, onLogout }) => {
                                   File
                                 </Button>
                               )}
-                              <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto" />
+                              {upload.downloadedBy ? (
+                                <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto" />
+                              ) : (
+                                <Clock className="w-6 h-6 text-orange-500 mx-auto" />
+                              )}
                             </div>
                           </div>
                         </motion.div>
@@ -2642,16 +2669,25 @@ const AdminDashboard = ({ username, onLogout }) => {
 const CSAllocatorDashboard = ({ username, onLogout }) => {
   const [csSheet, setCSSheet] = useState(loadCSSheet);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [myUploads, setMyUploads] = useState([]);
 
   useEffect(() => {
+    const sheets = loadAgentSheets();
+    const uploads = (sheets.csUploads || []).filter(u => u.csUser === username);
+    setMyUploads(uploads);
+    
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
       const updated = loadCSSheet();
       setCSSheet(updated);
+      
+      const updatedSheets = loadAgentSheets();
+      const updatedUploads = (updatedSheets.csUploads || []).filter(u => u.csUser === username);
+      setMyUploads(updatedUploads);
     }, 500);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [username]);
 
   useEffect(() => {
     const handleSync = (ev) => {
@@ -2820,6 +2856,23 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
               <div className="flex items-center gap-3">
                 <Badge className="bg-blue-400 text-white font-black border-blue-500">CS TEAM</Badge>
                 <span className="font-bold">Welcome, {username}</span>
+                {myUploads.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-blue-100 text-blue-800">
+                      {myUploads.length} uploads
+                    </Badge>
+                    <Badge className="bg-green-100 text-green-800">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      {myUploads.filter(u => u.downloadedBy).length} received
+                    </Badge>
+                    {myUploads.some(u => !u.downloadedBy) && (
+                      <Badge className="bg-orange-100 text-orange-800">
+                        <Clock className="w-3 h-3 mr-1" />
+                        {myUploads.filter(u => !u.downloadedBy).length} pending
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
               <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
                 <LogOut className="w-4 h-4 mr-2" />
