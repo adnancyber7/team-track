@@ -629,14 +629,49 @@ const ExcelSheet = ({
     return (t.elapsed || 0) + (Date.now() - t.start);
   }, [timers]);
 
+  const getAgentVisibleRows = useCallback(() => {
+    if (isAdmin) return data.map((row, idx) => ({ row, idx, timer: timers[idx] }));
+    if (!agentUsername) return [];
+    
+    const visible = [];
+    for (let r = 0; r < data.length; r++) {
+      const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+      const agentMatch = agentCell === agentUsername.toLowerCase();
+      
+      if (!agentMatch) continue;
+      
+      // Hide done/rejected rows
+      const state = timers[r]?.state?.toUpperCase() || '';
+      if (state === 'DONE' || state === 'REJECTED') continue;
+      
+      // Apply priority filter if set
+      if (priorityList && priorityList.length > 0) {
+        const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
+        if (!priorityList.includes(rowAwb)) continue;
+      }
+      
+      // Apply region filter if set
+      if (regionFilter) {
+        const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
+        const filterUpper = regionFilter.toUpperCase();
+        if (!(regionCell === filterUpper || regionCell.includes(filterUpper))) continue;
+      }
+      
+      visible.push({ row: data[r], idx: r, timer: timers[r] });
+    }
+    
+    return visible;
+  }, [isAdmin, agentUsername, data, regionFilter, timers, priorityList]);
+
   const isRowVisible = useCallback((r) => {
     if (isAdmin) return true;
     if (!agentUsername) return false;
     const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
     const agentMatch = agentCell === agentUsername.toLowerCase();
 
-    // Hide rejected rows from agent view
-    if (agentMatch && timers[r]?.hidden) return false;
+    // Hide done/rejected rows from agent view
+    const state = timers[r]?.state?.toUpperCase() || '';
+    if (agentMatch && (state === 'DONE' || state === 'REJECTED')) return false;
 
     // Apply priority filter if set (highest priority)
     if (priorityList && priorityList.length > 0) {
@@ -943,7 +978,7 @@ const ExcelSheet = ({
   };
 
   const renderStatusCell = (r) => {
-    const timer = timers[r] || { doneClicks: 0, rejClicks: 0, state: '' };
+    const timer = timers[r] || { doneClicks: 0, rejClicks: 0, state: '', start: null };
     const visible = isRowVisible(r) || isAdmin;
     
     if (!visible) return null;
@@ -986,13 +1021,28 @@ const ExcelSheet = ({
       onStatusClick(r, 'reject');
     };
 
+    const handleStart = (e) => {
+      e.stopPropagation();
+      onStatusClick(r, 'start');
+    };
+
     const timeStr = formatMs(getRunningMs(r));
     const statusText = data[r]?.[COL_STATUS] || '';
+    const uploadTime = data[r]?.[COL_TIME] || '';
 
     return (
       <div className="status-wrap">
         {!isAdmin && (
           <>
+            {!timer.start && (
+              <button 
+                className="status-btn start" 
+                onClick={handleStart}
+                type="button"
+              >
+                START
+              </button>
+            )}
             <button 
               className="status-btn done" 
               onClick={handleDone}
@@ -1013,6 +1063,7 @@ const ExcelSheet = ({
           <span className="text-xs font-bold text-red-600">{statusText}</span>
         )}
         <span className="status-label">
+          {uploadTime && <span className="upload-time">{uploadTime}</span>}
           D:{timer.doneClicks || 0} R:{timer.rejClicks || 0} T:{timeStr}
         </span>
       </div>
@@ -1025,7 +1076,12 @@ const ExcelSheet = ({
     }
     
     if (c === COL_TIME) {
-      return formatMs(getRunningMs(r));
+      const uploadTime = data[r]?.[COL_TIME] || '';
+      const timerTime = formatMs(getRunningMs(r));
+      if (uploadTime && !isAdmin) {
+        return `${uploadTime} | ${timerTime}`;
+      }
+      return timerTime;
     }
     
     const visible = isRowVisible(r) || isAdmin;
@@ -1240,6 +1296,10 @@ const ExcelSheet = ({
         .status-btn.reject { 
           background: rgba(220,38,38,0.15); 
           border-color: rgba(220,38,38,0.3); 
+        }
+        .status-btn.start { 
+          background: rgba(59,130,246,0.15); 
+          border-color: rgba(59,130,246,0.3); 
         }
         .status-label {
           margin-left: auto;
@@ -1659,7 +1719,7 @@ const AdminDashboard = ({ username, onLogout }) => {
       const newSheet = deepCopy(csSheet);
       let rowsAdded = 0;
       
-      // Find first empty row in CS sheet
+      // Find first empty row in CS sheet (append at end)
       let startRow = 0;
       for (let r = 0; r < ROWS_COUNT; r++) {
         if (csSheet.raw[r].every(cell => !cell.trim())) {
@@ -1684,11 +1744,11 @@ const AdminDashboard = ({ username, onLogout }) => {
         const agentName = String(newSheet.raw[targetRow][COL_AGENTS] || '').trim().toLowerCase();
         const awb = newSheet.raw[targetRow][COL_AWB];
         
-        // If AWB is valid, start timer
+        // Initialize timer but don't start it (agent will start it)
         if (isValidAwb(awb)) {
           newSheet.timers[targetRow] = {
             elapsed: 0,
-            start: Date.now(),
+            start: null,
             doneClicks: 0,
             rejClicks: 0,
             state: ""
@@ -2874,6 +2934,18 @@ const AgentDashboard = ({ username, onLogout }) => {
     const newSheet = deepCopy(csSheet);
     const timer = newSheet.timers[r] || { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "", hidden: false };
 
+    if (action === 'start') {
+      if (!timer.start) {
+        timer.start = Date.now();
+        newSheet.timers[r] = timer;
+        setCSSheet(newSheet);
+        saveCSSheet(newSheet);
+        CHANNEL.postMessage({ type: "app:sync" });
+        toast.success("Timer started");
+      }
+      return;
+    }
+
     if (action === 'done') {
       // Show confirmation popup
       const awb = newSheet.raw[r]?.[COL_AWB] || '';
@@ -2885,6 +2957,7 @@ const AgentDashboard = ({ username, onLogout }) => {
 
       timer.doneClicks = (timer.doneClicks || 0) + 1;
       timer.state = "DONE";
+      timer.hidden = true; // Hide from agent view
       if (timer.start != null) {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
         timer.start = null;
@@ -2902,6 +2975,9 @@ const AgentDashboard = ({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
       saveAgentSheets(sheets);
+      
+      // Update metrics immediately
+      toast.success(`✅ AWB ${awb} marked as DONE`);
 
       // Check if all rows in current region filter are done
       const currentFilter = sheets.agentFilters?.[username]?.region;
@@ -2978,6 +3054,9 @@ const AgentDashboard = ({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
       saveAgentSheets(sheets);
+      
+      // Update metrics immediately
+      toast.error(`❌ AWB ${awb} rejected`);
 
       // Set blink for CS sheet when agent rejects
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
