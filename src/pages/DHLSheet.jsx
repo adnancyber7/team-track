@@ -1037,9 +1037,12 @@ const ExcelSheet = ({
     const statusText = displayData[displayRow]?.[COL_STATUS] || '';
     const uploadTime = displayData[displayRow]?.[COL_TIME] || '';
 
+    // Only show upload time if it's a proper time format (contains : or AM/PM)
+    const showUploadTime = uploadTime && (uploadTime.includes(':') || uploadTime.includes('AM') || uploadTime.includes('PM'));
+
     return (
       <div className="status-wrap">
-        {uploadTime && (
+        {showUploadTime && (
           <span className="upload-time-status">{uploadTime}</span>
         )}
         {!isAdmin && actualRow !== -1 && (
