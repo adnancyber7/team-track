@@ -622,87 +622,81 @@ const ExcelSheet = ({
   const containerRef = useRef(null);
   const typingTimerRef = useRef(null);
 
-  const getRunningMs = useCallback((r) => {
-    const t = timers[r];
-    if (!t) return 0;
-    if (t.start == null) return t.elapsed || 0;
-    return (t.elapsed || 0) + (Date.now() - t.start);
-  }, [timers]);
-
-  const getAgentVisibleRows = useCallback(() => {
-    if (isAdmin) return data.map((row, idx) => ({ row, idx, timer: timers[idx] }));
-    if (!agentUsername) return [];
+  // Compact view for agents - removes gaps from done/rejected rows
+  const getCompactedView = useCallback(() => {
+    if (isAdmin) {
+      return { data, timers, rowMapping: data.map((_, i) => i) };
+    }
     
-    const visible = [];
+    const compactedData = [];
+    const compactedTimers = [];
+    const rowMapping = [];
+    
     for (let r = 0; r < data.length; r++) {
       const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       const agentMatch = agentCell === agentUsername.toLowerCase();
       
       if (!agentMatch) continue;
       
-      // Hide done/rejected rows
       const state = timers[r]?.state?.toUpperCase() || '';
       if (state === 'DONE' || state === 'REJECTED') continue;
       
-      // Apply priority filter if set
+      // Apply priority filter
       if (priorityList && priorityList.length > 0) {
         const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
         if (!priorityList.includes(rowAwb)) continue;
       }
       
-      // Apply region filter if set
+      // Apply region filter
       if (regionFilter) {
         const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
         const filterUpper = regionFilter.toUpperCase();
         if (!(regionCell === filterUpper || regionCell.includes(filterUpper))) continue;
       }
       
-      visible.push({ row: data[r], idx: r, timer: timers[r] });
+      compactedData.push(data[r]);
+      compactedTimers.push(timers[r]);
+      rowMapping.push(r);
     }
     
-    return visible;
-  }, [isAdmin, agentUsername, data, regionFilter, timers, priorityList]);
-
-  const isRowVisible = useCallback((r) => {
-    if (isAdmin) return true;
-    if (!agentUsername) return false;
-    const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
-    const agentMatch = agentCell === agentUsername.toLowerCase();
-
-    // Hide done/rejected rows from agent view
-    const state = timers[r]?.state?.toUpperCase() || '';
-    if (agentMatch && (state === 'DONE' || state === 'REJECTED')) return false;
-
-    // Apply priority filter if set (highest priority)
-    if (priorityList && priorityList.length > 0) {
-      const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
-      if (agentMatch && !priorityList.includes(rowAwb)) return false;
+    // Fill remaining with empty rows
+    while (compactedData.length < ROWS_COUNT) {
+      compactedData.push(Array(columns.length).fill(''));
+      compactedTimers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
+      rowMapping.push(-1);
     }
+    
+    return { data: compactedData, timers: compactedTimers, rowMapping };
+  }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length]);
 
-    // Apply region filter if set
-    if (regionFilter && agentMatch) {
-      const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
-      const filterUpper = regionFilter.toUpperCase();
-      return regionCell === filterUpper || regionCell.includes(filterUpper);
-    }
+  const compactedView = getCompactedView();
+  const displayData = compactedView.data;
+  const displayTimers = compactedView.timers;
+  const rowMapping = compactedView.rowMapping;
 
-    return agentMatch;
-  }, [isAdmin, agentUsername, data, regionFilter, timers, priorityList]);
+  const getRunningMs = useCallback((r) => {
+    const t = displayTimers[r];
+    if (!t) return 0;
+    if (t.start == null) return t.elapsed || 0;
+    return (t.elapsed || 0) + (Date.now() - t.start);
+  }, [displayTimers]);
 
-  const shouldBlink = useCallback((r) => {
-    return blinkRows && blinkRows[r] === true;
-  }, [blinkRows]);
+  const isRowVisible = useCallback((displayRow) => {
+    return rowMapping[displayRow] !== -1;
+  }, [rowMapping]);
+
+
 
   const canEdit = useCallback((r, c) => {
     if (isAdmin) {
       return ADMIN_EDITABLE_IN_CS.has(c);
     }
-    if (!isRowVisible(r)) return false;
+    if (rowMapping[r] === -1) return false;
     return editableCols.has(c);
-  }, [isAdmin, editableCols, isRowVisible]);
+  }, [isAdmin, editableCols, rowMapping]);
 
   const handleCellClick = (r, c) => {
-    if (!isRowVisible(r) && !isAdmin) return;
+    if (rowMapping[r] === -1 && !isAdmin) return;
     setActiveCell({ r, c });
     setSelection({ r1: r, c1: c, r2: r, c2: c });
   };
@@ -711,7 +705,7 @@ const ExcelSheet = ({
     if (!canEdit(r, c)) return;
     if (c === COL_STATUS) return;
     setEditingCell({ r, c });
-    setEditValue(data[r]?.[c] || '');
+    setEditValue(displayData[r]?.[c] || '');
     setTimeout(() => editorRef.current?.focus(), 0);
   };
 
@@ -722,7 +716,10 @@ const ExcelSheet = ({
 
   const commitEdit = () => {
     if (editingCell) {
-      onCellChange(editingCell.r, editingCell.c, editValue);
+      const actualRow = rowMapping[editingCell.r];
+      if (actualRow !== -1) {
+        onCellChange(actualRow, editingCell.c, editValue);
+      }
       setEditingCell(null);
       setEditValue("");
       setTypingCell(null);
@@ -752,13 +749,13 @@ const ExcelSheet = ({
     for (let r = r1; r <= r2; r++) {
       const row = [];
       for (let c = c1; c <= c2; c++) {
-        row.push(data[r]?.[c] || '');
+        row.push(displayData[r]?.[c] || '');
       }
       copied.push(row);
     }
     setCopiedData(copied);
     toast.success(`Copied ${(r2-r1+1) * (c2-c1+1)} cells`);
-  }, [selection, data]);
+  }, [selection, displayData]);
 
   const handlePaste = useCallback(() => {
     if (!copiedData) return;
@@ -767,15 +764,16 @@ const ExcelSheet = ({
     
     copiedData.forEach((row, ri) => {
       row.forEach((cell, ci) => {
-        const targetR = startR + ri;
+        const displayRow = startR + ri;
         const targetC = startC + ci;
-        if (targetR < ROWS_COUNT && targetC < columns.length && canEdit(targetR, targetC)) {
-          onCellChange(targetR, targetC, cell);
+        const actualRow = rowMapping[displayRow];
+        if (actualRow !== -1 && targetC < columns.length && canEdit(displayRow, targetC)) {
+          onCellChange(actualRow, targetC, cell);
         }
       });
     });
     toast.success('Pasted data');
-  }, [copiedData, activeCell, canEdit, onCellChange, columns.length]);
+  }, [copiedData, activeCell, canEdit, onCellChange, columns.length, rowMapping]);
 
   const handleKeyDown = (e) => {
     if (editingCell) {
@@ -856,8 +854,9 @@ const ExcelSheet = ({
         const { r1, c1, r2, c2 } = selection;
         for (let r = r1; r <= r2; r++) {
           for (let c = c1; c <= c2; c++) {
-            if (canEdit(r, c) && c !== COL_STATUS) {
-              onCellChange(r, c, '');
+            const actualRow = rowMapping[r];
+            if (actualRow !== -1 && canEdit(r, c) && c !== COL_STATUS) {
+              onCellChange(actualRow, c, '');
             }
           }
         }
@@ -919,17 +918,18 @@ const ExcelSheet = ({
       classes.push('selected');
     }
     
-    const state = timers[r]?.state?.toUpperCase() || '';
+    const actualRow = rowMapping[r];
+    const state = displayTimers[r]?.state?.toUpperCase() || '';
     if (state === 'DONE') classes.push('row-done');
     if (state === 'REJECTED') classes.push('row-rejected');
     
-    if (shouldBlink(r)) classes.push('blink-row');
+    if (actualRow !== -1 && blinkRows && blinkRows[actualRow]) classes.push('blink-row');
     
-    if (!isRowVisible(r) && !isAdmin) classes.push('hidden-row');
+    if (rowMapping[r] === -1) classes.push('hidden-row');
     
     if (r % 2 === 0) classes.push('even-row');
     
-    if (selectedRows && selectedRows.has(r)) classes.push('row-selected');
+    if (isAdmin && selectedRows && selectedRows.has(actualRow)) classes.push('row-selected');
     
     if (typingCell && typingCell.r === r && typingCell.c === c) classes.push('typing-indicator');
     
@@ -977,23 +977,26 @@ const ExcelSheet = ({
     setDragSelecting(false);
   };
 
-  const renderStatusCell = (r) => {
-    const timer = timers[r] || { doneClicks: 0, rejClicks: 0, state: '', start: null };
-    const visible = isRowVisible(r) || isAdmin;
+  const renderStatusCell = (displayRow) => {
+    const actualRow = rowMapping[displayRow];
+    const timer = displayTimers[displayRow] || { doneClicks: 0, rejClicks: 0, state: '', start: null };
+    const visible = isRowVisible(displayRow);
     
     if (!visible) return null;
 
     const handleDone = (e) => {
       e.stopPropagation();
-      onStatusClick(r, 'done');
+      if (actualRow !== -1) {
+        onStatusClick(actualRow, 'done');
+      }
     };
 
     const handleReject = (e) => {
       e.stopPropagation();
-      const rej2 = data[r]?.[COL_REJ2] || '';
-      const rej3 = data[r]?.[COL_REJ3] || '';
-      const rej4 = data[r]?.[COL_REJ4] || '';
-      const rej5 = data[r]?.[COL_REJ5] || '';
+      const rej2 = displayData[displayRow]?.[COL_REJ2] || '';
+      const rej3 = displayData[displayRow]?.[COL_REJ3] || '';
+      const rej4 = displayData[displayRow]?.[COL_REJ4] || '';
+      const rej5 = displayData[displayRow]?.[COL_REJ5] || '';
       
       const rejCount = timer.rejClicks || 0;
       
@@ -1018,21 +1021,25 @@ const ExcelSheet = ({
         return;
       }
       
-      onStatusClick(r, 'reject');
+      if (actualRow !== -1) {
+        onStatusClick(actualRow, 'reject');
+      }
     };
 
     const handleStart = (e) => {
       e.stopPropagation();
-      onStatusClick(r, 'start');
+      if (actualRow !== -1) {
+        onStatusClick(actualRow, 'start');
+      }
     };
 
-    const timeStr = formatMs(getRunningMs(r));
-    const statusText = data[r]?.[COL_STATUS] || '';
-    const uploadTime = data[r]?.[COL_TIME] || '';
+    const timeStr = formatMs(getRunningMs(displayRow));
+    const statusText = displayData[displayRow]?.[COL_STATUS] || '';
+    const uploadTime = displayData[displayRow]?.[COL_TIME] || '';
 
     return (
       <div className="status-wrap">
-        {!isAdmin && (
+        {!isAdmin && actualRow !== -1 && (
           <>
             {!timer.start && (
               <button 
@@ -1062,10 +1069,12 @@ const ExcelSheet = ({
         {isAdmin && statusText && (
           <span className="text-xs font-bold text-red-600">{statusText}</span>
         )}
-        <span className="status-label">
-          {uploadTime && <span className="upload-time">{uploadTime}</span>}
-          D:{timer.doneClicks || 0} R:{timer.rejClicks || 0} T:{timeStr}
-        </span>
+        {actualRow !== -1 && (
+          <span className="status-label">
+            {uploadTime && <span className="upload-time">{uploadTime}</span>}
+            D:{timer.doneClicks || 0} R:{timer.rejClicks || 0} T:{timeStr}
+          </span>
+        )}
       </div>
     );
   };
@@ -1076,7 +1085,7 @@ const ExcelSheet = ({
     }
     
     if (c === COL_TIME) {
-      const uploadTime = data[r]?.[COL_TIME] || '';
+      const uploadTime = displayData[r]?.[COL_TIME] || '';
       const timerTime = formatMs(getRunningMs(r));
       if (uploadTime && !isAdmin) {
         return `${uploadTime} | ${timerTime}`;
@@ -1084,16 +1093,16 @@ const ExcelSheet = ({
       return timerTime;
     }
     
-    const visible = isRowVisible(r) || isAdmin;
+    const visible = isRowVisible(r);
     if (!visible) return '';
     
     // Hide rejection columns if no value
     if ([COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5].includes(c)) {
-      const val = data[r]?.[c] || '';
+      const val = displayData[r]?.[c] || '';
       if (!val.trim() && !isAdmin) return '';
     }
     
-    return data[r]?.[c] || '';
+    return displayData[r]?.[c] || '';
   };
 
   const gridStyle = {
@@ -1355,10 +1364,15 @@ const ExcelSheet = ({
               <div 
                 className="row-header" 
                 style={{ gridRow: r + 2, gridColumn: 1, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
-                onClick={() => isAdmin && onRowSelect && onRowSelect(r)}
+                onClick={() => {
+                  const actualRow = rowMapping[r];
+                  if (isAdmin && onRowSelect && actualRow !== -1) {
+                    onRowSelect(actualRow);
+                  }
+                }}
               >
                 {isAdmin && onRowSelect && selectedRows ? (
-                  selectedRows.has(r) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" />
+                  rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" />
                 ) : (
                   r + 1
                 )}
