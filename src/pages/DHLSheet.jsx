@@ -1091,8 +1091,8 @@ const ExcelSheet = ({
 
     if (c === COL_TIME) {
       const uploadTime = displayData[r]?.[COL_TIME] || '';
-      const timerTime = formatMs(getRunningMs(r));
-      return `${uploadTime}${uploadTime && timerTime !== '00:00:00' ? ' | ' : ''}${timerTime !== '00:00:00' ? timerTime : ''}`.trim();
+      // Only show upload time, timer is in STATUS column
+      return uploadTime;
     }
     
     const visible = isRowVisible(r);
