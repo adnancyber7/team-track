@@ -981,7 +981,7 @@ const ExcelSheet = ({
     const actualRow = rowMapping[displayRow];
     const timer = displayTimers[displayRow] || { doneClicks: 0, rejClicks: 0, state: '', start: null };
     const visible = isRowVisible(displayRow);
-    
+
     if (!visible) return null;
 
     const handleDone = (e) => {
@@ -997,9 +997,9 @@ const ExcelSheet = ({
       const rej3 = displayData[displayRow]?.[COL_REJ3] || '';
       const rej4 = displayData[displayRow]?.[COL_REJ4] || '';
       const rej5 = displayData[displayRow]?.[COL_REJ5] || '';
-      
+
       const rejCount = timer.rejClicks || 0;
-      
+
       if (rejCount === 0 && !rej2.trim()) {
         toast.error("Please fill 2ND REJECTION reason first");
         return;
@@ -1020,7 +1020,7 @@ const ExcelSheet = ({
         toast.error("Maximum rejections reached");
         return;
       }
-      
+
       if (actualRow !== -1) {
         onStatusClick(actualRow, 'reject');
       }
@@ -1039,6 +1039,9 @@ const ExcelSheet = ({
 
     return (
       <div className="status-wrap">
+        {uploadTime && (
+          <span className="upload-time-status">{uploadTime}</span>
+        )}
         {!isAdmin && actualRow !== -1 && (
           <>
             {!timer.start && (
@@ -1071,7 +1074,6 @@ const ExcelSheet = ({
         )}
         {actualRow !== -1 && (
           <span className="status-label">
-            {uploadTime && <span className="upload-time">{uploadTime}</span>}
             D:{timer.doneClicks || 0} R:{timer.rejClicks || 0} T:{timeStr}
           </span>
         )}
@@ -1083,14 +1085,11 @@ const ExcelSheet = ({
     if (c === COL_STATUS) {
       return renderStatusCell(r);
     }
-    
+
     if (c === COL_TIME) {
       const uploadTime = displayData[r]?.[COL_TIME] || '';
       const timerTime = formatMs(getRunningMs(r));
-      if (uploadTime && !isAdmin) {
-        return `${uploadTime} | ${timerTime}`;
-      }
-      return timerTime;
+      return `${uploadTime}${uploadTime && timerTime !== '00:00:00' ? ' | ' : ''}${timerTime !== '00:00:00' ? timerTime : ''}`.trim();
     }
     
     const visible = isRowVisible(r);
@@ -1323,13 +1322,15 @@ const ExcelSheet = ({
           align-items: center;
           gap: 4px;
         }
-        .upload-time {
+        .upload-time-status {
           color: #0066cc;
           font-weight: 900;
+          font-size: 11px;
+          padding: 3px 6px;
+          background: rgba(0,102,204,0.15);
+          border-radius: 4px;
+          border: 1px solid rgba(0,102,204,0.25);
           margin-right: 4px;
-          padding: 2px 4px;
-          background: rgba(0,102,204,0.1);
-          border-radius: 3px;
         }
       `}</style>
       
