@@ -212,15 +212,35 @@ const downloadCSV = (data, filename) => {
   document.body.removeChild(link);
 };
 
+const excelSerialToTime = (serial) => {
+  // Check if it's already a time string
+  if (typeof serial === 'string' && (serial.includes(':') || serial.includes('AM') || serial.includes('PM'))) {
+    return serial;
+  }
+  
+  // Convert Excel decimal to time
+  const num = parseFloat(serial);
+  if (isNaN(num) || num < 0 || num > 1) return String(serial);
+  
+  const totalMinutes = Math.round(num * 24 * 60);
+  let hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  
+  return `${hours}:${String(minutes).padStart(2, '0')} ${period}`;
+};
+
 const parseUploadedFile = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellText: false });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: true });
         resolve(jsonData);
       } catch (error) {
         reject(error);
@@ -1826,8 +1846,13 @@ const AdminDashboard = ({ username, onLogout }) => {
         row.forEach((cell, colIdx) => {
           const targetCol = colMapping[colIdx];
           if (targetCol !== undefined) {
-            // Preserve original format for TIME column
-            const cellValue = String(cell || '').trim();
+            let cellValue = String(cell || '').trim();
+
+            // Convert Excel serial time to readable format for TIME column
+            if (targetCol === COL_TIME && cellValue) {
+              cellValue = excelSerialToTime(cellValue);
+            }
+
             newSheet.raw[targetRow][targetCol] = cellValue;
           }
         });
