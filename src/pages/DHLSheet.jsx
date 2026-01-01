@@ -3106,6 +3106,8 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [priorityList, setPriorityList] = useState([]);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showStartReminder, setShowStartReminder] = useState(false);
+  const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
+  const [pendingDoneRow, setPendingDoneRow] = useState(null);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -3241,10 +3243,13 @@ const AgentDashboard = ({ username, onLogout }) => {
         return;
       }
 
-      // Confirmation message before marking as done
-      const confirmed = confirm('Please check the numbers. Is release okay? No update needed?');
-      if (!confirmed) return;
+      // Show release confirmation dialog
+      setPendingDoneRow(r);
+      setShowReleaseConfirm(true);
+      return;
+    }
 
+    if (action === 'confirmDone') {
       const awb = newSheet.raw[r]?.[COL_AWB] || '';
       timer.doneClicks = (timer.doneClicks || 0) + 1;
       const doneCount = timer.doneClicks;
@@ -3669,6 +3674,47 @@ const AgentDashboard = ({ username, onLogout }) => {
             <DialogFooter>
               <Button onClick={() => setShowStartReminder(false)} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
                 Got it!
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Release Confirmation Dialog */}
+        <Dialog open={showReleaseConfirm} onOpenChange={setShowReleaseConfirm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-blue-600">
+                <CheckCircle2 className="w-6 h-6" />
+                ⏱️ Number is Released First
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-center text-lg font-medium text-gray-700">
+                Please check the Number is Released first before marking as DONE
+              </p>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setShowReleaseConfirm(false);
+                  setPendingDoneRow(null);
+                }} 
+                variant="outline" 
+                className="flex-1 font-bold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  setShowReleaseConfirm(false);
+                  if (pendingDoneRow !== null) {
+                    handleStatusClick(pendingDoneRow, 'confirmDone');
+                  }
+                  setPendingDoneRow(null);
+                }} 
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold"
+              >
+                OK
               </Button>
             </DialogFooter>
           </DialogContent>
