@@ -4,6 +4,7 @@ import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown
 import DailyReportDialog from '../components/DailyReportDialog';
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
+import AdvancedReportingModule from '../components/AdvancedReportingModule';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -2296,6 +2297,10 @@ const AdminDashboard = ({ username, onLogout }) => {
                 <Badge className="ml-2 bg-blue-500 text-white">{csUploads.length}</Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="reports" className="font-bold data-[state=active]:bg-yellow-400/60">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Reports
+            </TabsTrigger>
             <TabsTrigger value="settings" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Settings className="w-4 h-4 mr-2" />
               Settings
@@ -2942,6 +2947,24 @@ const AdminDashboard = ({ username, onLogout }) => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports" className="mt-4">
+            <AdvancedReportingModule
+              csSheet={csSheet}
+              agents={agents}
+              ROWS_COUNT={ROWS_COUNT}
+              COL_AGENTS={COL_AGENTS}
+              COL_AWB={COL_AWB}
+              COL_LINE={COL_LINE}
+              COL_REJ2={COL_REJ2}
+              COL_REJ3={COL_REJ3}
+              COL_REJ4={COL_REJ4}
+              COL_REJ5={COL_REJ5}
+              COL_REGION={COL_REGION}
+              COL_REASON={COL_REASON}
+            />
           </TabsContent>
 
           {/* Settings Tab */}
