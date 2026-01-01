@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -1590,6 +1590,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [newCSPass, setNewCSPass] = useState("");
   const [priorityNumbers, setPriorityNumbers] = useState("");
   const [csUploads, setCSUploads] = useState([]);
+  const [showStartReminder, setShowStartReminder] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -3236,7 +3237,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     if (action === 'done') {
       // Check if timer was started
       if (!timer.start && timer.elapsed === 0) {
-        toast.error("⏱️ Please click START button first before marking as DONE", { duration: 3000 });
+        setShowStartReminder(true);
         return;
       }
 
@@ -3645,10 +3646,32 @@ const AgentDashboard = ({ username, onLogout }) => {
           priorityList={priorityList}
           zoomLevel={zoomLevel}
         />
-      </div>
-    </div>
-  );
-};
+
+        {/* Start Reminder Dialog */}
+        <Dialog open={showStartReminder} onOpenChange={setShowStartReminder}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-orange-600">
+                <Clock className="w-6 h-6" />
+                ⏱️ Start Timer First
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-center text-lg font-medium text-gray-700">
+                Please click the <span className="font-bold text-blue-600">START</span> button first before marking as DONE
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowStartReminder(false)} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
+                Got it!
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        </div>
+        </div>
+        );
+        };
 
 // ============================================================================
 // MAIN APP COMPONENT
