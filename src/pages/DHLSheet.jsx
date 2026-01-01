@@ -1055,16 +1055,9 @@ const ExcelSheet = ({
 
     const timeStr = formatMs(getRunningMs(displayRow));
     const statusText = displayData[displayRow]?.[COL_STATUS] || '';
-    const uploadTime = displayData[displayRow]?.[COL_TIME] || '';
-
-    // Only show upload time if it's a proper time format (contains : or AM/PM)
-    const showUploadTime = uploadTime && (uploadTime.includes(':') || uploadTime.includes('AM') || uploadTime.includes('PM'));
 
     return (
       <div className="status-wrap">
-        {showUploadTime && (
-          <span className="upload-time-status">{uploadTime}</span>
-        )}
         {!isAdmin && actualRow !== -1 && (
           <>
             {!timer.start && (
@@ -1110,9 +1103,7 @@ const ExcelSheet = ({
     }
 
     if (c === COL_TIME) {
-      const uploadTime = displayData[r]?.[COL_TIME] || '';
-      // Only show upload time, timer is in STATUS column
-      return uploadTime;
+      return displayData[r]?.[COL_TIME] || '';
     }
     
     const visible = isRowVisible(r);
@@ -1130,7 +1121,7 @@ const ExcelSheet = ({
   const gridStyle = {
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map(w => `${w}px`).join(' ')}`,
-    gridTemplateRows: `30px repeat(${ROWS_COUNT}, 30px)`,
+    gridTemplateRows: `30px repeat(${ROWS_COUNT}, auto)`,
   };
 
   useEffect(() => {
@@ -1237,8 +1228,8 @@ const ExcelSheet = ({
           font-size: 13px;
           outline: none;
           overflow: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;
+          white-space: pre-wrap;
+          word-wrap: break-word;
           min-height: 30px;
           box-sizing: border-box;
           transition: background 0.12s ease, box-shadow 0.12s ease;
@@ -1319,20 +1310,16 @@ const ExcelSheet = ({
         .col-resizer:hover { background: rgba(255,210,0,0.3); }
 
         .cell-editor {
-          position: fixed;
-          z-index: 9999;
           box-sizing: border-box;
           min-height: 30px;
           padding: 6px 10px;
-          border-radius: 8px;
           border: 2px solid var(--activeBorder);
-          background: linear-gradient(180deg, #081026, #061021);
-          color: var(--text);
+          background: #ffffff;
+          color: #000000;
           font-size: 13px;
           outline: none;
-          box-shadow: 0 12px 40px rgba(0,0,0,0.55);
-          resize: none;
-          min-width: 60px;
+          box-shadow: 0 0 0 3px rgba(255,210,0,0.2);
+          font-family: inherit;
         }
 
         .status-wrap {
@@ -1448,14 +1435,14 @@ const ExcelSheet = ({
                 <div
                   key={`cell-${r}-${c}`}
                   className={getCellClass(r, c)}
-                  style={{ gridRow: r + 2, gridColumn: c + 2 }}
+                  style={{ gridRow: r + 2, gridColumn: c + 2, position: 'relative' }}
                   onMouseDown={(e) => handleCellMouseDown(r, c, e)}
                   onMouseEnter={() => handleMouseEnter(r, c)}
                   onMouseUp={handleCellMouseUp}
                   onClick={() => handleCellSingleClick(r, c)}
                   onDoubleClick={() => handleCellDoubleClick(r, c)}
                 >
-                  {renderCellContent(r, c)}
+                  {editingCell && editingCell.r === r && editingCell.c === c ? null : renderCellContent(r, c)}
                 </div>
               ))}
             </React.Fragment>
@@ -1463,21 +1450,25 @@ const ExcelSheet = ({
         </div>
       </div>
       
-      {/* Cell Editor */}
+      {/* Inline Cell Editor */}
       {editingCell && (
-        <input
+        <textarea
           ref={editorRef}
           className="cell-editor"
           style={{
-            left: 48 + colWidths.slice(0, editingCell.c).reduce((a, b) => a + b, 0),
-            top: 30 + editingCell.r * 30,
-            width: colWidths[editingCell.c],
+            gridRow: editingCell.r + 2,
+            gridColumn: editingCell.c + 2,
+            position: 'absolute',
+            zIndex: 100,
+            width: '100%',
+            height: '100%',
+            resize: 'none',
           }}
           value={editValue}
           onChange={(e) => handleEditValueChange(e.target.value)}
           onBlur={commitEdit}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); }
             if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
             if (e.key === 'Tab') { e.preventDefault(); commitEdit(); }
           }}
