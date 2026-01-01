@@ -665,7 +665,7 @@ const ExcelSheet = ({
       const state = timers[r]?.state?.toUpperCase() || '';
       if (state === 'DONE' || state === 'REJECTED') continue;
       
-      // Apply priority filter
+      // Apply priority filter ONLY if priority list exists and agent hasn't completed all their priority AWBs
       if (priorityList && priorityList.length > 0) {
         const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
         if (!priorityList.includes(rowAwb)) continue;
@@ -1618,6 +1618,15 @@ const AdminDashboard = ({ username, onLogout }) => {
         toast.success(`🔔 CS Upload: ${notif.csUser} uploaded ${notif.filename} with ${notif.rowCount} rows`, { duration: 8000 });
         const sheets = loadAgentSheets();
         setCSUploads(sheets.csUploads || []);
+      }
+      if (ev?.data?.breakUpdate) {
+        const breakInfo = ev.data.breakUpdate;
+        const breakLabel = BREAK_TYPES.find(b => b.id === breakInfo.type)?.label || 'Break';
+        if (breakInfo.status === 'started') {
+          toast.info(`${breakInfo.agent} started ${breakLabel}`, { duration: 3000 });
+        } else if (breakInfo.status === 'ended') {
+          toast.info(`${breakInfo.agent} ended break`, { duration: 3000 });
+        }
       }
       if (ev?.data?.type === "app:sync") {
         setCSSheet(loadCSSheet());
@@ -3393,7 +3402,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    CHANNEL.postMessage({ type: "app:sync" });
+    CHANNEL.postMessage({ type: "app:sync", breakUpdate: { agent: username, status: onBreak ? 'ended' : 'started', type } });
   };
 
   useEffect(() => {
@@ -3509,6 +3518,11 @@ const AgentDashboard = ({ username, onLogout }) => {
           // This agent finished all their priority AWBs - disable priority mode for them
           if (!sheets.agentPriorityCompleted) sheets.agentPriorityCompleted = {};
           sheets.agentPriorityCompleted[username] = true;
+          
+          // Important: Set priority mode to false immediately and force re-render
+          setPriorityMode(false);
+          setPriorityList([]);
+          
           toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
         }
 
