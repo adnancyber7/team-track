@@ -731,12 +731,12 @@ const ExcelSheet = ({
     if (c === COL_STATUS) return;
     setEditingCell({ r, c });
     setEditValue(displayData[r]?.[c] || '');
-    setTimeout(() => editorRef.current?.focus(), 0);
-  };
-
-  const handleCellSingleClick = (r, c) => {
-    // Single click to select only, don't open editor
-    handleCellClick(r, c);
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+        editorRef.current.select();
+      }
+    }, 0);
   };
 
   const commitEdit = () => {
@@ -1352,18 +1352,7 @@ const ExcelSheet = ({
         }
         .col-resizer:hover { background: rgba(255,210,0,0.3); }
 
-        .cell-editor {
-          box-sizing: border-box;
-          min-height: 30px;
-          padding: 6px 10px;
-          border: 2px solid var(--activeBorder);
-          background: #ffffff;
-          color: #000000;
-          font-size: 13px;
-          outline: none;
-          box-shadow: 0 0 0 3px rgba(255,210,0,0.2);
-          font-family: inherit;
-        }
+
 
         .status-wrap {
           display: flex;
@@ -1484,7 +1473,7 @@ const ExcelSheet = ({
                   onMouseDown={(e) => handleCellMouseDown(r, c, e)}
                   onMouseEnter={() => handleMouseEnter(r, c)}
                   onMouseUp={handleCellMouseUp}
-                  onClick={() => handleCellSingleClick(r, c)}
+                  onClick={() => handleCellClick(r, c)}
                   onDoubleClick={() => handleCellDoubleClick(r, c)}
                 >
                   {editingCell && editingCell.r === r && editingCell.c === c ? null : renderCellContent(r, c)}
@@ -1497,27 +1486,47 @@ const ExcelSheet = ({
       
       {/* Inline Cell Editor */}
       {editingCell && (
-        <textarea
-          ref={editorRef}
-          className="cell-editor"
+        <div
           style={{
             gridRow: editingCell.r + 2,
             gridColumn: editingCell.c + 2,
             position: 'absolute',
             zIndex: 100,
-            width: '100%',
-            height: '100%',
-            resize: 'none',
+            width: colWidths[editingCell.c] + 'px',
+            height: '30px',
           }}
-          value={editValue}
-          onChange={(e) => handleEditValueChange(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); }
-            if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
-            if (e.key === 'Tab') { e.preventDefault(); commitEdit(); }
-          }}
-        />
+        >
+          <input
+            ref={editorRef}
+            type="text"
+            className="cell-editor"
+            style={{
+              width: '100%',
+              height: '100%',
+              border: '2px solid var(--activeBorder)',
+              background: '#ffffff',
+              color: '#000000',
+              fontSize: '13px',
+              padding: '6px 10px',
+              outline: 'none',
+              boxShadow: '0 0 0 3px rgba(255,210,0,0.2)',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+            value={editValue}
+            onChange={(e) => handleEditValueChange(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+              if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+              if (e.key === 'Tab') { 
+                e.preventDefault(); 
+                commitEdit(); 
+                setActiveCell(prev => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
+              }
+            }}
+          />
+        </div>
       )}
     </div>
   );
@@ -1563,7 +1572,7 @@ const AdminDashboard = ({ username, onLogout }) => {
 
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
-    }, 500);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -2794,7 +2803,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
       const updatedSheets = loadAgentSheets();
       const updatedUploads = (updatedSheets.csUploads || []).filter(u => u.csUser === username);
       setMyUploads(updatedUploads);
-    }, 500);
+    }, 1000);
     
     return () => clearInterval(interval);
   }, [username]);
@@ -3108,7 +3117,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           setBreakStart(null);
         }
       }
-    }, 500);
+    }, 1000);
     
     return () => clearInterval(interval);
   }, [username, onBreak, priorityList]);
