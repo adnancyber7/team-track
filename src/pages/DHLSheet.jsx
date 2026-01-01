@@ -634,7 +634,7 @@ const ExcelSheet = ({
   const [selecting, setSelecting] = useState(false);
   const [dragSelecting, setDragSelecting] = useState(false);
   const [copiedData, setCopiedData] = useState(null);
-  const [colWidths, setColWidths] = useState(columns.map((_, idx) => idx === 0 ? 200 : 140));
+  const [colWidths, setColWidths] = useState(columns.map((_, idx) => idx === 0 ? 280 : 140));
   const [resizing, setResizing] = useState(null);
   const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
   const [filterText, setFilterText] = useState('');
@@ -731,12 +731,17 @@ const ExcelSheet = ({
     
     // Allow viewing (and editing if permitted) for all cells except STATUS
     const isEditable = canEdit(r, c);
-    setEditingCell({ r, c, readOnly: !isEditable });
+    const isViewOnly = [COL_REASON, COL_CONF1, COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c);
+    
+    setEditingCell({ r, c, readOnly: !isEditable || isViewOnly });
     setEditValue(displayData[r]?.[c] || '');
     setTimeout(() => {
       if (editorRef.current) {
         editorRef.current.focus();
-        if (isEditable) {
+        if (isEditable && !isViewOnly) {
+          editorRef.current.select();
+        } else {
+          // Select all for copying
           editorRef.current.select();
         }
       }
@@ -1368,6 +1373,7 @@ const ExcelSheet = ({
           align-items: center;
           gap: 4px;
           width: 100%;
+          min-width: max-content;
           flex-wrap: nowrap;
           overflow: visible;
         }
@@ -1513,30 +1519,38 @@ const ExcelSheet = ({
             height: '30px',
           }}
         >
-          <input
+          <textarea
             ref={editorRef}
-            type="text"
             className="cell-editor"
             readOnly={editingCell.readOnly}
             style={{
               width: '100%',
-              height: '100%',
-              border: editingCell.readOnly ? '2px solid #94a3b8' : '2px solid var(--activeBorder)',
-              background: editingCell.readOnly ? '#f1f5f9' : '#ffffff',
+              minHeight: '30px',
+              maxHeight: '200px',
+              height: 'auto',
+              border: editingCell.readOnly ? '2px solid #3b82f6' : '2px solid var(--activeBorder)',
+              background: editingCell.readOnly ? '#dbeafe' : '#ffffff',
               color: '#000000',
               fontSize: '13px',
               padding: '6px 10px',
               outline: 'none',
-              boxShadow: editingCell.readOnly ? '0 0 0 3px rgba(148,163,184,0.2)' : '0 0 0 3px rgba(255,210,0,0.2)',
+              boxShadow: editingCell.readOnly ? '0 0 0 3px rgba(59,130,246,0.3)' : '0 0 0 3px rgba(255,210,0,0.2)',
               fontFamily: 'inherit',
               boxSizing: 'border-box',
-              cursor: editingCell.readOnly ? 'default' : 'text',
+              cursor: editingCell.readOnly ? 'text' : 'text',
+              resize: 'vertical',
+              overflow: 'auto',
             }}
             value={editValue}
             onChange={(e) => !editingCell.readOnly && handleEditValueChange(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); commitEdit(); }
+              if (editingCell.readOnly) {
+                if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); commitEdit(); }
+                return;
+              }
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); }
+              if (e.key === 'Escape') { e.preventDefault(); commitEdit(); }
               if (e.key === 'Tab') { 
                 e.preventDefault(); 
                 commitEdit(); 
@@ -3515,8 +3529,21 @@ const AgentDashboard = ({ username, onLogout }) => {
               </div>
               <Button 
                 onClick={() => {
-                  navigator.clipboard.writeText(metrics.done.toString());
-                  toast.success(`Copied DONE count: ${metrics.done}`);
+                  // Get all done AWBs for this agent
+                  const doneAwbs = [];
+                  for (let r = 0; r < ROWS_COUNT; r++) {
+                    const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+                    const state = csSheet.timers[r]?.state?.toUpperCase() || '';
+                    if (agent === username.toLowerCase() && state === 'DONE') {
+                      const awb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
+                      if (awb && /^\d{10}$/.test(awb)) {
+                        doneAwbs.push(awb);
+                      }
+                    }
+                  }
+                  const copyText = doneAwbs.join('\n');
+                  navigator.clipboard.writeText(copyText);
+                  toast.success(`Copied ${doneAwbs.length} DONE AWBs`);
                 }}
                 variant="outline" 
                 size="sm" 
@@ -3526,8 +3553,21 @@ const AgentDashboard = ({ username, onLogout }) => {
               </Button>
               <Button 
                 onClick={() => {
-                  navigator.clipboard.writeText(metrics.rej.toString());
-                  toast.success(`Copied REJECT count: ${metrics.rej}`);
+                  // Get all rejected AWBs for this agent
+                  const rejAwbs = [];
+                  for (let r = 0; r < ROWS_COUNT; r++) {
+                    const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+                    const state = csSheet.timers[r]?.state?.toUpperCase() || '';
+                    if (agent === username.toLowerCase() && state === 'REJECTED') {
+                      const awb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
+                      if (awb && /^\d{10}$/.test(awb)) {
+                        rejAwbs.push(awb);
+                      }
+                    }
+                  }
+                  const copyText = rejAwbs.join('\n');
+                  navigator.clipboard.writeText(copyText);
+                  toast.success(`Copied ${rejAwbs.length} REJECTED AWBs`);
                 }}
                 variant="outline" 
                 size="sm" 
