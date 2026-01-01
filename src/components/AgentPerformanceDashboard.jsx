@@ -11,6 +11,13 @@ const AgentPerformanceDashboard = ({ csSheet, agents, ROWS_COUNT, COL_AGENTS, CO
   
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
   
+  const parseLineSum = (lineVal) => {
+    const str = String(lineVal || "").trim();
+    if (!str) return 0;
+    const nums = str.split(/[+\s]+/).map(s => parseFloat(s)).filter(n => !isNaN(n));
+    return nums.reduce((a, b) => a + b, 0);
+  };
+  
   const calculateMetrics = useMemo(() => {
     const metrics = {};
     const today = new Date().toDateString();
