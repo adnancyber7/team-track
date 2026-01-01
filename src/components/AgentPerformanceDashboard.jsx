@@ -99,13 +99,6 @@ const AgentPerformanceDashboard = ({ csSheet, agents, ROWS_COUNT, COL_AGENTS, CO
     return metrics;
   }, [csSheet, agents, ROWS_COUNT, COL_AGENTS, COL_AWB, COL_LINE, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]);
   
-  const parseLineSum = (lineVal) => {
-    const str = String(lineVal || "").trim();
-    if (!str) return 0;
-    const nums = str.split(/[+\s]+/).map(s => parseFloat(s)).filter(n => !isNaN(n));
-    return nums.reduce((a, b) => a + b, 0);
-  };
-  
   const completionData = Object.values(calculateMetrics).map(agent => ({
     name: agent.username,
     Today: agent.todayCompleted,
