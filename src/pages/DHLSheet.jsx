@@ -3158,34 +3158,40 @@ const AgentDashboard = ({ username, onLogout }) => {
     const sheets = loadAgentSheets();
     const filter = sheets.agentFilters?.[username]?.region || "";
     setRegionFilter(filter);
-    
+
     const pList = sheets.priorityList || [];
+    const myCompleted = sheets.agentPriorityCompleted?.[username] || false;
     setPriorityList(pList);
-    setPriorityMode(pList.length > 0);
-    
+    setPriorityMode(pList.length > 0 && !myCompleted);
+
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
       const updated = loadCSSheet();
       setCSSheet(updated);
-      
+
       const updatedSheets = loadAgentSheets();
       const updatedFilter = updatedSheets.agentFilters?.[username]?.region || "";
       setRegionFilter(updatedFilter);
-      
+
       const updatedPList = updatedSheets.priorityList || [];
       const myPriorityCompleted = updatedSheets.agentPriorityCompleted?.[username] || false;
 
+      // Always update priority mode based on current completion status
+      const shouldBeInPriorityMode = updatedPList.length > 0 && !myPriorityCompleted;
+      if (priorityMode !== shouldBeInPriorityMode) {
+        setPriorityMode(shouldBeInPriorityMode);
+        if (!shouldBeInPriorityMode && updatedPList.length > 0) {
+          toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
+        }
+      }
+
       if (JSON.stringify(updatedPList) !== JSON.stringify(priorityList)) {
         setPriorityList(updatedPList);
-        setPriorityMode(updatedPList.length > 0 && !myPriorityCompleted);
         if (updatedPList.length > priorityList.length) {
           toast.error(`🚨 PRIORITY ALERT: ${updatedPList.length} urgent AWBs assigned!`, { duration: 10000 });
         } else if (updatedPList.length === 0 && priorityList.length > 0) {
-          toast.success(`✅ All priority AWBs completed! Normal mode restored.`, { duration: 5000 });
+          toast.success(`✅ All priority AWBs completed system-wide! Normal mode restored.`, { duration: 5000 });
         }
-      } else if (myPriorityCompleted && priorityMode) {
-        // Agent just completed their priority AWBs
-        setPriorityMode(false);
       }
       
       // Check if agent is on break
