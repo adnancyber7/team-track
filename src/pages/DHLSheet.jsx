@@ -1121,7 +1121,8 @@ const ExcelSheet = ({
   const gridStyle = {
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map(w => `${w}px`).join(' ')}`,
-    gridTemplateRows: `30px repeat(${ROWS_COUNT}, auto)`,
+    gridTemplateRows: `30px repeat(${ROWS_COUNT}, minmax(30px, auto))`,
+    width: 'fit-content',
   };
 
   useEffect(() => {
@@ -1168,10 +1169,30 @@ const ExcelSheet = ({
         .sheet-scroll {
           overflow: auto;
           max-height: 78vh;
+          width: 100%;
           position: relative;
           padding: 12px;
           box-sizing: border-box;
           background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+        }
+
+        .sheet-scroll::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+
+        .sheet-scroll::-webkit-scrollbar-track {
+          background: rgba(0,0,0,0.05);
+          border-radius: 6px;
+        }
+
+        .sheet-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255,204,0,0.6);
+          border-radius: 6px;
+        }
+
+        .sheet-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255,204,0,0.8);
         }
 
         .sheet-grid {
@@ -1179,6 +1200,7 @@ const ExcelSheet = ({
           position: relative;
           background: transparent;
           contain: layout paint;
+          min-width: max-content;
         }
 
         .corner, .col-header, .row-header {
