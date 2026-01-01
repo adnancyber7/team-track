@@ -2157,10 +2157,14 @@ const AdminDashboard = ({ username, onLogout }) => {
       toast.error("Please enter valid 10-digit AWB numbers");
       return;
     }
-    
+
     const sheets = loadAgentSheets();
     sheets.priorityNumbers = priorityNumbers;
     sheets.priorityList = numbers;
+    sheets.priorityTracking = {}; // Track which agent working on which AWB
+    numbers.forEach(awb => {
+      sheets.priorityTracking[awb] = { agent: null, status: 'pending' };
+    });
     saveAgentSheets(sheets);
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`🚨 Priority set for ${numbers.length} AWBs - All agents notified!`);
@@ -2651,17 +2655,51 @@ const AdminDashboard = ({ username, onLogout }) => {
 
                 {agentSheets.priorityList && agentSheets.priorityList.length > 0 && (
                   <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
-                    <div className="font-bold text-red-900 mb-2 flex items-center gap-2">
+                    <div className="font-bold text-red-900 mb-3 flex items-center gap-2">
                       <AlertCircle className="w-5 h-5" />
                       Active Priority: {agentSheets.priorityList.length} AWBs
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {agentSheets.priorityList.slice(0, 20).map((num, idx) => (
-                        <Badge key={idx} className="bg-red-600 text-white font-mono">{num}</Badge>
-                      ))}
-                      {agentSheets.priorityList.length > 20 && (
-                        <Badge className="bg-red-400 text-white">+{agentSheets.priorityList.length - 20} more</Badge>
-                      )}
+                    <div className="space-y-2">
+                      {agentSheets.priorityList.map((num, idx) => {
+                        const tracking = agentSheets.priorityTracking?.[num] || { agent: null, status: 'pending' };
+                        const isCompleted = tracking.status === 'completed';
+                        const assignedAgent = tracking.agent;
+
+                        // Find which agent is assigned to this AWB from CS sheet
+                        let currentAgent = assignedAgent;
+                        if (!currentAgent) {
+                          for (let r = 0; r < ROWS_COUNT; r++) {
+                            if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
+                              currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
+                              break;
+                            }
+                          }
+                        }
+
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`flex items-center justify-between p-2 rounded border ${
+                              isCompleted ? 'bg-green-100 border-green-300' : 'bg-white border-red-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isCompleted && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                              <Badge className={`font-mono ${isCompleted ? 'bg-green-600' : 'bg-red-600'} text-white`}>
+                                {num}
+                              </Badge>
+                              {currentAgent && (
+                                <span className="text-sm font-medium text-gray-700">
+                                  → {currentAgent}
+                                </span>
+                              )}
+                            </div>
+                            {isCompleted && (
+                              <Badge className="bg-green-600 text-white text-xs">COMPLETED</Badge>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2849,6 +2887,9 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
       if (ev?.data?.rejectionNotification) {
         const notif = ev.data.rejectionNotification;
         toast.error(`🚨 New Rejection: ${notif.agent} rejected AWB ${notif.awb}`, { duration: 8000 });
+      }
+      if (ev?.data?.priorityCompleted) {
+        toast.success(`🎉 All priority AWBs completed! Priority mode disabled.`, { duration: 5000 });
       }
     };
     CHANNEL.addEventListener('message', handleSync);
@@ -3135,6 +3176,8 @@ const AgentDashboard = ({ username, onLogout }) => {
         setPriorityMode(updatedPList.length > 0);
         if (updatedPList.length > priorityList.length) {
           toast.error(`🚨 PRIORITY ALERT: ${updatedPList.length} urgent AWBs assigned!`, { duration: 10000 });
+        } else if (updatedPList.length === 0 && priorityList.length > 0) {
+          toast.success(`✅ All priority AWBs completed! Normal mode restored.`, { duration: 5000 });
         }
       }
       
@@ -3273,6 +3316,27 @@ const AgentDashboard = ({ username, onLogout }) => {
         region: newSheet.raw[r]?.[COL_REGION] || '',
         timestamp: new Date().toISOString()
       });
+
+      // Update priority tracking if this is a priority AWB
+      if (sheets.priorityTracking && sheets.priorityTracking[awb]) {
+        sheets.priorityTracking[awb].status = 'completed';
+        sheets.priorityTracking[awb].agent = username;
+        sheets.priorityTracking[awb].completedAt = Date.now();
+
+        // Check if all priority AWBs are completed
+        const allCompleted = Object.values(sheets.priorityTracking).every(t => t.status === 'completed');
+        if (allCompleted) {
+          setTimeout(() => {
+            const updatedSheets = loadAgentSheets();
+            updatedSheets.priorityNumbers = "";
+            updatedSheets.priorityList = [];
+            updatedSheets.priorityTracking = {};
+            saveAgentSheets(updatedSheets);
+            CHANNEL.postMessage({ type: "app:sync", priorityCompleted: true });
+          }, 5000);
+        }
+      }
+
       saveAgentSheets(sheets);
 
       // Update metrics immediately
