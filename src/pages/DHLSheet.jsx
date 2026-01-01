@@ -2161,10 +2161,25 @@ const AdminDashboard = ({ username, onLogout }) => {
     const sheets = loadAgentSheets();
     sheets.priorityNumbers = priorityNumbers;
     sheets.priorityList = numbers;
-    sheets.priorityTracking = {}; // Track which agent working on which AWB
+    sheets.priorityTracking = {};
+    sheets.agentPriorityCompleted = {}; // Reset completion status
+
+    // Scan CS sheet to find which agent has which AWB
     numbers.forEach(awb => {
-      sheets.priorityTracking[awb] = { agent: null, status: 'pending' };
+      let foundAgent = null;
+      for (let r = 0; r < ROWS_COUNT; r++) {
+        const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
+        if (rowAwb === awb) {
+          foundAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
+          break;
+        }
+      }
+      sheets.priorityTracking[awb] = { 
+        agent: foundAgent || null, 
+        status: 'pending' 
+      };
     });
+
     saveAgentSheets(sheets);
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`🚨 Priority set for ${numbers.length} AWBs - All agents notified!`);
