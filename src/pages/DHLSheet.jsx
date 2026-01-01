@@ -62,6 +62,7 @@ const COL_CONF5 = 18;
 const COL_CONF6 = 19;
 
 const ROWS_COUNT = 600;
+const AGENT_DEFAULT_ROWS = 50;
 
 const BREAK_TYPES = [
   { id: 'prayer', label: 'Prayer Break', icon: Moon, color: 'bg-purple-100 text-purple-800 border-purple-300' },
@@ -77,7 +78,7 @@ const ADMIN_EDITABLE_IN_CS = new Set([
 ]);
 
 const AGENT_EDITABLE = new Set([
-  COL_LINE, COL_LOT, COL_REMARKS, COL_REASON, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5
+  COL_LINE, COL_LOT, COL_REMARKS, COL_REASON, COL_REJ2, COL_CONF2, COL_REJ3, COL_CONF3, COL_REJ4, COL_CONF4, COL_REJ5, COL_CONF5, COL_CONF6
 ]);
 
 const CS_ALLOCATOR_EDITABLE = new Set([
@@ -623,7 +624,8 @@ const ExcelSheet = ({
   selectedRows,
   onRowSelect,
   fastEditMode,
-  priorityList
+  priorityList,
+  zoomLevel = 100
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -679,8 +681,11 @@ const ExcelSheet = ({
       rowMapping.push(r);
     }
     
+    // For agents, limit to default rows or actual data count, whichever is higher
+    const targetRows = isAdmin ? ROWS_COUNT : Math.max(AGENT_DEFAULT_ROWS, compactedData.length);
+    
     // Fill remaining with empty rows
-    while (compactedData.length < ROWS_COUNT) {
+    while (compactedData.length < targetRows) {
       compactedData.push(Array(columns.length).fill(''));
       compactedTimers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
       rowMapping.push(-1);
@@ -1020,19 +1025,33 @@ const ExcelSheet = ({
 
       const rejCount = timer.rejClicks || 0;
 
-      if (rejCount === 0 && !rej2.trim()) {
+      // Check if data already exists in rejection columns (from admin)
+      const hasRej2 = rej2.trim();
+      const hasRej3 = rej3.trim();
+      const hasRej4 = rej4.trim();
+      const hasRej5 = rej5.trim();
+
+      if (rejCount === 0 && !hasRej2) {
         toast.error("Please fill 2ND REJECTION reason first");
         return;
       }
-      if (rejCount === 1 && !rej3.trim()) {
+      if (rejCount === 1 && hasRej3 && !rej4.trim()) {
+        toast.error("Please fill 4TH REJECTION reason first (3rd already filled)");
+        return;
+      }
+      if (rejCount === 1 && !hasRej3) {
         toast.error("Please fill 3RD REJECTION reason first");
         return;
       }
-      if (rejCount === 2 && !rej4.trim()) {
+      if (rejCount === 2 && hasRej4 && !rej5.trim()) {
+        toast.error("Please fill 5TH REJECTION reason first (4th already filled)");
+        return;
+      }
+      if (rejCount === 2 && !hasRej4) {
         toast.error("Please fill 4TH REJECTION reason first");
         return;
       }
-      if (rejCount === 3 && !rej5.trim()) {
+      if (rejCount === 3 && !hasRej5) {
         toast.error("Please fill 5TH REJECTION reason first");
         return;
       }
@@ -1118,10 +1137,11 @@ const ExcelSheet = ({
     return displayData[r]?.[c] || '';
   };
 
+  const visibleRows = isAdmin ? ROWS_COUNT : compactedView.data.length;
   const gridStyle = {
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map(w => `${w}px`).join(' ')}`,
-    gridTemplateRows: `30px repeat(${ROWS_COUNT}, minmax(30px, auto))`,
+    gridTemplateRows: `30px repeat(${visibleRows}, 30px)`,
     width: 'fit-content',
   };
 
@@ -1139,6 +1159,7 @@ const ExcelSheet = ({
       className="excel-sheet-container"
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}
     >
       <style>{`
         :root {
@@ -1250,12 +1271,12 @@ const ExcelSheet = ({
           font-size: 13px;
           outline: none;
           overflow: hidden;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          min-height: 30px;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          height: 30px;
           box-sizing: border-box;
           transition: background 0.12s ease, box-shadow 0.12s ease;
-          cursor: default;
+          cursor: pointer;
         }
 
         .cell:hover { background: rgba(255,245,200,0.02); }
@@ -1349,6 +1370,8 @@ const ExcelSheet = ({
           align-items: center;
           gap: 4px;
           width: 100%;
+          flex-wrap: nowrap;
+          overflow: visible;
         }
 
         .status-btn {
@@ -1435,7 +1458,7 @@ const ExcelSheet = ({
           ))}
           
           {/* Row Headers & Cells */}
-          {Array.from({ length: ROWS_COUNT }).map((_, r) => (
+          {Array.from({ length: visibleRows }).map((_, r) => (
             <React.Fragment key={`row-${r}`}>
               <div 
                 className="row-header" 
@@ -3043,6 +3066,7 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [regionFilter, setRegionFilter] = useState("");
   const [priorityMode, setPriorityMode] = useState(false);
   const [priorityList, setPriorityList] = useState([]);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -3464,6 +3488,47 @@ const AgentDashboard = ({ username, onLogout }) => {
               </div>
               <Button 
                 onClick={() => {
+                  navigator.clipboard.writeText(metrics.done.toString());
+                  toast.success(`Copied DONE count: ${metrics.done}`);
+                }}
+                variant="outline" 
+                size="sm" 
+                className="font-bold bg-green-50 hover:bg-green-100"
+              >
+                Copy Done
+              </Button>
+              <Button 
+                onClick={() => {
+                  navigator.clipboard.writeText(metrics.rej.toString());
+                  toast.success(`Copied REJECT count: ${metrics.rej}`);
+                }}
+                variant="outline" 
+                size="sm" 
+                className="font-bold bg-red-50 hover:bg-red-100"
+              >
+                Copy Reject
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}
+                  variant="outline" 
+                  size="sm" 
+                  className="font-bold"
+                >
+                  Zoom -
+                </Button>
+                <span className="text-sm font-mono font-bold">{zoomLevel}%</span>
+                <Button 
+                  onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))}
+                  variant="outline" 
+                  size="sm" 
+                  className="font-bold"
+                >
+                  Zoom +
+                </Button>
+              </div>
+              <Button 
+                onClick={() => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
                   const wb = XLSX.utils.book_new();
@@ -3514,6 +3579,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           blinkRows={csSheet.blinkRows}
           regionFilter={regionFilter}
           priorityList={priorityList}
+          zoomLevel={zoomLevel}
         />
       </div>
     </div>
