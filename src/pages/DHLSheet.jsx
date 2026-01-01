@@ -2942,10 +2942,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         fileReader.readAsDataURL(file);
       });
       const fileData = await fileDataPromise;
-      
-      // Prompt for remarks
-      const remarks = prompt("Add remarks for this upload (optional):");
-      
+
       // Upload notification to admin
       const uploadLog = {
         csUser: username,
@@ -2953,7 +2950,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         timestamp: new Date().toISOString(),
         rowCount: parsedData.length - 1,
         fileData: fileData,
-        remarks: remarks || ""
+        remarks: ""
       };
       
       const sheets = loadAgentSheets();
