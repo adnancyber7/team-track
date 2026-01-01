@@ -3108,6 +3108,8 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [showStartReminder, setShowStartReminder] = useState(false);
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
   const [pendingDoneRow, setPendingDoneRow] = useState(null);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [pendingRejectRow, setPendingRejectRow] = useState(null);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -3325,7 +3327,14 @@ const AgentDashboard = ({ username, onLogout }) => {
         toast.error("Please fill 5TH REJECTION reason first");
         return;
       }
-      
+
+      // Show reject confirmation dialog
+      setPendingRejectRow(r);
+      setShowRejectConfirm(true);
+      return;
+    }
+
+    if (action === 'confirmReject') {
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
       timer.hidden = true; // Hide from agent view after rejection
@@ -3713,6 +3722,47 @@ const AgentDashboard = ({ username, onLogout }) => {
                   setPendingDoneRow(null);
                 }} 
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold"
+              >
+                OK
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reject Confirmation Dialog */}
+        <Dialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="w-6 h-6" />
+                ⚠️ Put Reason in Rejection Row
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-center text-lg font-medium text-gray-700">
+                Please put the reason in the rejection row before marking as REJECT
+              </p>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setShowRejectConfirm(false);
+                  setPendingRejectRow(null);
+                }} 
+                variant="outline" 
+                className="flex-1 font-bold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => {
+                  setShowRejectConfirm(false);
+                  if (pendingRejectRow !== null) {
+                    handleStatusClick(pendingRejectRow, 'confirmReject');
+                  }
+                  setPendingRejectRow(null);
+                }} 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
               >
                 OK
               </Button>
