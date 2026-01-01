@@ -2431,6 +2431,19 @@ const AdminDashboard = ({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
+            <AgentPerformanceDashboard 
+              csSheet={csSheet}
+              agents={agents}
+              ROWS_COUNT={ROWS_COUNT}
+              COL_AGENTS={COL_AGENTS}
+              COL_AWB={COL_AWB}
+              COL_LINE={COL_LINE}
+              COL_REJ2={COL_REJ2}
+              COL_REJ3={COL_REJ3}
+              COL_REJ4={COL_REJ4}
+              COL_REJ5={COL_REJ5}
+            />
+            
             <div className="grid md:grid-cols-3 gap-4">
               {/* Create Agent */}
               <Card className="bg-white/95 border-black/10 shadow-lg">
