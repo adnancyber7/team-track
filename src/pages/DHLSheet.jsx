@@ -2176,13 +2176,59 @@ const AdminDashboard = ({ username, onLogout }) => {
       }
       sheets.priorityTracking[awb] = { 
         agent: foundAgent || null, 
-        status: 'pending' 
+        status: 'pending',
+        startedAt: Date.now(),
+        deadline: null
       };
     });
 
     saveAgentSheets(sheets);
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`🚨 Priority set for ${numbers.length} AWBs - All agents notified!`);
+  };
+
+  const handleReassignPriority = (awb, newAgent) => {
+    const sheets = loadAgentSheets();
+    if (sheets.priorityTracking && sheets.priorityTracking[awb]) {
+      sheets.priorityTracking[awb].agent = newAgent;
+
+      // Update CS sheet to reflect new agent assignment
+      for (let r = 0; r < ROWS_COUNT; r++) {
+        const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
+        if (rowAwb === awb) {
+          const newSheet = deepCopy(csSheet);
+          newSheet.raw[r][COL_AGENTS] = newAgent;
+          setCSSheet(newSheet);
+          saveCSSheet(newSheet);
+          break;
+        }
+      }
+
+      saveAgentSheets(sheets);
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success(`AWB ${awb} reassigned to ${newAgent}`);
+    }
+  };
+
+  const handleSetDeadline = (awb, minutes) => {
+    const sheets = loadAgentSheets();
+    if (sheets.priorityTracking && sheets.priorityTracking[awb]) {
+      const deadlineTime = Date.now() + (minutes * 60 * 1000);
+      sheets.priorityTracking[awb].deadline = deadlineTime;
+      saveAgentSheets(sheets);
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success(`Deadline set for AWB ${awb}: ${minutes} minutes`);
+    }
+  };
+
+  const getDeadlineStatus = (tracking) => {
+    if (!tracking.deadline || tracking.status === 'completed') return null;
+    const timeLeft = tracking.deadline - Date.now();
+    const minutesLeft = Math.floor(timeLeft / 1000 / 60);
+
+    if (timeLeft <= 0) return { status: 'overdue', text: 'OVERDUE', color: 'bg-red-600' };
+    if (minutesLeft <= 5) return { status: 'urgent', text: `${minutesLeft}m left`, color: 'bg-orange-500' };
+    return { status: 'normal', text: `${minutesLeft}m left`, color: 'bg-yellow-500' };
   };
 
   const handleClearPriority = () => {
@@ -2672,52 +2718,112 @@ const AdminDashboard = ({ username, onLogout }) => {
 
                 {agentSheets.priorityList && agentSheets.priorityList.length > 0 && (
                   <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
-                    <div className="font-bold text-red-900 mb-3 flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5" />
-                      Active Priority: {agentSheets.priorityList.length} AWBs
+                    <div className="font-bold text-red-900 mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        Active Priority Queue: {agentSheets.priorityList.length} AWBs
+                      </div>
+                      <div className="text-sm font-normal">
+                        Completed: {Object.values(agentSheets.priorityTracking || {}).filter(t => t.status === 'completed').length} / {agentSheets.priorityList.length}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {agentSheets.priorityList.map((num, idx) => {
-                        const tracking = agentSheets.priorityTracking?.[num] || { agent: null, status: 'pending' };
-                        const isCompleted = tracking.status === 'completed';
-                        const assignedAgent = tracking.agent;
+                    <ScrollArea className="max-h-[500px]">
+                      <div className="space-y-2 pr-4">
+                        {agentSheets.priorityList.map((num, idx) => {
+                          const tracking = agentSheets.priorityTracking?.[num] || { agent: null, status: 'pending', deadline: null };
+                          const isCompleted = tracking.status === 'completed';
+                          const deadlineStatus = getDeadlineStatus(tracking);
 
-                        // Find which agent is assigned to this AWB from CS sheet
-                        let currentAgent = assignedAgent;
-                        if (!currentAgent) {
-                          for (let r = 0; r < ROWS_COUNT; r++) {
-                            if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
-                              currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
-                              break;
+                          // Find which agent is assigned to this AWB from CS sheet
+                          let currentAgent = tracking.agent;
+                          if (!currentAgent) {
+                            for (let r = 0; r < ROWS_COUNT; r++) {
+                              if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
+                                currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
+                                break;
+                              }
                             }
                           }
-                        }
 
-                        return (
-                          <div 
-                            key={idx} 
-                            className={`flex items-center justify-between p-2 rounded border ${
-                              isCompleted ? 'bg-green-100 border-green-300' : 'bg-white border-red-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              {isCompleted && <CheckCircle2 className="w-4 h-4 text-green-600" />}
-                              <Badge className={`font-mono ${isCompleted ? 'bg-green-600' : 'bg-red-600'} text-white`}>
-                                {num}
-                              </Badge>
-                              {currentAgent && (
-                                <span className="text-sm font-medium text-gray-700">
-                                  → {currentAgent}
-                                </span>
-                              )}
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`flex items-center gap-3 p-3 rounded border ${
+                                isCompleted ? 'bg-green-50 border-green-300' : 
+                                deadlineStatus?.status === 'overdue' ? 'bg-red-50 border-red-400 animate-pulse' :
+                                'bg-white border-red-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 flex-1">
+                                {isCompleted ? (
+                                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                ) : (
+                                  <Clock className="w-5 h-5 text-orange-600" />
+                                )}
+                                <Badge className={`font-mono ${isCompleted ? 'bg-green-600' : 'bg-red-600'} text-white`}>
+                                  {num}
+                                </Badge>
+
+                                {!isCompleted ? (
+                                  <Select value={currentAgent || ""} onValueChange={(agent) => handleReassignPriority(num, agent)}>
+                                    <SelectTrigger className="w-[140px] h-7 text-xs">
+                                      <SelectValue placeholder="Assign Agent" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {agents.map(agent => (
+                                        <SelectItem key={agent.username} value={agent.username}>
+                                          {agent.username}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span className="text-sm font-medium text-gray-700">
+                                    {currentAgent}
+                                  </span>
+                                )}
+
+                                {!isCompleted && (
+                                  <Select 
+                                    onValueChange={(mins) => handleSetDeadline(num, parseInt(mins))}
+                                    disabled={isCompleted}
+                                  >
+                                    <SelectTrigger className="w-[120px] h-7 text-xs">
+                                      <SelectValue placeholder="Set Deadline" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="5">5 minutes</SelectItem>
+                                      <SelectItem value="10">10 minutes</SelectItem>
+                                      <SelectItem value="15">15 minutes</SelectItem>
+                                      <SelectItem value="30">30 minutes</SelectItem>
+                                      <SelectItem value="60">1 hour</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )}
+
+                                {deadlineStatus && (
+                                  <Badge className={`${deadlineStatus.color} text-white text-xs animate-pulse`}>
+                                    {deadlineStatus.text}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {isCompleted ? (
+                                  <Badge className="bg-green-600 text-white text-xs">
+                                    ✓ COMPLETED
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-orange-500 text-white text-xs">
+                                    IN PROGRESS
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                            {isCompleted && (
-                              <Badge className="bg-green-600 text-white text-xs">COMPLETED</Badge>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
                   </div>
                 )}
               </CardContent>
