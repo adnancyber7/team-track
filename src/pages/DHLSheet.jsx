@@ -634,7 +634,7 @@ const ExcelSheet = ({
   const [selecting, setSelecting] = useState(false);
   const [dragSelecting, setDragSelecting] = useState(false);
   const [copiedData, setCopiedData] = useState(null);
-  const [colWidths, setColWidths] = useState(columns.map(() => 130));
+  const [colWidths, setColWidths] = useState(columns.map((_, idx) => idx === 0 ? 200 : 140));
   const [resizing, setResizing] = useState(null);
   const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
   const [filterText, setFilterText] = useState('');
@@ -916,6 +916,7 @@ const ExcelSheet = ({
       const c = parseInt(resizer.dataset.c);
       setResizing({ c, startX: e.clientX, startWidth: colWidths[c] });
       e.preventDefault();
+      e.stopPropagation();
       return;
     }
   };
@@ -1355,9 +1356,10 @@ const ExcelSheet = ({
           height: 100%;
           cursor: col-resize;
           background: transparent;
-          z-index: 10;
+          z-index: 20;
         }
-        .col-resizer:hover { background: rgba(255,210,0,0.3); }
+        .col-resizer:hover { background: rgba(255,210,0,0.5); }
+        .col-resizer:active { background: rgba(255,210,0,0.7); }
 
 
 
@@ -1453,7 +1455,11 @@ const ExcelSheet = ({
                   {sortConfig.direction === 'asc' ? '▲' : '▼'}
                 </span>
               )}
-              <div className="col-resizer" data-c={c} />
+              <div 
+                className="col-resizer" 
+                data-c={c}
+                onMouseDown={handleResizerMouseDown}
+              />
             </div>
           ))}
           
