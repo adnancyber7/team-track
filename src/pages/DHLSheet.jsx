@@ -1590,7 +1590,6 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [newCSPass, setNewCSPass] = useState("");
   const [priorityNumbers, setPriorityNumbers] = useState("");
   const [csUploads, setCSUploads] = useState([]);
-  const [showStartReminder, setShowStartReminder] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -3106,6 +3105,7 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [priorityMode, setPriorityMode] = useState(false);
   const [priorityList, setPriorityList] = useState([]);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [showStartReminder, setShowStartReminder] = useState(false);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
