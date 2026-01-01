@@ -3241,6 +3241,10 @@ const AgentDashboard = ({ username, onLogout }) => {
         return;
       }
 
+      // Confirmation message before marking as done
+      const confirmed = confirm('Please check the numbers. Is release okay? No update needed?');
+      if (!confirmed) return;
+
       const awb = newSheet.raw[r]?.[COL_AWB] || '';
       timer.doneClicks = (timer.doneClicks || 0) + 1;
       const doneCount = timer.doneClicks;
@@ -3294,24 +3298,25 @@ const AgentDashboard = ({ username, onLogout }) => {
     } else if (action === 'reject') {
       // Validate rejection reason is filled
       const rejCount = timer.rejClicks || 0;
-      const rej2 = newSheet.raw[r]?.[COL_REJ2] || '';
-      const rej3 = newSheet.raw[r]?.[COL_REJ3] || '';
-      const rej4 = newSheet.raw[r]?.[COL_REJ4] || '';
-      const rej5 = newSheet.raw[r]?.[COL_REJ5] || '';
-      
-      if (rejCount === 0 && !rej2.trim()) {
+      const rej2 = String(newSheet.raw[r]?.[COL_REJ2] || '').trim();
+      const rej3 = String(newSheet.raw[r]?.[COL_REJ3] || '').trim();
+      const rej4 = String(newSheet.raw[r]?.[COL_REJ4] || '').trim();
+      const rej5 = String(newSheet.raw[r]?.[COL_REJ5] || '').trim();
+
+      // Only check if data doesn't exist from admin upload
+      if (rejCount === 0 && !rej2) {
         toast.error("Please fill 2ND REJECTION reason first");
         return;
       }
-      if (rejCount === 1 && !rej3.trim()) {
+      if (rejCount === 1 && !rej3) {
         toast.error("Please fill 3RD REJECTION reason first");
         return;
       }
-      if (rejCount === 2 && !rej4.trim()) {
+      if (rejCount === 2 && !rej4) {
         toast.error("Please fill 4TH REJECTION reason first");
         return;
       }
-      if (rejCount === 3 && !rej5.trim()) {
+      if (rejCount === 3 && !rej5) {
         toast.error("Please fill 5TH REJECTION reason first");
         return;
       }
