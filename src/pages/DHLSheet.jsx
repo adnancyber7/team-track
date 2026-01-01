@@ -2175,6 +2175,8 @@ const AdminDashboard = ({ username, onLogout }) => {
       const sheets = loadAgentSheets();
       sheets.priorityNumbers = "";
       sheets.priorityList = [];
+      sheets.priorityTracking = {};
+      sheets.agentPriorityCompleted = {};
       saveAgentSheets(sheets);
       setPriorityNumbers("");
       CHANNEL.postMessage({ type: "app:sync" });
@@ -3171,14 +3173,19 @@ const AgentDashboard = ({ username, onLogout }) => {
       setRegionFilter(updatedFilter);
       
       const updatedPList = updatedSheets.priorityList || [];
+      const myPriorityCompleted = updatedSheets.agentPriorityCompleted?.[username] || false;
+
       if (JSON.stringify(updatedPList) !== JSON.stringify(priorityList)) {
         setPriorityList(updatedPList);
-        setPriorityMode(updatedPList.length > 0);
+        setPriorityMode(updatedPList.length > 0 && !myPriorityCompleted);
         if (updatedPList.length > priorityList.length) {
           toast.error(`🚨 PRIORITY ALERT: ${updatedPList.length} urgent AWBs assigned!`, { duration: 10000 });
         } else if (updatedPList.length === 0 && priorityList.length > 0) {
           toast.success(`✅ All priority AWBs completed! Normal mode restored.`, { duration: 5000 });
         }
+      } else if (myPriorityCompleted && priorityMode) {
+        // Agent just completed their priority AWBs
+        setPriorityMode(false);
       }
       
       // Check if agent is on break
@@ -3323,7 +3330,25 @@ const AgentDashboard = ({ username, onLogout }) => {
         sheets.priorityTracking[awb].agent = username;
         sheets.priorityTracking[awb].completedAt = Date.now();
 
-        // Check if all priority AWBs are completed
+        // Check if THIS agent has completed all their assigned priority AWBs
+        let myPriorityAwbs = [];
+        for (let i = 0; i < ROWS_COUNT; i++) {
+          const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
+          const rowAwb = String(newSheet.raw[i]?.[COL_AWB] || '').trim();
+          if (rowAgent === username.toLowerCase() && sheets.priorityList && sheets.priorityList.includes(rowAwb)) {
+            myPriorityAwbs.push(rowAwb);
+          }
+        }
+
+        const myCompleted = myPriorityAwbs.every(a => sheets.priorityTracking[a]?.status === 'completed');
+        if (myCompleted && myPriorityAwbs.length > 0) {
+          // This agent finished all their priority AWBs - disable priority mode for them
+          if (!sheets.agentPriorityCompleted) sheets.agentPriorityCompleted = {};
+          sheets.agentPriorityCompleted[username] = true;
+          toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
+        }
+
+        // Check if ALL priority AWBs across all agents are completed
         const allCompleted = Object.values(sheets.priorityTracking).every(t => t.status === 'completed');
         if (allCompleted) {
           setTimeout(() => {
@@ -3331,6 +3356,7 @@ const AgentDashboard = ({ username, onLogout }) => {
             updatedSheets.priorityNumbers = "";
             updatedSheets.priorityList = [];
             updatedSheets.priorityTracking = {};
+            updatedSheets.agentPriorityCompleted = {};
             saveAgentSheets(updatedSheets);
             CHANNEL.postMessage({ type: "app:sync", priorityCompleted: true });
           }, 5000);
