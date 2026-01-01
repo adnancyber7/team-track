@@ -3234,15 +3234,15 @@ const AgentDashboard = ({ username, onLogout }) => {
     }
 
     if (action === 'done') {
-      // Show confirmation popup
-      const awb = newSheet.raw[r]?.[COL_AWB] || '';
-      const confirmed = confirm(`Please check: Is AWB ${awb} released before marking as DONE?\n\nClick OK if YES (released) to mark as DONE.\nClick Cancel if NO to keep as is.`);
-
-      if (!confirmed) {
-        return; // User cancelled, don't mark as done
+      // Check if timer was started
+      if (!timer.start && timer.elapsed === 0) {
+        toast.error("⏱️ Please click START button first before marking as DONE", { duration: 3000 });
+        return;
       }
 
+      const awb = newSheet.raw[r]?.[COL_AWB] || '';
       timer.doneClicks = (timer.doneClicks || 0) + 1;
+      const doneCount = timer.doneClicks;
       timer.state = "DONE";
       timer.hidden = true; // Hide from agent view
       if (timer.start != null) {
@@ -3262,9 +3262,9 @@ const AgentDashboard = ({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
       saveAgentSheets(sheets);
-      
+
       // Update metrics immediately
-      toast.success(`✅ AWB ${awb} marked as DONE`);
+      toast.success(`✅ AWB ${awb} marked as DONE (Total Done: ${doneCount})`, { duration: 4000 });
 
       // Check if all rows in current region filter are done
       const currentFilter = sheets.agentFilters?.[username]?.region;
