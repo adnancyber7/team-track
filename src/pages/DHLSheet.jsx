@@ -727,23 +727,30 @@ const ExcelSheet = ({
   };
 
   const handleCellDoubleClick = (r, c) => {
-    if (!canEdit(r, c)) return;
     if (c === COL_STATUS) return;
-    setEditingCell({ r, c });
+    
+    // Allow viewing (and editing if permitted) for all cells except STATUS
+    const isEditable = canEdit(r, c);
+    setEditingCell({ r, c, readOnly: !isEditable });
     setEditValue(displayData[r]?.[c] || '');
     setTimeout(() => {
       if (editorRef.current) {
         editorRef.current.focus();
-        editorRef.current.select();
+        if (isEditable) {
+          editorRef.current.select();
+        }
       }
     }, 0);
   };
 
   const commitEdit = () => {
     if (editingCell) {
-      const actualRow = rowMapping[editingCell.r];
-      if (actualRow !== -1) {
-        onCellChange(actualRow, editingCell.c, editValue);
+      // Only save if not read-only
+      if (!editingCell.readOnly) {
+        const actualRow = rowMapping[editingCell.r];
+        if (actualRow !== -1) {
+          onCellChange(actualRow, editingCell.c, editValue);
+        }
       }
       setEditingCell(null);
       setEditValue("");
@@ -1270,7 +1277,7 @@ const ExcelSheet = ({
           color: #000000;
           font-size: 13px;
           outline: none;
-          overflow: hidden;
+          overflow: visible;
           white-space: nowrap;
           text-overflow: ellipsis;
           height: 30px;
@@ -1373,6 +1380,8 @@ const ExcelSheet = ({
           font-size: 10px;
           cursor: pointer;
           transition: all 0.15s;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .status-btn:hover { 
@@ -1407,6 +1416,8 @@ const ExcelSheet = ({
           display: flex;
           align-items: center;
           gap: 4px;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
 
         .upload-time-status {
@@ -1500,25 +1511,26 @@ const ExcelSheet = ({
             ref={editorRef}
             type="text"
             className="cell-editor"
+            readOnly={editingCell.readOnly}
             style={{
               width: '100%',
               height: '100%',
-              border: '2px solid var(--activeBorder)',
-              background: '#ffffff',
+              border: editingCell.readOnly ? '2px solid #94a3b8' : '2px solid var(--activeBorder)',
+              background: editingCell.readOnly ? '#f1f5f9' : '#ffffff',
               color: '#000000',
               fontSize: '13px',
               padding: '6px 10px',
               outline: 'none',
-              boxShadow: '0 0 0 3px rgba(255,210,0,0.2)',
+              boxShadow: editingCell.readOnly ? '0 0 0 3px rgba(148,163,184,0.2)' : '0 0 0 3px rgba(255,210,0,0.2)',
               fontFamily: 'inherit',
               boxSizing: 'border-box',
+              cursor: editingCell.readOnly ? 'default' : 'text',
             }}
             value={editValue}
-            onChange={(e) => handleEditValueChange(e.target.value)}
+            onChange={(e) => !editingCell.readOnly && handleEditValueChange(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
-              if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+              if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); commitEdit(); }
               if (e.key === 'Tab') { 
                 e.preventDefault(); 
                 commitEdit(); 
