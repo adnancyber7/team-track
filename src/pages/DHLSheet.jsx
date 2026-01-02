@@ -3440,15 +3440,29 @@ const AdminDashboard = ({ username, onLogout }) => {
                         const isCompleted = tracking.status === 'completed';
                         const deadlineStatus = getDeadlineStatus(tracking);
 
-                        // Find which agent is assigned to this AWB from CS sheet
+                        // Find which agent is assigned to this AWB from CS sheet and check if action taken
                         let currentAgent = tracking.agent;
+                        let actionTaken = false;
+                        let rowStatus = '';
+
                         if (!currentAgent) {
-                          for (let r = 0; r < ROWS_COUNT; r++) {
-                            if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
-                              currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
-                              break;
-                            }
-                          }
+                         for (let r = 0; r < ROWS_COUNT; r++) {
+                           if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
+                             currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
+                             rowStatus = csSheet.timers[r]?.state?.toUpperCase() || '';
+                             actionTaken = rowStatus === 'DONE' || rowStatus === 'REJECTED' || csSheet.timers[r]?.start !== null;
+                             break;
+                           }
+                         }
+                        } else {
+                         // Check action status
+                         for (let r = 0; r < ROWS_COUNT; r++) {
+                           if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
+                             rowStatus = csSheet.timers[r]?.state?.toUpperCase() || '';
+                             actionTaken = rowStatus === 'DONE' || rowStatus === 'REJECTED' || csSheet.timers[r]?.start !== null;
+                             break;
+                           }
+                         }
                         }
 
                         return (
@@ -3519,9 +3533,12 @@ const AdminDashboard = ({ username, onLogout }) => {
                               <Badge className="bg-green-600 text-white text-xs">
                                     ✓ COMPLETED
                                   </Badge> :
-
+                              actionTaken ?
+                              <Badge className="bg-blue-500 text-white text-xs">
+                                    ⚡ ACTION TAKEN
+                                  </Badge> :
                               <Badge className="bg-orange-500 text-white text-xs">
-                                    IN PROGRESS
+                                    ⏳ PENDING
                                   </Badge>
                               }
                               </div>
@@ -4272,9 +4289,12 @@ const AgentDashboard = ({ username, onLogout }) => {
           }
         }
 
-        const myCompleted = myPriorityAwbs.every((a) => sheets.priorityTracking[a]?.status === 'completed');
-        if (myCompleted && myPriorityAwbs.length > 0) {
-          // This agent finished all their priority AWBs - disable priority mode for them
+        // Count how many priority AWBs this agent has completed
+        const myCompletedCount = myPriorityAwbs.filter((a) => sheets.priorityTracking[a]?.status === 'completed').length;
+        
+        // Unlock all data after completing 1-2 priority AWBs (whichever comes first)
+        if (myCompletedCount >= 1 && myPriorityAwbs.length > 0) {
+          // This agent finished at least 1 priority AWB - disable priority mode for them
           if (!sheets.agentPriorityCompleted) sheets.agentPriorityCompleted = {};
           sheets.agentPriorityCompleted[username] = true;
 
@@ -4282,7 +4302,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           setPriorityMode(false);
           setPriorityList([]);
 
-          toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
+          toast.success(`✅ Priority AWB completed! Showing all content now.`, { duration: 5000 });
         }
 
         // Check if ALL priority AWBs across all agents are completed
