@@ -4300,13 +4300,17 @@ const AgentDashboard = ({ username, onLogout }) => {
         if (allMyPrioritiesCompleted) {
           // Remove this agent from priority mode
           delete sheets.agentPriorityMap[username];
-          toast.success(`✅ All priority AWBs completed! Showing all content now.`, { duration: 5000 });
+          saveAgentSheets(sheets);
+          setAgentSheets(sheets);
           setForceRefresh(prev => prev + 1);
+          toast.success(`✅ All priority AWBs completed! Showing all content now.`, { duration: 5000 });
           CHANNEL.postMessage({ type: "app:sync" });
+        } else {
+          saveAgentSheets(sheets);
         }
+      } else {
+        saveAgentSheets(sheets);
       }
-
-      saveAgentSheets(sheets);
 
       // Update metrics immediately
       toast.success(`✅ AWB ${awb} marked as DONE (Total Done: ${doneCount})`, { duration: 4000 });
