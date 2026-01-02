@@ -523,16 +523,57 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" style={{
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden" style={{
       background: `
         radial-gradient(900px 500px at 15% 10%, rgba(255,204,0,.55), transparent 60%),
         radial-gradient(700px 400px at 85% 20%, rgba(255,204,0,.35), transparent 55%),
         linear-gradient(180deg, #fff 0%, #fff7d1 100%)
       `
     }}>
-      <div className="w-full max-w-md">
+      {/* Animated Background Shapes */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <motion.div
+          className="absolute w-64 h-64 bg-yellow-300/10 rounded-full blur-3xl"
+          animate={{
+            x: [0, 100, 0],
+            y: [0, -100, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{ top: '10%', left: '10%' }}
+        />
+        <motion.div
+          className="absolute w-96 h-96 bg-orange-300/10 rounded-full blur-3xl"
+          animate={{
+            x: [0, -100, 0],
+            y: [0, 100, 0],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          style={{ bottom: '10%', right: '10%' }}
+        />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Login Panel */}
-        <Card className="bg-white/90 border-black/10 shadow-2xl overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="backdrop-blur-xl bg-white/70 border border-white/20 shadow-2xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,247,209,0.8) 100%)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)'
+            }}
+          >
           <div className="flex gap-2 p-4 bg-yellow-400/25 border-b border-black/10">
             <Button
               variant={activeTab === "admin" ? "default" : "outline"}
@@ -725,6 +766,7 @@ const LoginScreen = ({ onLogin }) => {
             </AnimatePresence>
           </CardContent>
         </Card>
+        </motion.div>
 
         {/* Forgot Password Dialog */}
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
