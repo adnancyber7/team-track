@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import DailyReportDialog from '../components/DailyReportDialog';
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
@@ -433,16 +434,25 @@ const LoginScreen = ({ onLogin }) => {
     setError("");
 
     try {
-      const response = await fetch('/api/functions/sendOTP', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
-      });
+      const state = loadState();
+      const savedEmail = state.admin.email || "";
+      
+      if (!savedEmail) {
+        setError("No recovery email configured. Please contact admin to set up email in Admin Panel Settings.");
+        setSendingOTP(false);
+        return;
+      }
+      
+      if (forgotEmail.toLowerCase() !== savedEmail.toLowerCase()) {
+        setError("Email does not match registered email");
+        setSendingOTP(false);
+        return;
+      }
 
-      const data = await response.json();
+      const response = await base44.functions.invoke('sendOTP', { email: forgotEmail });
 
-      if (!response.ok) {
-        setError(data.error || "Failed to send OTP");
+      if (response.data.error) {
+        setError(response.data.error);
         return;
       }
 
@@ -450,7 +460,7 @@ const LoginScreen = ({ onLogin }) => {
       setForgotStep("otp");
       setError("");
     } catch (error) {
-      setError("Network error. Please try again.");
+      setError(error.message || "Failed to send OTP. Please try again.");
     } finally {
       setSendingOTP(false);
     }
@@ -481,24 +491,20 @@ const LoginScreen = ({ onLogin }) => {
     setError("");
 
     try {
-      const response = await fetch('/api/functions/verifyOTP', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: forgotEmail,
-          otp: otpCode,
-          newPassword: newPassword
-        })
+      const response = await base44.functions.invoke('verifyOTP', {
+        email: forgotEmail,
+        otp: otpCode,
+        newPassword: newPassword
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok) {
+      if (data.error) {
         if (data.attemptsLeft !== undefined) {
           setRemainingAttempts(data.attemptsLeft);
           setError(`${data.error}. ${data.attemptsLeft} attempts remaining.`);
         } else {
-          setError(data.error || "Failed to verify OTP");
+          setError(data.error);
         }
         return;
       }
@@ -516,7 +522,7 @@ const LoginScreen = ({ onLogin }) => {
       setConfirmPassword("");
       setError("");
     } catch (error) {
-      setError("Network error. Please try again.");
+      setError(error.message || "Failed to verify OTP. Please try again.");
     } finally {
       setVerifyingOTP(false);
     }
