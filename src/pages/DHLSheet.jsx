@@ -4099,7 +4099,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
         onConfirm={confirmDialog.onConfirm} />
     </div>);
 
-};
+});
 
 // ============================================================================
 // AGENT DASHBOARD COMPONENT
@@ -4877,6 +4877,10 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         </div>);
 
 });
+
+AgentDashboard.displayName = 'AgentDashboard';
+AdminDashboard.displayName = 'AdminDashboard';
+CSAllocatorDashboard.displayName = 'CSAllocatorDashboard';
 
 // ============================================================================
 // MAIN APP COMPONENT
