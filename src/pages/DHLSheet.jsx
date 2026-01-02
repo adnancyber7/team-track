@@ -4878,9 +4878,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
 });
 
-AgentDashboard.displayName = 'AgentDashboard';
 AdminDashboard.displayName = 'AdminDashboard';
 CSAllocatorDashboard.displayName = 'CSAllocatorDashboard';
+AgentDashboard.displayName = 'AgentDashboard';
 
 // ============================================================================
 // MAIN APP COMPONENT
