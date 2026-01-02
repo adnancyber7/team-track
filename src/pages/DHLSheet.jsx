@@ -747,8 +747,6 @@ const LoginScreen = ({ onLogin }) => {
                               placeholder="Enter admin username"
                               className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
-
-                        </div>
                       </div>
                     </motion.div>
                     <motion.div
@@ -766,15 +764,12 @@ const LoginScreen = ({ onLogin }) => {
                               placeholder="Enter admin password"
                               className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
-
                           <button
                               type="button"
                               onClick={() => setShowAdminPass(!showAdminPass)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-black/60 hover:text-yellow-400 transition-colors">
-
                             {showAdminPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
-                        </div>
                       </div>
                     </motion.div>
                   </div>
@@ -864,8 +859,6 @@ const LoginScreen = ({ onLogin }) => {
                               placeholder="Enter agent username"
                               className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
-
-                        </div>
                       </div>
                     </motion.div>
                     <motion.div
@@ -957,8 +950,6 @@ const LoginScreen = ({ onLogin }) => {
                               placeholder="Enter CS username"
                               className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
-
-                        </div>
                       </div>
                     </motion.div>
                     <motion.div
@@ -1204,8 +1195,6 @@ const LoginScreen = ({ onLogin }) => {
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Enter new password"
                         className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400" />
-
-                      </div>
                     </div>
                   </motion.div>
 
@@ -1225,8 +1214,6 @@ const LoginScreen = ({ onLogin }) => {
                         placeholder="Confirm new password"
                         className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
                         onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()} />
-
-                      </div>
                     </div>
                   </motion.div>
 
