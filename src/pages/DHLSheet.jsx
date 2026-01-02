@@ -1111,7 +1111,7 @@ const LoginScreen = ({ onLogin }) => {
                       setError("");
                     }}
                     variant="outline"
-                    className="flex-1 font-bold bg-white/10 text-white border-white/20 hover:bg-white/20">
+                    className="flex-1 font-bold bg-yellow-400/20 text-white border-yellow-400/40 hover:bg-yellow-400/30">
 
                       Cancel
                     </Button>
@@ -1119,8 +1119,7 @@ const LoginScreen = ({ onLogin }) => {
                     onClick={handleSendOTP}
                     disabled={sendingOTP}
                     className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black">
-
-                      <span className="relative flex items-center justify-center">
+                      <span className="flex items-center justify-center">
                         {sendingOTP ?
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
 
@@ -1242,7 +1241,7 @@ const LoginScreen = ({ onLogin }) => {
                       setError("");
                     }}
                     variant="outline"
-                    className="flex-1 font-bold bg-white/10 text-white border-white/20 hover:bg-white/20">
+                    className="flex-1 font-bold bg-yellow-400/20 text-white border-yellow-400/40 hover:bg-yellow-400/30">
 
                       Back
                     </Button>
@@ -1250,8 +1249,7 @@ const LoginScreen = ({ onLogin }) => {
                     onClick={handleVerifyOTP}
                     disabled={verifyingOTP}
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black">
-
-                      <span className="relative flex items-center justify-center">
+                      <span className="flex items-center justify-center">
                         {verifyingOTP ?
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
 
