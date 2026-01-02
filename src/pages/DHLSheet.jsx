@@ -349,6 +349,10 @@ const LoginScreen = ({ onLogin }) => {
   const [csUser, setCSUser] = useState("");
   const [csPass, setCSPass] = useState("");
   const [error, setError] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleAdminLogin = () => {
     const state = loadState();
@@ -397,10 +401,43 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  const fillDefault = () => {
-    setAdminUser("admin");
-    setAdminPass("admin123");
+  const handleForgotPassword = () => {
+    setShowForgotPassword(true);
     setError("");
+  };
+
+  const handleResetPassword = () => {
+    if (!resetCode.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      setError("Please fill all fields");
+      return;
+    }
+    
+    // Security code verification
+    if (resetCode !== "DHLRESET2026") {
+      setError("Invalid reset code");
+      return;
+    }
+    
+    if (newPassword.length < 4) {
+      setError("Password must be at least 4 characters");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    const state = loadState();
+    state.admin.password = newPassword;
+    saveState(state);
+    
+    setShowForgotPassword(false);
+    setResetCode("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError("");
+    toast.success("Admin password reset successfully!");
   };
 
   return (
@@ -449,47 +486,53 @@ const LoginScreen = ({ onLogin }) => {
                   className="space-y-4"
                 >
                   <div>
-                    <h2 className="text-xl font-bold mb-1">Admin Login</h2>
-                    <p className="text-sm text-black/60">Default: <b>admin</b> / <b>admin123</b></p>
+                    <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                      Admin Login
+                    </h2>
+                    <p className="text-sm text-black/60">Access administrative dashboard</p>
                   </div>
                   
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-xs text-black/60">Admin Username</Label>
+                      <Label className="text-xs text-black/70 font-semibold">Admin Username</Label>
                       <Input
                         value={adminUser}
                         onChange={(e) => setAdminUser(e.target.value)}
                         placeholder="Enter admin username"
-                        className="mt-1"
+                        className="mt-1 border-black/20 focus:border-yellow-400 focus:ring-yellow-400"
                         onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-black/60">Admin Password</Label>
+                      <Label className="text-xs text-black/70 font-semibold">Admin Password</Label>
                       <Input
                         type="password"
                         value={adminPass}
                         onChange={(e) => setAdminPass(e.target.value)}
                         placeholder="Enter admin password"
-                        className="mt-1"
+                        className="mt-1 border-black/20 focus:border-yellow-400 focus:ring-yellow-400"
                         onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
                       />
                     </div>
                   </div>
 
                   <div className="flex gap-3">
-                    <Button onClick={handleAdminLogin} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black">
+                    <Button onClick={handleAdminLogin} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black shadow-lg">
                       Login
                     </Button>
-                    <Button onClick={fillDefault} variant="outline" className="flex-1 font-bold">
-                      Fill Default
+                    <Button onClick={handleForgotPassword} variant="outline" className="flex-1 font-bold border-yellow-400/50 text-yellow-700 hover:bg-yellow-50">
+                      Forgot Password
                     </Button>
                   </div>
 
                   {error && (
-                    <div className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm font-medium"
+                    >
                       {error}
-                    </div>
+                    </motion.div>
                   )}
                 </motion.div>
               ) : activeTab === "agent" ? (
@@ -600,6 +643,80 @@ const LoginScreen = ({ onLogin }) => {
             </AnimatePresence>
           </CardContent>
         </Card>
+
+        {/* Forgot Password Dialog */}
+        <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+          <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <AlertCircle className="w-6 h-6 text-yellow-600" />
+                Reset Admin Password
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium">
+                  Contact your system administrator for the reset code.
+                </p>
+              </div>
+              <div>
+                <Label className="text-xs text-black/70 font-semibold">Reset Code</Label>
+                <Input
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  placeholder="Enter reset code"
+                  className="mt-1 border-black/20"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-black/70 font-semibold">New Password</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="mt-1 border-black/20"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-black/70 font-semibold">Confirm Password</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="mt-1 border-black/20"
+                />
+              </div>
+              {error && (
+                <div className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm font-medium">
+                  {error}
+                </div>
+              )}
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetCode("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setError("");
+                }} 
+                variant="outline" 
+                className="flex-1 font-bold"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleResetPassword} 
+                className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold shadow-lg"
+              >
+                Reset Password
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
