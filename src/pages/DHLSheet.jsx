@@ -3333,6 +3333,19 @@ const AgentDashboard = ({ username, onLogout }) => {
     setPriorityList(pList);
     setPriorityMode(pList.length > 0 && !myCompleted);
 
+    // Initialize break status on mount
+    const currentSheet = loadCSSheet();
+    const agentBreak = currentSheet.agentBreaks?.[username];
+    if (agentBreak?.active && agentBreak?.start) {
+      setOnBreak(true);
+      setBreakType(agentBreak.type);
+      setBreakStart(agentBreak.start);
+    } else {
+      setOnBreak(false);
+      setBreakType(null);
+      setBreakStart(null);
+    }
+
     const interval = setInterval(() => {
       setRefreshKey(k => k + 1);
       const updated = loadCSSheet();
@@ -3363,12 +3376,14 @@ const AgentDashboard = ({ username, onLogout }) => {
         }
       }
       
-      // Check if agent is on break
+      // Sync break status in real-time
       const agentBreak = updated.agentBreaks?.[username];
       if (agentBreak?.active && agentBreak?.start) {
-        setOnBreak(true);
-        setBreakType(agentBreak.type);
-        setBreakStart(agentBreak.start);
+        if (!onBreak || breakType !== agentBreak.type || breakStart !== agentBreak.start) {
+          setOnBreak(true);
+          setBreakType(agentBreak.type);
+          setBreakStart(agentBreak.start);
+        }
       } else {
         if (onBreak) {
           setOnBreak(false);
@@ -3379,7 +3394,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [username, onBreak, priorityList]);
+  }, [username, onBreak, breakType, breakStart, priorityList, priorityMode]);
 
   const handleBreakToggle = (type) => {
     const newSheet = deepCopy(csSheet);
@@ -4094,6 +4109,27 @@ export default function DHLSheet() {
 
   const handleLogout = () => {
     const state = loadState();
+    const currentUsername = state.session.username;
+    const currentRole = state.session.role;
+    
+    // Clear agent break status when logging out
+    if (currentRole === 'agent' && currentUsername) {
+      const sheet = loadCSSheet();
+      if (sheet.agentBreaks && sheet.agentBreaks[currentUsername]) {
+        delete sheet.agentBreaks[currentUsername];
+        saveCSSheet(sheet);
+        CHANNEL.postMessage({ 
+          type: "app:sync", 
+          breakUpdate: { 
+            agent: currentUsername, 
+            status: 'ended', 
+            type: null,
+            timestamp: Date.now()
+          } 
+        });
+      }
+    }
+    
     state.session = { role: null, username: null };
     saveState(state);
     setSession({ role: null, username: null });
