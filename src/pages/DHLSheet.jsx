@@ -4629,7 +4629,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <span className="font-mono font-bold">{getAgentMetrics.awb}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
-                <span className="text-sm font-medium">Pending Lines:</span>
+                <span className="text-sm font-medium">:</span>
                 <span className="font-mono font-bold">{getAgentMetrics.lineSum}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
@@ -4645,7 +4645,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <span className="font-mono font-bold text-red-800">{getAgentMetrics.rej}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-                <span className="text-sm font-medium text-red-800">Rej Lines:</span>
+                <span className="text-sm font-medium text-red-800">:</span>
                 <span className="font-mono font-bold text-red-800">{getAgentMetrics.totalRejectedLines}</span>
               </div>
               <Button
