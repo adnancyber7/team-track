@@ -1064,7 +1064,7 @@ const LoginScreen = ({ onLogin }) => {
           transition={{ delay: 0.8 }}
           className="text-center mt-8">
 
-          <p className="text-gray-400 text-sm">© 2026 DHL Sheet. Secure Enterprise Portal.</p>
+          <p className="text-gray-400 text-sm">© 2026 TEAM TRACK. Buil by adnancyber7.</p>
         </motion.div>
 
         {/* Forgot Password Dialog - Ultra Modern Design */}
