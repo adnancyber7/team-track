@@ -28,9 +28,11 @@ export default function CellEditorDialog({
   const handleKeyDown = (e) => {
     if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       onOpenChange(false);
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
+      e.stopPropagation();
       if (!readOnly) {
         onSave();
         onOpenChange(false);
@@ -39,9 +41,11 @@ export default function CellEditorDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
       <DialogContent 
         className="max-w-2xl backdrop-blur-3xl bg-gradient-to-br from-black/50 via-yellow-900/40 to-black/50 border border-yellow-500/30 shadow-2xl"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
         style={{
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
@@ -73,16 +77,18 @@ export default function CellEditorDialog({
           </DialogTitle>
         </DialogHeader>
         
-        <div className="py-4">
+        <div className="py-4" onClick={(e) => e.stopPropagation()}>
           <textarea
             ref={textareaRef}
             value={value}
             onChange={(e) => !readOnly && onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             readOnly={readOnly}
             className={`w-full min-h-[200px] max-h-[400px] p-4 rounded-xl border-2 text-lg font-medium resize-y ${
               readOnly 
-                ? 'bg-blue-50/90 border-blue-400 text-gray-900 cursor-default' 
+                ? 'bg-blue-50/90 border-blue-400 text-gray-900 cursor-text' 
                 : 'bg-white border-yellow-400 text-gray-900 focus:ring-4 focus:ring-yellow-400/30 focus:border-yellow-500'
             }`}
             style={{
@@ -94,6 +100,11 @@ export default function CellEditorDialog({
           {!readOnly && (
             <p className="text-xs text-gray-300 mt-2">
               💡 Press <kbd className="px-1.5 py-0.5 bg-yellow-400/20 rounded border border-yellow-400/40 font-mono">Ctrl+Enter</kbd> to save quickly
+            </p>
+          )}
+          {readOnly && (
+            <p className="text-xs text-blue-300 mt-2">
+              ℹ️ This column is read-only. You can view and copy the content.
             </p>
           )}
         </div>

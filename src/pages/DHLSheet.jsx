@@ -86,7 +86,7 @@ COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
 const AGENT_EDITABLE = new Set([
-COL_LINE, COL_LOT, COL_REMARKS, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
+COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
 );
 
 const CS_ALLOCATOR_EDITABLE = new Set([
@@ -1381,14 +1381,14 @@ const ExcelSheet = ({
     setSelection({ r1: r, c1: c, r2: r, c2: c });
   };
 
-  const handleCellDoubleClick = (r, c) => {
+  const handleCellDoubleClick = (r, c, e) => {
+    if (e) e.stopPropagation();
     if (c === COL_STATUS) return;
 
-    // Allow viewing (and editing if permitted) for all cells except STATUS
+    // For agents: only rejection columns are editable, all others are read-only (view/copy only)
     const isEditable = canEdit(r, c);
-    const isViewOnly = [COL_REASON, COL_CONF1, COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c);
 
-    setEditingCell({ r, c, readOnly: !isEditable || isViewOnly });
+    setEditingCell({ r, c, readOnly: !isEditable });
     setEditValue(displayData[r]?.[c] || '');
     setShowCellEditor(true);
   };
@@ -2135,7 +2135,7 @@ const ExcelSheet = ({
               onMouseEnter={() => handleMouseEnter(r, c)}
               onMouseUp={handleCellMouseUp}
               onClick={() => handleCellClick(r, c)}
-              onDoubleClick={() => handleCellDoubleClick(r, c)}>
+              onDoubleClick={(e) => handleCellDoubleClick(r, c, e)}>
 
                   {editingCell && editingCell.r === r && editingCell.c === c ? null : renderCellContent(r, c)}
                 </div>
