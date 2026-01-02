@@ -27,7 +27,8 @@ Deno.serve(async (req) => {
     globalThis.otpStorage[email] = otpData;
 
     // Send OTP email
-    await base44.asServiceRole.integrations.Core.SendEmail({
+    await base44.integrations.Core.SendEmail({
+      from_name: 'DHL Sheet Admin',
       to: email,
       subject: 'DHL Sheet - Password Reset OTP',
       body: `
