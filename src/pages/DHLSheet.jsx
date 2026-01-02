@@ -1846,6 +1846,7 @@ const ExcelSheet = ({
           padding: 12px;
           box-sizing: border-box;
           background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+          overscroll-behavior: contain;
         }
 
         .sheet-scroll::-webkit-scrollbar {
