@@ -1800,37 +1800,12 @@ const ExcelSheet = ({
   };
 
   const visibleRows = isAdmin ? ROWS_COUNT : compactedView.data.length;
-
-  const columnWidthSum = colWidths.reduce((sum, w) => sum + w, 0);
-  const rowHeight = 30;
-  const headerHeight = 30;
-
-  // Memoized cell renderer for virtualization
-  const CellRenderer = useCallback(({ columnIndex, rowIndex, style }) => {
-    const actualRow = rowIndex;
-    const actualCol = columnIndex;
-
-    if (actualRow >= visibleRows) return null;
-
-    const cellClasses = getCellClass(actualRow, actualCol);
-
-    return (
-      <div
-        className={cellClasses}
-        style={{
-          ...style,
-          width: colWidths[actualCol],
-          position: 'absolute',
-        }}
-        onMouseDown={(e) => handleCellMouseDown(actualRow, actualCol, e)}
-        onMouseEnter={() => handleMouseEnter(actualRow, actualCol)}
-        onMouseUp={handleCellMouseUp}
-        onClick={() => handleCellClick(actualRow, actualCol)}
-        onDoubleClick={(e) => handleCellDoubleClick(actualRow, actualCol, e)}>
-        {editingCell && editingCell.r === actualRow && editingCell.c === actualCol ? null : renderCellContent(actualRow, actualCol)}
-      </div>
-    );
-  }, [visibleRows, colWidths, displayData, displayTimers, activeCell, selection, editingCell, blinkRows, selectedRows, typingCell, rowMapping]);
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
+    gridTemplateRows: `30px repeat(${visibleRows}, 30px)`,
+    width: 'fit-content'
+  };
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -1882,6 +1857,11 @@ const ExcelSheet = ({
           padding: 12px;
           box-sizing: border-box;
           background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+          overscroll-behavior: contain;
+          scroll-behavior: auto;
+        }
+        
+        .sheet-scroll * {
           overscroll-behavior: contain;
         }
 
@@ -1965,6 +1945,7 @@ const ExcelSheet = ({
           box-sizing: border-box;
           transition: background 0.12s ease, box-shadow 0.12s ease;
           cursor: pointer;
+          user-select: text;
         }
 
         .cell:hover { background: rgba(255,245,200,0.02); }
@@ -2116,66 +2097,69 @@ const ExcelSheet = ({
       `}</style>
       
       <div className="sheet-scroll" ref={gridRef}>
-        {/* Headers */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white' }}>
-          <div style={{ display: 'flex', height: headerHeight }}>
-            <div className="corner" style={{ width: 48, flexShrink: 0 }}></div>
-            {columns.map((col, c) =>
-              <div
-                key={`col-${c}`}
-                className="col-header"
-                style={{ width: colWidths[c], position: 'relative', flexShrink: 0 }}
-                onClick={() => handleSort(c)}
-                title={`Click to sort by ${col}`}>
-                <span>{colToName(c)}</span>
-                <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}>{col}</span>
-                {sortConfig.column === c &&
-                  <span style={{ marginLeft: '4px' }}>
-                    {sortConfig.direction === 'asc' ? '▲' : '▼'}
-                  </span>
-                }
-                <div
-                  className="col-resizer"
-                  data-c={c}
-                  onMouseDown={handleResizerMouseDown} />
-              </div>
-            )}
-          </div>
-        </div>
+        <div className="sheet-grid" style={gridStyle}>
+          {/* Corner */}
+          <div className="corner" style={{ gridRow: 1, gridColumn: 1 }}></div>
+          
+          {/* Column Headers */}
+          {columns.map((col, c) =>
+          <div
+            key={`col-${c}`}
+            className="col-header"
+            style={{ gridRow: 1, gridColumn: c + 2, position: 'relative' }}
+            onClick={() => handleSort(c)}
+            title={`Click to sort by ${col}`}>
 
-        {/* Virtualized Grid Content */}
-        <div style={{ position: 'relative' }}>
-          {Array.from({ length: Math.min(visibleRows, 100) }).map((_, r) => (
-            <div key={`row-${r}`} style={{ display: 'flex', height: rowHeight }}>
+              <span>{colToName(c)}</span>
+              <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}>{col}</span>
+              {sortConfig.column === c &&
+            <span style={{ marginLeft: '4px' }}>
+                  {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                </span>
+            }
               <div
-                className="row-header"
-                style={{ width: 48, flexShrink: 0, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
-                onClick={() => {
-                  const actualRow = rowMapping[r];
-                  if (isAdmin && onRowSelect && actualRow !== -1) {
-                    onRowSelect(actualRow);
-                  }
-                }}>
-                {isAdmin && onRowSelect && selectedRows ?
-                  rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" /> :
-                  r + 1
+              className="col-resizer"
+              data-c={c}
+              onMouseDown={handleResizerMouseDown} />
+
+            </div>
+          )}
+          
+          {/* Row Headers & Cells */}
+          {Array.from({ length: visibleRows }).map((_, r) =>
+          <React.Fragment key={`row-${r}`}>
+              <div
+              className="row-header"
+              style={{ gridRow: r + 2, gridColumn: 1, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
+              onClick={() => {
+                const actualRow = rowMapping[r];
+                if (isAdmin && onRowSelect && actualRow !== -1) {
+                  onRowSelect(actualRow);
                 }
+              }}>
+
+                {isAdmin && onRowSelect && selectedRows ?
+              rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" /> :
+
+              r + 1
+              }
               </div>
               {columns.map((_, c) =>
-                <div
-                  key={`cell-${r}-${c}`}
-                  className={getCellClass(r, c)}
-                  style={{ width: colWidths[c], flexShrink: 0, position: 'relative' }}
-                  onMouseDown={(e) => handleCellMouseDown(r, c, e)}
-                  onMouseEnter={() => handleMouseEnter(r, c)}
-                  onMouseUp={handleCellMouseUp}
-                  onClick={() => handleCellClick(r, c)}
-                  onDoubleClick={(e) => handleCellDoubleClick(r, c, e)}>
+            <div
+              key={`cell-${r}-${c}`}
+              className={getCellClass(r, c)}
+              style={{ gridRow: r + 2, gridColumn: c + 2, position: 'relative' }}
+              onMouseDown={(e) => handleCellMouseDown(r, c, e)}
+              onMouseEnter={() => handleMouseEnter(r, c)}
+              onMouseUp={handleCellMouseUp}
+              onClick={() => handleCellClick(r, c)}
+              onDoubleClick={(e) => handleCellDoubleClick(r, c, e)}>
+
                   {editingCell && editingCell.r === r && editingCell.c === c ? null : renderCellContent(r, c)}
                 </div>
-              )}
-            </div>
-          ))}
+            )}
+            </React.Fragment>
+          )}
         </div>
       </div>
       
