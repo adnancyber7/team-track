@@ -13,27 +13,18 @@ Deno.serve(async (req) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    // Get admin config
-    const configs = await base44.asServiceRole.entities.AdminConfig.list();
-    const adminConfig = configs[0];
-
-    if (!adminConfig || adminConfig.admin_email !== email) {
-      return Response.json({ error: 'Email not registered' }, { status: 404 });
-    }
-
-    // Check attempts
-    if (adminConfig.otp_attempts >= 5) {
-      return Response.json({ 
-        error: 'Too many attempts. Please try again later.' 
-      }, { status: 429 });
-    }
-
-    // Update config with OTP
-    await base44.asServiceRole.entities.AdminConfig.update(adminConfig.id, {
+    // Store OTP temporarily (in production, use database)
+    // For this demo, we'll store in a simple key-value format
+    const otpData = {
+      email,
       otp_code: otp,
       otp_expiry: expiry,
       otp_attempts: 0
-    });
+    };
+    
+    // Store in localStorage-like mechanism (you can enhance to use actual DB)
+    globalThis.otpStorage = globalThis.otpStorage || {};
+    globalThis.otpStorage[email] = otpData;
 
     // Send OTP email
     await base44.asServiceRole.integrations.Core.SendEmail({

@@ -94,7 +94,7 @@ const CS_TEAM_EDITABLE = new Set([
 ]);
 
 const DEFAULT_STATE = {
-  admin: { username: "admin", password: "admin123" },
+  admin: { username: "admin", password: "admin123", email: "" },
   agents: [],
   csAllocators: [{ username: "cs1", password: "cs123" }],
   session: { role: null, username: null }
@@ -1957,6 +1957,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [newAgentPass, setNewAgentPass] = useState("");
   const [newAdminUser, setNewAdminUser] = useState("");
   const [newAdminPass, setNewAdminPass] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -1976,6 +1977,7 @@ const AdminDashboard = ({ username, onLogout }) => {
     setAgents(state.agents || []);
     setCSAllocators(state.csAllocators || []);
     setNewAdminUser(state.admin.username);
+    setAdminEmail(state.admin.email || "");
 
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
@@ -2157,6 +2159,24 @@ const AdminDashboard = ({ username, onLogout }) => {
     saveState(state);
     setNewAdminPass("");
     toast.success("Admin credentials updated");
+  };
+
+  const saveAdminEmail = () => {
+    if (!adminEmail.trim()) {
+      toast.error("Please enter an email address");
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
+    const state = loadState();
+    state.admin.email = adminEmail;
+    saveState(state);
+    toast.success("Recovery email saved successfully");
   };
 
   const getAgentMetrics = (agentUser) => {
@@ -3408,15 +3428,16 @@ const AdminDashboard = ({ username, onLogout }) => {
                     <Label className="text-xs text-black/60">Recovery Email</Label>
                     <Input
                       type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
                       placeholder="admin@company.com"
                       className="mt-1"
-                      defaultValue=""
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Used for password recovery via OTP
                     </p>
                   </div>
-                  <Button className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
+                  <Button onClick={saveAdminEmail} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
                     <Save className="w-4 h-4 mr-2" />
                     Save Email
                   </Button>

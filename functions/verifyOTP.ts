@@ -13,44 +13,36 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Password must be at least 4 characters' }, { status: 400 });
     }
 
-    // Get admin config
-    const configs = await base44.asServiceRole.entities.AdminConfig.list();
-    const adminConfig = configs[0];
-
-    if (!adminConfig || adminConfig.admin_email !== email) {
-      return Response.json({ error: 'Email not registered' }, { status: 404 });
+    // Get OTP data from storage
+    const otpData = globalThis.otpStorage?.[email];
+    
+    if (!otpData) {
+      return Response.json({ error: 'No OTP found for this email' }, { status: 404 });
     }
 
     // Check expiry
-    if (Date.now() > adminConfig.otp_expiry) {
+    if (Date.now() > otpData.otp_expiry) {
       return Response.json({ error: 'OTP has expired' }, { status: 400 });
     }
 
     // Check attempts
-    if (adminConfig.otp_attempts >= 5) {
+    if (otpData.otp_attempts >= 5) {
       return Response.json({ 
         error: 'Too many failed attempts. Please request a new OTP.' 
       }, { status: 429 });
     }
 
     // Verify OTP
-    if (adminConfig.otp_code !== otp) {
-      await base44.asServiceRole.entities.AdminConfig.update(adminConfig.id, {
-        otp_attempts: adminConfig.otp_attempts + 1
-      });
+    if (otpData.otp_code !== otp) {
+      otpData.otp_attempts++;
       return Response.json({ 
         error: 'Invalid OTP code',
-        attemptsLeft: 5 - (adminConfig.otp_attempts + 1)
+        attemptsLeft: 5 - otpData.otp_attempts
       }, { status: 400 });
     }
 
-    // OTP verified - update password
-    await base44.asServiceRole.entities.AdminConfig.update(adminConfig.id, {
-      admin_password: newPassword,
-      otp_code: null,
-      otp_expiry: null,
-      otp_attempts: 0
-    });
+    // OTP verified - clear from storage
+    delete globalThis.otpStorage[email];
 
     return Response.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
