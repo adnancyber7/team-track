@@ -7,6 +7,7 @@ import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
 import AdvancedReportingModule from '../components/AdvancedReportingModule';
 import AIPerformanceInsights from '../components/AIPerformanceInsights';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -2243,6 +2244,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const [priorityNumbers, setPriorityNumbers] = useState("");
   const [csUploads, setCSUploads] = useState([]);
   const fileInputRef = useRef(null);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
 
   useEffect(() => {
     const state = loadState();
@@ -2524,19 +2526,26 @@ const AdminDashboard = ({ username, onLogout }) => {
   };
 
   const clearAllData = () => {
-    if (confirm('Are you sure you want to clear all CS Sheet data? This cannot be undone.')) {
-      const newSheet = {
-        raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
-        timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
-        colWidths: CS_COLUMNS.map(() => 140),
-        blinkRows: {},
-        agentBreaks: {}
-      };
-      setCSSheet(newSheet);
-      saveCSSheet(newSheet);
-      CHANNEL.postMessage({ type: "app:sync" });
-      toast.success("All data cleared");
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Clear All Data',
+      message: 'Are you sure you want to clear all CS Sheet data? This cannot be undone.',
+      variant: 'danger',
+      confirmText: 'Clear All',
+      onConfirm: () => {
+        const newSheet = {
+          raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
+          timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
+          colWidths: CS_COLUMNS.map(() => 140),
+          blinkRows: {},
+          agentBreaks: {}
+        };
+        setCSSheet(newSheet);
+        saveCSSheet(newSheet);
+        CHANNEL.postMessage({ type: "app:sync" });
+        toast.success("All data cleared");
+      }
+    });
   };
 
   const downloadAgentData = (agentUser) => {
@@ -2699,18 +2708,25 @@ const AdminDashboard = ({ username, onLogout }) => {
       return;
     }
 
-    if (confirm(`Clear ${selectedRows.size} selected rows?`)) {
-      const newSheet = deepCopy(csSheet);
-      selectedRows.forEach((r) => {
-        newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
-        newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" };
-      });
-      setCSSheet(newSheet);
-      saveCSSheet(newSheet);
-      CHANNEL.postMessage({ type: "app:sync" });
-      setSelectedRows(new Set());
-      toast.success(`Cleared ${selectedRows.size} rows`);
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Clear Selected Rows',
+      message: `Clear ${selectedRows.size} selected rows?`,
+      variant: 'warning',
+      confirmText: 'Clear',
+      onConfirm: () => {
+        const newSheet = deepCopy(csSheet);
+        selectedRows.forEach((r) => {
+          newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
+          newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" };
+        });
+        setCSSheet(newSheet);
+        saveCSSheet(newSheet);
+        CHANNEL.postMessage({ type: "app:sync" });
+        setSelectedRows(new Set());
+        toast.success(`Cleared ${selectedRows.size} rows`);
+      }
+    });
   };
 
   const handleDeleteSelected = () => {
@@ -2719,23 +2735,30 @@ const AdminDashboard = ({ username, onLogout }) => {
       return;
     }
 
-    if (confirm(`Delete ${selectedRows.size} selected rows? This will shift rows up.`)) {
-      const newSheet = deepCopy(csSheet);
-      const sortedRows = Array.from(selectedRows).sort((a, b) => b - a);
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Selected Rows',
+      message: `Delete ${selectedRows.size} selected rows? This will shift rows up.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+      onConfirm: () => {
+        const newSheet = deepCopy(csSheet);
+        const sortedRows = Array.from(selectedRows).sort((a, b) => b - a);
 
-      sortedRows.forEach((r) => {
-        newSheet.raw.splice(r, 1);
-        newSheet.timers.splice(r, 1);
-        newSheet.raw.push(Array(CS_COLUMNS.length).fill(''));
-        newSheet.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
-      });
+        sortedRows.forEach((r) => {
+          newSheet.raw.splice(r, 1);
+          newSheet.timers.splice(r, 1);
+          newSheet.raw.push(Array(CS_COLUMNS.length).fill(''));
+          newSheet.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
+        });
 
-      setCSSheet(newSheet);
-      saveCSSheet(newSheet);
-      CHANNEL.postMessage({ type: "app:sync" });
-      setSelectedRows(new Set());
-      toast.success(`Deleted ${selectedRows.size} rows`);
-    }
+        setCSSheet(newSheet);
+        saveCSSheet(newSheet);
+        CHANNEL.postMessage({ type: "app:sync" });
+        setSelectedRows(new Set());
+        toast.success(`Deleted ${selectedRows.size} rows`);
+      }
+    });
   };
 
   const applyFilters = (filters) => {
@@ -2920,19 +2943,26 @@ const AdminDashboard = ({ username, onLogout }) => {
 
 
   const handleClearPriority = () => {
-    if (confirm('Clear Priority Mode?')) {
-      const sheets = loadAgentSheets();
-      sheets.priorityNumbers = "";
-      sheets.priorityModeActive = false;
-      sheets.agentPriorityMap = {};
-      sheets.priorityAgentMap = {};
-      sheets.priorityStatus = {};
-      saveAgentSheets(sheets);
-      setAgentSheets(sheets); // Update state immediately
-      setPriorityNumbers("");
-      CHANNEL.postMessage({ type: "app:sync" });
-      toast.success("Priority Mode deactivated");
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Clear Priority Mode',
+      message: 'Deactivate Priority Mode and remove all priority assignments?',
+      variant: 'warning',
+      confirmText: 'Deactivate',
+      onConfirm: () => {
+        const sheets = loadAgentSheets();
+        sheets.priorityNumbers = "";
+        sheets.priorityModeActive = false;
+        sheets.agentPriorityMap = {};
+        sheets.priorityAgentMap = {};
+        sheets.priorityStatus = {};
+        saveAgentSheets(sheets);
+        setAgentSheets(sheets);
+        setPriorityNumbers("");
+        CHANNEL.postMessage({ type: "app:sync" });
+        toast.success("Priority Mode deactivated");
+      }
+    });
   };
 
   return (
@@ -3766,6 +3796,16 @@ const AdminDashboard = ({ username, onLogout }) => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm} />
     </div>);
 
 };
@@ -3778,6 +3818,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
   const [csSheet, setCSSheet] = useState(loadCSSheet);
   const [refreshKey, setRefreshKey] = useState(0);
   const [myUploads, setMyUploads] = useState([]);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -3868,20 +3909,27 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
   };
 
   const handleClearSheet = () => {
-    if (confirm('Clear all rejected items from CS Team sheet? This will remove all REJECTED status rows.')) {
-      const newSheet = deepCopy(csSheet);
-      for (let r = 0; r < newSheet.raw.length; r++) {
-        const status = String(newSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
-        if (status === 'REJECT' || status === 'REJECTED') {
-          newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
-          newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "", hidden: false };
+    setConfirmDialog({
+      open: true,
+      title: 'Clear Rejected Items',
+      message: 'Clear all rejected items from CS Team sheet? This will remove all REJECTED status rows.',
+      variant: 'danger',
+      confirmText: 'Clear All',
+      onConfirm: () => {
+        const newSheet = deepCopy(csSheet);
+        for (let r = 0; r < newSheet.raw.length; r++) {
+          const status = String(newSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
+          if (status === 'REJECT' || status === 'REJECTED') {
+            newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
+            newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "", hidden: false };
+          }
         }
+        setCSSheet(newSheet);
+        saveCSSheet(newSheet);
+        CHANNEL.postMessage({ type: "app:sync" });
+        toast.success('Cleared rejected items');
       }
-      setCSSheet(newSheet);
-      saveCSSheet(newSheet);
-      CHANNEL.postMessage({ type: "app:sync" });
-      toast.success('Cleared rejected items');
-    }
+    });
   };
 
   const handleUploadFile = async (e) => {
@@ -4046,6 +4094,16 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
           blinkRows={csSheet.blinkRows} />
 
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm} />
     </div>);
 
 };
