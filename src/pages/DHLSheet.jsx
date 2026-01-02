@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -23,7 +23,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
-import { FixedSizeGrid as Grid } from 'react-window';
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -186,14 +185,19 @@ try {
 }
 };
 
+// Debounced save to reduce localStorage writes
+let saveTimeout = null;
 const saveCSSheet = (data) => {
-  // For high volume data, only save non-empty rows to optimize storage
-  const optimizedData = {
-    ...data,
-    raw: data.raw,
-    timers: data.timers
-  };
-  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
+  if (saveTimeout) clearTimeout(saveTimeout);
+  
+  saveTimeout = setTimeout(() => {
+    const optimizedData = {
+      ...data,
+      raw: data.raw,
+      timers: data.timers
+    };
+    localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
+  }, 500);
 };
 
 const loadAgentSheets = () => {
@@ -1305,8 +1309,8 @@ const ExcelSheet = ({
   const containerRef = useRef(null);
   const typingTimerRef = useRef(null);
 
-  // Compact view for agents - removes gaps from done/rejected rows
-  const getCompactedView = useCallback(() => {
+  // Compact view for agents - removes gaps from done/rejected rows - MEMOIZED
+  const getCompactedView = useMemo(() => {
     if (isAdmin) {
       return { data, timers, rowMapping: data.map((_, i) => i) };
     }
@@ -1359,11 +1363,10 @@ const ExcelSheet = ({
     return { data: compactedData, timers: compactedTimers, rowMapping, priorityModeActive };
   }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length]);
 
-  const compactedView = getCompactedView();
-  const displayData = compactedView.data;
-  const displayTimers = compactedView.timers;
-  const rowMapping = compactedView.rowMapping;
-  const agentInPriorityMode = compactedView.priorityModeActive;
+  const displayData = getCompactedView.data;
+  const displayTimers = getCompactedView.timers;
+  const rowMapping = getCompactedView.rowMapping;
+  const agentInPriorityMode = getCompactedView.priorityModeActive;
 
   const getRunningMs = useCallback((r) => {
     const t = displayTimers[r];
@@ -1598,7 +1601,7 @@ const ExcelSheet = ({
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  const getCellClass = (r, c) => {
+  const getCellClass = useCallback((r, c) => {
     const classes = ['cell'];
     if (activeCell.r === r && activeCell.c === c) classes.push('active');
     if (r >= selection.r1 && r <= selection.r2 && c >= selection.c1 && c <= selection.c2) {
@@ -1621,7 +1624,7 @@ const ExcelSheet = ({
     if (typingCell && typingCell.r === r && typingCell.c === c) classes.push('typing-indicator');
 
     return classes.join(' ');
-  };
+  }, [activeCell, selection, rowMapping, displayTimers, blinkRows, isAdmin, selectedRows, typingCell]);
 
   const handleSort = (colIndex) => {
     if (!isAdmin) return;
@@ -1778,7 +1781,7 @@ const ExcelSheet = ({
 
   };
 
-  const renderCellContent = (r, c) => {
+  const renderCellContent = useCallback((r, c) => {
     if (c === COL_STATUS) {
       return renderStatusCell(r);
     }
@@ -1797,15 +1800,15 @@ const ExcelSheet = ({
     }
 
     return displayData[r]?.[c] || '';
-  };
+  }, [displayData, isRowVisible, isAdmin]);
 
-  const visibleRows = isAdmin ? ROWS_COUNT : compactedView.data.length;
-  const gridStyle = {
+  const visibleRows = isAdmin ? ROWS_COUNT : getCompactedView.data.length;
+  const gridStyle = useMemo(() => ({
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
     gridTemplateRows: `30px repeat(${visibleRows}, 30px)`,
     width: 'fit-content'
-  };
+  }), [colWidths, visibleRows]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -1858,11 +1861,17 @@ const ExcelSheet = ({
           box-sizing: border-box;
           background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
           overscroll-behavior: contain;
-          scroll-behavior: auto;
+          scroll-behavior: smooth;
+          will-change: scroll-position;
         }
         
         .sheet-scroll * {
           overscroll-behavior: contain;
+        }
+        
+        .sheet-grid {
+          will-change: transform;
+          transform: translateZ(0);
         }
 
         .sheet-scroll::-webkit-scrollbar {
@@ -1946,6 +1955,7 @@ const ExcelSheet = ({
           transition: background 0.12s ease, box-shadow 0.12s ease;
           cursor: pointer;
           user-select: text;
+          contain: layout style paint;
         }
 
         .cell:hover { background: rgba(255,245,200,0.02); }
@@ -2125,8 +2135,8 @@ const ExcelSheet = ({
             </div>
           )}
           
-          {/* Row Headers & Cells */}
-          {Array.from({ length: visibleRows }).map((_, r) =>
+          {/* Row Headers & Cells - Optimized rendering */}
+          {Array.from({ length: Math.min(visibleRows, 100) }).map((_, r) =>
           <React.Fragment key={`row-${r}`}>
               <div
               className="row-header"
