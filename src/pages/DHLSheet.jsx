@@ -9,6 +9,7 @@ import AdvancedReportingModule from '../components/AdvancedReportingModule';
 import AIPerformanceInsights from '../components/AIPerformanceInsights';
 import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
+import CellEditorDialog from '../components/CellEditorDialog';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1279,6 +1280,7 @@ const ExcelSheet = ({
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [selection, setSelection] = useState({ r1: 0, c1: 0, r2: 0, c2: 0 });
+  const [showCellEditor, setShowCellEditor] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [dragSelecting, setDragSelecting] = useState(false);
   const [copiedData, setCopiedData] = useState(null);
@@ -1388,17 +1390,7 @@ const ExcelSheet = ({
 
     setEditingCell({ r, c, readOnly: !isEditable || isViewOnly });
     setEditValue(displayData[r]?.[c] || '');
-    setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.focus();
-        if (isEditable && !isViewOnly) {
-          editorRef.current.select();
-        } else {
-          // Select all for copying
-          editorRef.current.select();
-        }
-      }
-    }, 0);
+    setShowCellEditor(true);
   };
 
   const commitEdit = () => {
@@ -1410,6 +1402,7 @@ const ExcelSheet = ({
           onCellChange(actualRow, editingCell.c, editValue);
         }
       }
+      setShowCellEditor(false);
       setEditingCell(null);
       setEditValue("");
       setTypingCell(null);
@@ -1429,6 +1422,7 @@ const ExcelSheet = ({
   };
 
   const cancelEdit = () => {
+    setShowCellEditor(false);
     setEditingCell(null);
     setEditValue("");
   };
@@ -2160,59 +2154,20 @@ const ExcelSheet = ({
         </div>
       </div>
       
-      {/* Inline Cell Editor */}
-      {editingCell &&
-      <div
-        style={{
-          gridRow: editingCell.r + 2,
-          gridColumn: editingCell.c + 2,
-          position: 'absolute',
-          zIndex: 100,
-          width: colWidths[editingCell.c] + 'px',
-          height: '30px'
-        }}>
-
-          <textarea
-          ref={editorRef}
-          className="cell-editor"
-          readOnly={editingCell.readOnly}
-          style={{
-            width: '100%',
-            minHeight: '30px',
-            maxHeight: '200px',
-            height: 'auto',
-            border: editingCell.readOnly ? '2px solid #3b82f6' : '2px solid var(--activeBorder)',
-            background: editingCell.readOnly ? '#dbeafe' : '#ffffff',
-            color: '#000000',
-            fontSize: '13px',
-            padding: '6px 10px',
-            outline: 'none',
-            boxShadow: editingCell.readOnly ? '0 0 0 3px rgba(59,130,246,0.3)' : '0 0 0 3px rgba(255,210,0,0.2)',
-            fontFamily: 'inherit',
-            boxSizing: 'border-box',
-            cursor: editingCell.readOnly ? 'text' : 'text',
-            resize: 'vertical',
-            overflow: 'auto'
-          }}
-          value={editValue}
-          onChange={(e) => !editingCell.readOnly && handleEditValueChange(e.target.value)}
-          onBlur={commitEdit}
-          onKeyDown={(e) => {
-            if (editingCell.readOnly) {
-              if (e.key === 'Enter' || e.key === 'Escape') {e.preventDefault();commitEdit();}
-              return;
-            }
-            if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault();commitEdit();}
-            if (e.key === 'Escape') {e.preventDefault();commitEdit();}
-            if (e.key === 'Tab') {
-              e.preventDefault();
-              commitEdit();
-              setActiveCell((prev) => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
-            }
-          }} />
-
-        </div>
-      }
+      {/* Cell Editor Dialog */}
+      <CellEditorDialog
+        open={showCellEditor}
+        onOpenChange={(open) => {
+          setShowCellEditor(open);
+          if (!open) cancelEdit();
+        }}
+        value={editValue}
+        onChange={handleEditValueChange}
+        onSave={commitEdit}
+        rowIndex={editingCell?.r || 0}
+        columnName={editingCell ? columns[editingCell.c] : ''}
+        readOnly={editingCell?.readOnly || false}
+      />
     </div>);
 
 };
