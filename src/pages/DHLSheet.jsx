@@ -2195,7 +2195,7 @@ const ExcelSheet = ({
 // ADMIN DASHBOARD COMPONENT
 // ============================================================================
 
-const AdminDashboard = ({ username, onLogout }) => {
+const AdminDashboard = memo(({ username, onLogout }) => {
   const [activeTab, setActiveTab] = useState("cs-sheet");
   const [csSheet, setCSSheet] = useState(loadCSSheet);
   const [agentSheets, setAgentSheets] = useState(loadAgentSheets);
@@ -3807,7 +3807,7 @@ const AdminDashboard = ({ username, onLogout }) => {
 // CS ALLOCATOR DASHBOARD COMPONENT
 // ============================================================================
 
-const CSAllocatorDashboard = ({ username, onLogout }) => {
+const CSAllocatorDashboard = memo(({ username, onLogout }) => {
   const [csSheet, setCSSheet] = useState(loadCSSheet);
   const [refreshKey, setRefreshKey] = useState(0);
   const [myUploads, setMyUploads] = useState([]);
@@ -4105,7 +4105,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
 // AGENT DASHBOARD COMPONENT
 // ============================================================================
 
-const AgentDashboard = ({ username, onLogout }) => {
+const AgentDashboard = memo(({ username, onLogout }) => {
   const [csSheet, setCSSheet] = useState(loadCSSheet);
   const [agentSheets, setAgentSheets] = useState(loadAgentSheets);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -4146,19 +4146,30 @@ const AgentDashboard = ({ username, onLogout }) => {
 
     const interval = setInterval(() => {
       setRefreshKey((k) => k + 1);
+      
+      // Batch state updates to reduce re-renders
       const updated = loadCSSheet();
-      setCSSheet(updated);
-
       const updatedSheets = loadAgentSheets();
       const updatedFilter = updatedSheets.agentFilters?.[username]?.region || "";
-      setRegionFilter(updatedFilter);
+      const agentBreak = updated.agentBreaks?.[username];
       
-      // Update priority list
-      setPriorityList(updatedSheets);
-      setForceRefresh(prev => prev + 1);
+      // Only update state if something actually changed
+      setCSSheet(prevSheet => {
+        if (JSON.stringify(prevSheet) !== JSON.stringify(updated)) {
+          return updated;
+        }
+        return prevSheet;
+      });
+      
+      setRegionFilter(prevFilter => updatedFilter !== prevFilter ? updatedFilter : prevFilter);
+      setPriorityList(prevList => {
+        if (JSON.stringify(prevList) !== JSON.stringify(updatedSheets)) {
+          return updatedSheets;
+        }
+        return prevList;
+      });
 
       // Sync break status in real-time
-      const agentBreak = updated.agentBreaks?.[username];
       if (agentBreak?.active && agentBreak?.start) {
         if (!onBreak || breakType !== agentBreak.type || breakStart !== agentBreak.start) {
           setOnBreak(true);
@@ -4172,12 +4183,12 @@ const AgentDashboard = ({ username, onLogout }) => {
           setBreakStart(null);
         }
       }
-    }, 1000);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [username, onBreak, breakType, breakStart]);
 
-  const handleBreakToggle = (type) => {
+  const handleBreakToggle = useCallback((type) => {
     const newSheet = deepCopy(csSheet);
     if (!newSheet.agentBreaks) newSheet.agentBreaks = {};
 
@@ -4213,7 +4224,7 @@ const AgentDashboard = ({ username, onLogout }) => {
         timestamp: Date.now()
       }
     });
-  };
+  }, [csSheet, onBreak, breakType, username]);
 
   useEffect(() => {
     const handleSync = (ev) => {
@@ -4258,7 +4269,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     return () => CHANNEL.removeEventListener('message', handleSync);
   }, [username, onBreak]);
 
-  const handleCellChange = (r, c, value) => {
+  const handleCellChange = useCallback((r, c, value) => {
     // Agent can only edit their assigned rows
     const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
     if (agent !== username.toLowerCase()) return;
@@ -4270,9 +4281,9 @@ const AgentDashboard = ({ username, onLogout }) => {
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
-  };
+  }, [csSheet, username]);
 
-  const handleStatusClick = (r, action) => {
+  const handleStatusClick = useCallback((r, action) => {
     const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
     if (agent !== username.toLowerCase()) return;
 
@@ -4486,9 +4497,9 @@ const AgentDashboard = ({ username, onLogout }) => {
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
-  };
+  }, [csSheet, username]);
 
-  const getAgentMetrics = () => {
+  const getAgentMetrics = useMemo(() => {
     let awbPending = 0,lineSumPending = 0,done = 0,rej = 0,totalDone = 0,totalRejected = 0,totalDoneLines = 0,totalRejectedLines = 0;
 
     for (let r = 0; r < ROWS_COUNT; r++) {
@@ -4512,9 +4523,8 @@ const AgentDashboard = ({ username, onLogout }) => {
       if (csSheet.timers[r]?.hidden || state === 'DONE' || state === 'REJECTED') continue;
 
       // Apply priority mode filter for pending
-      const sheets = loadAgentSheets();
-      const myPriorityNumbers = sheets.agentPriorityMap?.[username] || [];
-      const priorityModeActive = sheets.priorityModeActive && myPriorityNumbers.length > 0;
+      const myPriorityNumbers = agentSheets.agentPriorityMap?.[username] || [];
+      const priorityModeActive = agentSheets.priorityModeActive && myPriorityNumbers.length > 0;
       
       if (priorityModeActive) {
         const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
@@ -4533,9 +4543,9 @@ const AgentDashboard = ({ username, onLogout }) => {
       totalDoneLines,
       totalRejectedLines
     };
-  };
+  }, [csSheet, username, agentSheets]);
 
-  const metrics = getAgentMetrics();
+  const metrics = getAgentMetrics;
 
   const getBreakDuration = () => {
     if (!onBreak || !breakStart) return 0;
@@ -4616,27 +4626,27 @@ const AgentDashboard = ({ username, onLogout }) => {
               }
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                 <span className="text-sm font-medium">Pending:</span>
-                <span className="font-mono font-bold">{metrics.awb}</span>
+                <span className="font-mono font-bold">{getAgentMetrics.awb}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                 <span className="text-sm font-medium">Pending Lines:</span>
-                <span className="font-mono font-bold">{metrics.lineSum}</span>
+                <span className="font-mono font-bold">{getAgentMetrics.lineSum}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
                 <span className="text-sm font-medium text-green-800">DONE:</span>
-                <span className="font-mono font-bold text-green-800">{metrics.done}</span>
+                <span className="font-mono font-bold text-green-800">{getAgentMetrics.done}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
                 <span className="text-sm font-medium text-green-800">Done Lines:</span>
-                <span className="font-mono font-bold text-green-800">{metrics.totalDoneLines}</span>
+                <span className="font-mono font-bold text-green-800">{getAgentMetrics.totalDoneLines}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
                 <span className="text-sm font-medium text-red-800">REJECTED:</span>
-                <span className="font-mono font-bold text-red-800">{metrics.rej}</span>
+                <span className="font-mono font-bold text-red-800">{getAgentMetrics.rej}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
                 <span className="text-sm font-medium text-red-800">Rej Lines:</span>
-                <span className="font-mono font-bold text-red-800">{metrics.totalRejectedLines}</span>
+                <span className="font-mono font-bold text-red-800">{getAgentMetrics.totalRejectedLines}</span>
               </div>
               <Button
                 onClick={() => {
@@ -4744,9 +4754,8 @@ const AgentDashboard = ({ username, onLogout }) => {
           </CardContent>
         </Card>
 
-        {/* Agent Sheet */}
+        {/* Agent Sheet - Optimized */}
         <ExcelSheet
-        key={forceRefresh}
         columns={AGENT_COLUMNS}
         data={csSheet.raw}
         timers={csSheet.timers}
@@ -4867,7 +4876,7 @@ const AgentDashboard = ({ username, onLogout }) => {
         </div>
         </div>);
 
-};
+});
 
 // ============================================================================
 // MAIN APP COMPONENT
