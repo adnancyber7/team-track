@@ -3357,41 +3357,78 @@ const AdminDashboard = ({ username, onLogout }) => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="mt-4">
-            <Card className="bg-white/95 border-black/10 shadow-lg max-w-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Admin Credentials
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Label className="text-xs text-black/60">Admin Username</Label>
-                  <Input
-                    value={newAdminUser}
-                    onChange={(e) => setNewAdminUser(e.target.value)}
-                    placeholder="Enter new username"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-black/60">New Password (optional)</Label>
-                  <Input
-                    type="password"
-                    value={newAdminPass}
-                    onChange={(e) => setNewAdminPass(e.target.value)}
-                    placeholder="Leave empty to keep current"
-                    className="mt-1"
-                  />
-                </div>
-                <Button onClick={saveAdminCreds} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Credentials
-                </Button>
-                <Separator className="my-4" />
-                <p className="text-xs text-center text-black/40 font-medium">Made by Adnan</p>
-              </CardContent>
-            </Card>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Admin Credentials
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-black/60">Admin Username</Label>
+                    <Input
+                      value={newAdminUser}
+                      onChange={(e) => setNewAdminUser(e.target.value)}
+                      placeholder="Enter new username"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-black/60">New Password (optional)</Label>
+                    <Input
+                      type="password"
+                      value={newAdminPass}
+                      onChange={(e) => setNewAdminPass(e.target.value)}
+                      placeholder="Leave empty to keep current"
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button onClick={saveAdminCreds} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Credentials
+                  </Button>
+                  <Separator className="my-4" />
+                  <p className="text-xs text-center text-black/40 font-medium">Made by Adnan</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Security / Account Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-black/60">Recovery Email</Label>
+                    <Input
+                      type="email"
+                      placeholder="admin@company.com"
+                      className="mt-1"
+                      defaultValue=""
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Used for password recovery via OTP
+                    </p>
+                  </div>
+                  <Button className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Email
+                  </Button>
+
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-4">
+                    <p className="text-xs text-blue-800">
+                      <b>Forgot Password:</b> Uses email OTP verification for secure password reset.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
