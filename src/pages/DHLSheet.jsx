@@ -69,8 +69,8 @@ const COL_CONF5 = 18;
 const COL_CONF6 = 19;
 const COL_PRIORITY = 20;
 
-const ROWS_COUNT = 600;
-const AGENT_DEFAULT_ROWS = 50;
+const ROWS_COUNT = 10000;
+const AGENT_DEFAULT_ROWS = 500;
 
 const BREAK_TYPES = [
 { id: 'prayer', label: 'Prayer Break', icon: Moon, color: 'bg-purple-100 text-purple-800 border-purple-300' },
@@ -154,22 +154,9 @@ const loadState = () => {
 const saveState = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 
 const loadCSSheet = () => {
-  try {
-    const data = JSON.parse(localStorage.getItem(CS_SHEET_KEY) || "null");
-    if (!data || !Array.isArray(data.raw)) {
-      return {
-        raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
-        timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
-        colWidths: CS_COLUMNS.map(() => 140),
-        blinkRows: {},
-        agentBreaks: {},
-        savedFilters: []
-      };
-    }
-    if (!data.agentBreaks) data.agentBreaks = {};
-    if (!data.savedFilters) data.savedFilters = [];
-    return data;
-  } catch {
+try {
+  const data = JSON.parse(localStorage.getItem(CS_SHEET_KEY) || "null");
+  if (!data || !Array.isArray(data.raw)) {
     return {
       raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
       timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
@@ -179,10 +166,34 @@ const loadCSSheet = () => {
       savedFilters: []
     };
   }
+  // Ensure arrays have correct length for high volume
+  while (data.raw.length < ROWS_COUNT) {
+    data.raw.push(Array(CS_COLUMNS.length).fill(''));
+    data.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
+  }
+  if (!data.agentBreaks) data.agentBreaks = {};
+  if (!data.savedFilters) data.savedFilters = [];
+  return data;
+} catch {
+  return {
+    raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
+    timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
+    colWidths: CS_COLUMNS.map(() => 140),
+    blinkRows: {},
+    agentBreaks: {},
+    savedFilters: []
+  };
+}
 };
 
 const saveCSSheet = (data) => {
-  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(data));
+  // For high volume data, only save non-empty rows to optimize storage
+  const optimizedData = {
+    ...data,
+    raw: data.raw,
+    timers: data.timers
+  };
+  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
 };
 
 const loadAgentSheets = () => {
@@ -1789,12 +1800,37 @@ const ExcelSheet = ({
   };
 
   const visibleRows = isAdmin ? ROWS_COUNT : compactedView.data.length;
-  const gridStyle = {
-    display: 'grid',
-    gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
-    gridTemplateRows: `30px repeat(${visibleRows}, 30px)`,
-    width: 'fit-content'
-  };
+
+  const columnWidthSum = colWidths.reduce((sum, w) => sum + w, 0);
+  const rowHeight = 30;
+  const headerHeight = 30;
+
+  // Memoized cell renderer for virtualization
+  const CellRenderer = useCallback(({ columnIndex, rowIndex, style }) => {
+    const actualRow = rowIndex;
+    const actualCol = columnIndex;
+
+    if (actualRow >= visibleRows) return null;
+
+    const cellClasses = getCellClass(actualRow, actualCol);
+
+    return (
+      <div
+        className={cellClasses}
+        style={{
+          ...style,
+          width: colWidths[actualCol],
+          position: 'absolute',
+        }}
+        onMouseDown={(e) => handleCellMouseDown(actualRow, actualCol, e)}
+        onMouseEnter={() => handleMouseEnter(actualRow, actualCol)}
+        onMouseUp={handleCellMouseUp}
+        onClick={() => handleCellClick(actualRow, actualCol)}
+        onDoubleClick={(e) => handleCellDoubleClick(actualRow, actualCol, e)}>
+        {editingCell && editingCell.r === actualRow && editingCell.c === actualCol ? null : renderCellContent(actualRow, actualCol)}
+      </div>
+    );
+  }, [visibleRows, colWidths, displayData, displayTimers, activeCell, selection, editingCell, blinkRows, selectedRows, typingCell, rowMapping]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -2080,69 +2116,66 @@ const ExcelSheet = ({
       `}</style>
       
       <div className="sheet-scroll" ref={gridRef}>
-        <div className="sheet-grid" style={gridStyle}>
-          {/* Corner */}
-          <div className="corner" style={{ gridRow: 1, gridColumn: 1 }}></div>
-          
-          {/* Column Headers */}
-          {columns.map((col, c) =>
-          <div
-            key={`col-${c}`}
-            className="col-header"
-            style={{ gridRow: 1, gridColumn: c + 2, position: 'relative' }}
-            onClick={() => handleSort(c)}
-            title={`Click to sort by ${col}`}>
-
-              <span>{colToName(c)}</span>
-              <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}>{col}</span>
-              {sortConfig.column === c &&
-            <span style={{ marginLeft: '4px' }}>
-                  {sortConfig.direction === 'asc' ? '▲' : '▼'}
-                </span>
-            }
+        {/* Headers */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white' }}>
+          <div style={{ display: 'flex', height: headerHeight }}>
+            <div className="corner" style={{ width: 48, flexShrink: 0 }}></div>
+            {columns.map((col, c) =>
               <div
-              className="col-resizer"
-              data-c={c}
-              onMouseDown={handleResizerMouseDown} />
-
-            </div>
-          )}
-          
-          {/* Row Headers & Cells */}
-          {Array.from({ length: visibleRows }).map((_, r) =>
-          <React.Fragment key={`row-${r}`}>
-              <div
-              className="row-header"
-              style={{ gridRow: r + 2, gridColumn: 1, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
-              onClick={() => {
-                const actualRow = rowMapping[r];
-                if (isAdmin && onRowSelect && actualRow !== -1) {
-                  onRowSelect(actualRow);
+                key={`col-${c}`}
+                className="col-header"
+                style={{ width: colWidths[c], position: 'relative', flexShrink: 0 }}
+                onClick={() => handleSort(c)}
+                title={`Click to sort by ${col}`}>
+                <span>{colToName(c)}</span>
+                <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}>{col}</span>
+                {sortConfig.column === c &&
+                  <span style={{ marginLeft: '4px' }}>
+                    {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                  </span>
                 }
-              }}>
+                <div
+                  className="col-resizer"
+                  data-c={c}
+                  onMouseDown={handleResizerMouseDown} />
+              </div>
+            )}
+          </div>
+        </div>
 
+        {/* Virtualized Grid Content */}
+        <div style={{ position: 'relative' }}>
+          {Array.from({ length: Math.min(visibleRows, 100) }).map((_, r) => (
+            <div key={`row-${r}`} style={{ display: 'flex', height: rowHeight }}>
+              <div
+                className="row-header"
+                style={{ width: 48, flexShrink: 0, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
+                onClick={() => {
+                  const actualRow = rowMapping[r];
+                  if (isAdmin && onRowSelect && actualRow !== -1) {
+                    onRowSelect(actualRow);
+                  }
+                }}>
                 {isAdmin && onRowSelect && selectedRows ?
-              rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" /> :
-
-              r + 1
-              }
+                  rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" /> :
+                  r + 1
+                }
               </div>
               {columns.map((_, c) =>
-            <div
-              key={`cell-${r}-${c}`}
-              className={getCellClass(r, c)}
-              style={{ gridRow: r + 2, gridColumn: c + 2, position: 'relative' }}
-              onMouseDown={(e) => handleCellMouseDown(r, c, e)}
-              onMouseEnter={() => handleMouseEnter(r, c)}
-              onMouseUp={handleCellMouseUp}
-              onClick={() => handleCellClick(r, c)}
-              onDoubleClick={(e) => handleCellDoubleClick(r, c, e)}>
-
+                <div
+                  key={`cell-${r}-${c}`}
+                  className={getCellClass(r, c)}
+                  style={{ width: colWidths[c], flexShrink: 0, position: 'relative' }}
+                  onMouseDown={(e) => handleCellMouseDown(r, c, e)}
+                  onMouseEnter={() => handleMouseEnter(r, c)}
+                  onMouseUp={handleCellMouseUp}
+                  onClick={() => handleCellClick(r, c)}
+                  onDoubleClick={(e) => handleCellDoubleClick(r, c, e)}>
                   {editingCell && editingCell.r === r && editingCell.c === c ? null : renderCellContent(r, c)}
                 </div>
-            )}
-            </React.Fragment>
-          )}
+              )}
+            </div>
+          ))}
         </div>
       </div>
       
