@@ -4007,12 +4007,12 @@ const AgentDashboard = ({ username, onLogout }) => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-blue-600">
                 <CheckCircle2 className="w-6 h-6" />
-                ⏱️ Number is Released First
+                Confirmation
               </DialogTitle>
             </DialogHeader>
             <div className="py-4">
               <p className="text-center text-lg font-medium text-gray-700">
-                Please check the Number is Released first before marking as DONE
+                Please check the number is <span className="text-green-600 font-bold">Released</span> before marking as done.
               </p>
             </div>
             <DialogFooter className="flex gap-2">
@@ -4034,7 +4034,7 @@ const AgentDashboard = ({ username, onLogout }) => {
                   }
                   setPendingDoneRow(null);
                 }} 
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold"
+                className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
               >
                 OK
               </Button>
