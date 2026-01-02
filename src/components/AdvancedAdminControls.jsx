@@ -1,0 +1,404 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Settings, Clock, Users, Zap } from 'lucide-react';
+import { toast } from "sonner";
+
+const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGENTS, COL_AWB }) => {
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('dhl-admin-settings');
+    return saved ? JSON.parse(saved) : {
+      priorityUnlockCount: 0,
+      breakReminderEnabled: false,
+      breakReminderInterval: 60,
+      autoAssignEnabled: false
+    };
+  });
+
+  const [breakTimers, setBreakTimers] = useState(() => {
+    const saved = localStorage.getItem('dhl-break-timers');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [massAssignment, setMassAssignment] = useState({
+    awbList: '',
+    selectedAgent: '',
+    mode: 'assign'
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dhl-admin-settings', JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem('dhl-break-timers', JSON.stringify(breakTimers));
+  }, [breakTimers]);
+
+  // Break reminder system
+  useEffect(() => {
+    if (!settings.breakReminderEnabled) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      agents.forEach(agent => {
+        if (!breakTimers[agent.username]) {
+          setBreakTimers(prev => ({
+            ...prev,
+            [agent.username]: { startTime: now, lastBreak: now }
+          }));
+          return;
+        }
+
+        const timer = breakTimers[agent.username];
+        const minutesSinceBreak = (now - timer.lastBreak) / 60000;
+
+        if (minutesSinceBreak >= settings.breakReminderInterval) {
+          toast(`⏰ Break Reminder: ${agent.username} should take a break`, {
+            duration: 10000,
+            action: {
+              label: 'Mark Break Taken',
+              onClick: () => {
+                setBreakTimers(prev => ({
+                  ...prev,
+                  [agent.username]: { ...timer, lastBreak: now }
+                }));
+                toast.success(`Break logged for ${agent.username}`);
+              }
+            }
+          });
+        }
+      });
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [settings.breakReminderEnabled, settings.breakReminderInterval, agents, breakTimers]);
+
+  const handleSettingChange = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    toast.success('Settings updated');
+  };
+
+  const handleMassAssignment = () => {
+    const awbs = massAssignment.awbList
+      .split(/[\n,;]/)
+      .map(a => a.trim())
+      .filter(a => a && a.length === 10);
+
+    if (awbs.length === 0) {
+      toast.error('No valid 10-digit AWBs found');
+      return;
+    }
+
+    if (massAssignment.mode === 'assign' && !massAssignment.selectedAgent) {
+      toast.error('Please select an agent');
+      return;
+    }
+
+    const sheets = JSON.parse(localStorage.getItem('dhl-agent-sheets') || '{}');
+    
+    if (massAssignment.mode === 'assign') {
+      // Assign AWBs to selected agent
+      const existingPriorities = sheets.agentPriorityMap?.[massAssignment.selectedAgent] || [];
+      const newPriorities = [...new Set([...existingPriorities, ...awbs])];
+      
+      if (!sheets.agentPriorityMap) sheets.agentPriorityMap = {};
+      sheets.agentPriorityMap[massAssignment.selectedAgent] = newPriorities;
+      
+      awbs.forEach(awb => {
+        if (!sheets.priorityAgentMap) sheets.priorityAgentMap = {};
+        sheets.priorityAgentMap[awb] = massAssignment.selectedAgent;
+      });
+
+      sheets.priorityModeActive = true;
+      sheets.priorityNumbers = Object.values(sheets.agentPriorityMap).flat().join('\n');
+
+      localStorage.setItem('dhl-agent-sheets', JSON.stringify(sheets));
+      onUpdate();
+      
+      toast.success(`Assigned ${awbs.length} AWBs to ${massAssignment.selectedAgent}`);
+    } else if (massAssignment.mode === 'reassign') {
+      // Find and reassign AWBs to new agent
+      if (!massAssignment.selectedAgent) {
+        toast.error('Please select target agent');
+        return;
+      }
+
+      let reassignedCount = 0;
+      awbs.forEach(awb => {
+        if (sheets.priorityAgentMap && sheets.priorityAgentMap[awb]) {
+          const oldAgent = sheets.priorityAgentMap[awb];
+          const newAgent = massAssignment.selectedAgent;
+
+          // Remove from old agent
+          if (sheets.agentPriorityMap[oldAgent]) {
+            sheets.agentPriorityMap[oldAgent] = sheets.agentPriorityMap[oldAgent].filter(a => a !== awb);
+          }
+
+          // Add to new agent
+          if (!sheets.agentPriorityMap[newAgent]) sheets.agentPriorityMap[newAgent] = [];
+          if (!sheets.agentPriorityMap[newAgent].includes(awb)) {
+            sheets.agentPriorityMap[newAgent].push(awb);
+          }
+
+          sheets.priorityAgentMap[awb] = newAgent;
+          reassignedCount++;
+        }
+      });
+
+      sheets.priorityNumbers = Object.values(sheets.agentPriorityMap).flat().join('\n');
+      localStorage.setItem('dhl-agent-sheets', JSON.stringify(sheets));
+      onUpdate();
+
+      toast.success(`Reassigned ${reassignedCount} AWBs to ${massAssignment.selectedAgent}`);
+    } else if (massAssignment.mode === 'remove') {
+      // Remove AWBs from priority mode
+      awbs.forEach(awb => {
+        if (sheets.priorityAgentMap && sheets.priorityAgentMap[awb]) {
+          const agent = sheets.priorityAgentMap[awb];
+          if (sheets.agentPriorityMap[agent]) {
+            sheets.agentPriorityMap[agent] = sheets.agentPriorityMap[agent].filter(a => a !== awb);
+          }
+          delete sheets.priorityAgentMap[awb];
+        }
+      });
+
+      sheets.priorityNumbers = Object.values(sheets.agentPriorityMap).flat().join('\n');
+      localStorage.setItem('dhl-agent-sheets', JSON.stringify(sheets));
+      onUpdate();
+
+      toast.success(`Removed ${awbs.length} AWBs from priority mode`);
+    }
+
+    setMassAssignment({ awbList: '', selectedAgent: '', mode: 'assign' });
+  };
+
+  const resetBreakTimer = (username) => {
+    setBreakTimers(prev => ({
+      ...prev,
+      [username]: { ...prev[username], lastBreak: Date.now() }
+    }));
+    toast.success(`Break timer reset for ${username}`);
+  };
+
+  const getAgentWorkDuration = (username) => {
+    if (!breakTimers[username]) return 0;
+    return Math.floor((Date.now() - breakTimers[username].startTime) / 60000);
+  };
+
+  const getTimeSinceBreak = (username) => {
+    if (!breakTimers[username]) return 0;
+    return Math.floor((Date.now() - breakTimers[username].lastBreak) / 60000);
+  };
+
+  return (
+    <Card className="w-full border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white shadow-xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <Settings className="w-6 h-6 text-purple-600" />
+          Advanced Admin Controls
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="priority" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="priority">Priority Settings</TabsTrigger>
+            <TabsTrigger value="breaks">Break Reminders</TabsTrigger>
+            <TabsTrigger value="mass">Mass Assignment</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="priority" className="space-y-4">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div>
+                  <Label className="text-sm font-bold mb-2 block">Priority Unlock Threshold</Label>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Set how many priority AWBs an agent must complete before seeing all content (0 = disabled)
+                  </p>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={settings.priorityUnlockCount}
+                    onChange={(e) => handleSettingChange('priorityUnlockCount', parseInt(e.target.value) || 0)}
+                    className="w-40"
+                  />
+                  <Badge className="mt-2 bg-blue-100 text-blue-800">
+                    {settings.priorityUnlockCount === 0 
+                      ? 'All priorities must be completed'
+                      : `Unlock after ${settings.priorityUnlockCount} completed`}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                  <div>
+                    <Label className="font-bold">Auto-Assignment Mode</Label>
+                    <p className="text-xs text-gray-600">Automatically assign new AWBs to available agents</p>
+                  </div>
+                  <Switch
+                    checked={settings.autoAssignEnabled}
+                    onCheckedChange={(checked) => handleSettingChange('autoAssignEnabled', checked)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="breaks" className="space-y-4">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div>
+                    <Label className="font-bold flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Enable Break Reminders
+                    </Label>
+                    <p className="text-xs text-gray-600">Notify when agents should take breaks</p>
+                  </div>
+                  <Switch
+                    checked={settings.breakReminderEnabled}
+                    onCheckedChange={(checked) => handleSettingChange('breakReminderEnabled', checked)}
+                  />
+                </div>
+
+                {settings.breakReminderEnabled && (
+                  <>
+                    <div>
+                      <Label className="text-sm font-bold mb-2 block">Break Interval (minutes)</Label>
+                      <Input
+                        type="number"
+                        min="15"
+                        value={settings.breakReminderInterval}
+                        onChange={(e) => handleSettingChange('breakReminderInterval', parseInt(e.target.value) || 60)}
+                        className="w-40"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-bold">Agent Break Status</Label>
+                      {agents.map(agent => {
+                        const workDuration = getAgentWorkDuration(agent.username);
+                        const timeSinceBreak = getTimeSinceBreak(agent.username);
+                        const needsBreak = timeSinceBreak >= settings.breakReminderInterval;
+
+                        return (
+                          <div key={agent.username} className={`p-3 rounded-lg border ${needsBreak ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-200'}`}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Badge className="bg-yellow-400 text-black font-bold">{agent.username}</Badge>
+                                <div className="text-xs mt-1 space-y-1">
+                                  <div>Work Duration: <span className="font-bold">{workDuration}m</span></div>
+                                  <div>Since Break: <span className={`font-bold ${needsBreak ? 'text-red-600' : ''}`}>{timeSinceBreak}m</span></div>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                {needsBreak && (
+                                  <Badge className="bg-red-500 text-white animate-pulse">
+                                    BREAK NEEDED
+                                  </Badge>
+                                )}
+                                <Button
+                                  onClick={() => resetBreakTimer(agent.username)}
+                                  size="sm"
+                                  variant="outline"
+                                  className="font-bold"
+                                >
+                                  Reset Timer
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="mass" className="space-y-4">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div>
+                  <Label className="text-sm font-bold mb-2 block flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Mass AWB Assignment
+                  </Label>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Paste multiple AWBs (one per line or comma-separated) to assign, reassign, or remove from priority mode
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-xs text-gray-600 mb-1 block">Operation Mode</Label>
+                      <Select value={massAssignment.mode} onValueChange={(val) => setMassAssignment(prev => ({ ...prev, mode: val }))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="assign">Assign to Agent</SelectItem>
+                          <SelectItem value="reassign">Reassign to Different Agent</SelectItem>
+                          <SelectItem value="remove">Remove from Priority Mode</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {(massAssignment.mode === 'assign' || massAssignment.mode === 'reassign') && (
+                      <div>
+                        <Label className="text-xs text-gray-600 mb-1 block">
+                          {massAssignment.mode === 'assign' ? 'Select Agent' : 'Reassign to Agent'}
+                        </Label>
+                        <Select value={massAssignment.selectedAgent} onValueChange={(val) => setMassAssignment(prev => ({ ...prev, selectedAgent: val }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose agent..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {agents.map(agent => (
+                              <SelectItem key={agent.username} value={agent.username}>
+                                {agent.username}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-xs text-gray-600 mb-1 block">AWB Numbers (10 digits each)</Label>
+                      <textarea
+                        value={massAssignment.awbList}
+                        onChange={(e) => setMassAssignment(prev => ({ ...prev, awbList: e.target.value }))}
+                        placeholder="1234567890&#10;9876543210&#10;or comma-separated"
+                        className="w-full h-32 p-2 border rounded-lg font-mono text-sm"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        {massAssignment.awbList.split(/[\n,;]/).filter(a => a.trim().length === 10).length} valid AWBs detected
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleMassAssignment}
+                      className="w-full bg-purple-600 hover:bg-purple-700 font-black"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      {massAssignment.mode === 'assign' && 'Assign AWBs'}
+                      {massAssignment.mode === 'reassign' && 'Reassign AWBs'}
+                      {massAssignment.mode === 'remove' && 'Remove AWBs'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default AdvancedAdminControls;
