@@ -1627,6 +1627,8 @@ const AdminDashboard = ({ username, onLogout }) => {
         } else if (breakInfo.status === 'ended') {
           toast.info(`${breakInfo.agent} ended break`, { duration: 3000 });
         }
+        // Update break status in real-time
+        setCSSheet(loadCSSheet());
       }
       if (ev?.data?.type === "app:sync") {
         setCSSheet(loadCSSheet());
@@ -3383,7 +3385,9 @@ const AgentDashboard = ({ username, onLogout }) => {
     const newSheet = deepCopy(csSheet);
     if (!newSheet.agentBreaks) newSheet.agentBreaks = {};
     
-    if (onBreak && breakType === type) {
+    const isEndingBreak = onBreak && breakType === type;
+    
+    if (isEndingBreak) {
       // End break - completely remove from breaks object
       delete newSheet.agentBreaks[username];
       setOnBreak(false);
@@ -3402,7 +3406,17 @@ const AgentDashboard = ({ username, onLogout }) => {
     
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    CHANNEL.postMessage({ type: "app:sync", breakUpdate: { agent: username, status: onBreak ? 'ended' : 'started', type } });
+    
+    // Send break update notification immediately
+    CHANNEL.postMessage({ 
+      type: "app:sync", 
+      breakUpdate: { 
+        agent: username, 
+        status: isEndingBreak ? 'ended' : 'started', 
+        type,
+        timestamp: Date.now()
+      } 
+    });
   };
 
   useEffect(() => {
@@ -3412,6 +3426,22 @@ const AgentDashboard = ({ username, onLogout }) => {
         setCSSheet(updated);
         const sheets = loadAgentSheets();
         setAgentSheets(sheets);
+        
+        // Update break status from other tabs/sessions
+        const agentBreak = updated.agentBreaks?.[username];
+        if (agentBreak?.active && agentBreak?.start) {
+          if (!onBreak) {
+            setOnBreak(true);
+            setBreakType(agentBreak.type);
+            setBreakStart(agentBreak.start);
+          }
+        } else {
+          if (onBreak) {
+            setOnBreak(false);
+            setBreakType(null);
+            setBreakStart(null);
+          }
+        }
         
         // Check for cleared rejections (blink notification)
         if (updated.blinkRows) {
@@ -3426,7 +3456,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     };
     CHANNEL.addEventListener('message', handleSync);
     return () => CHANNEL.removeEventListener('message', handleSync);
-  }, [username]);
+  }, [username, onBreak]);
 
   const handleCellChange = (r, c, value) => {
     // Agent can only edit their assigned rows
