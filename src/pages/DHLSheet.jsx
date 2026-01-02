@@ -1046,7 +1046,6 @@ const LoginScreen = ({ onLogin }) => {
         >
           <p className="text-gray-400 text-sm">© 2026 DHL Sheet. Secure Enterprise Portal.</p>
         </motion.div>
-      </div>
 
         {/* Forgot Password Dialog - Ultra Modern Design */}
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
