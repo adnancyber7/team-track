@@ -533,69 +533,89 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-gradient-to-br from-yellow-600 via-red-900 to-black">
       {/* Advanced Animated Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute w-[500px] h-[500px] bg-gradient-to-r from-yellow-500/30 to-orange-500/30 rounded-full blur-3xl"
+          className="absolute w-[600px] h-[600px] bg-gradient-to-r from-yellow-400/40 to-amber-500/40 rounded-full blur-3xl"
           animate={{
-            x: [0, 200, 0],
-            y: [0, -150, 0],
-            scale: [1, 1.3, 1],
+            x: [0, 250, 0],
+            y: [0, -180, 0],
+            scale: [1, 1.4, 1],
           }}
           transition={{
-            duration: 20,
+            duration: 18,
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          style={{ top: '5%', left: '5%' }}
+          style={{ top: '0%', left: '5%' }}
         />
         <motion.div
-          className="absolute w-[600px] h-[600px] bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full blur-3xl"
+          className="absolute w-[700px] h-[700px] bg-gradient-to-r from-red-600/35 to-orange-600/35 rounded-full blur-3xl"
           animate={{
-            x: [0, -200, 0],
-            y: [0, 150, 0],
-            scale: [1.2, 1, 1.2],
+            x: [0, -220, 0],
+            y: [0, 180, 0],
+            scale: [1.3, 1, 1.3],
           }}
           transition={{
-            duration: 25,
+            duration: 22,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: 1
+            delay: 1.5
           }}
-          style={{ bottom: '5%', right: '5%' }}
+          style={{ bottom: '0%', right: '5%' }}
         />
         <motion.div
-          className="absolute w-[400px] h-[400px] bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl"
+          className="absolute w-[500px] h-[500px] bg-gradient-to-r from-yellow-500/25 to-red-500/25 rounded-full blur-3xl"
           animate={{
-            x: [0, -100, 100, 0],
-            y: [0, 100, -100, 0],
+            x: [0, -120, 120, 0],
+            y: [0, 120, -120, 0],
             rotate: [0, 180, 360],
+            scale: [1, 1.2, 1],
           }}
           transition={{
-            duration: 30,
+            duration: 28,
             repeat: Infinity,
             ease: "linear"
           }}
-          style={{ top: '40%', left: '45%' }}
+          style={{ top: '35%', left: '40%' }}
+        />
+        <motion.div
+          className="absolute w-[450px] h-[450px] bg-gradient-to-r from-amber-600/30 to-yellow-700/30 rounded-full blur-3xl"
+          animate={{
+            x: [0, 150, -150, 0],
+            y: [0, -100, 100, 0],
+            scale: [1.1, 1.3, 1.1],
+          }}
+          transition={{
+            duration: 24,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 0.5
+          }}
+          style={{ top: '60%', right: '30%' }}
         />
       </div>
 
       {/* Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#fbbf2405_1px,transparent_1px),linear-gradient(to_bottom,#fbbf2405_1px,transparent_1px)] bg-[size:4rem_4rem]" />
 
       {/* Floating Particles */}
-      {[...Array(20)].map((_, i) => (
+      {[...Array(30)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-1 h-1 bg-white/20 rounded-full"
+          className="absolute w-1 h-1 rounded-full"
+          style={{
+            background: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#f59e0b' : '#dc2626',
+            opacity: 0.3
+          }}
           initial={{
             x: Math.random() * window.innerWidth,
             y: Math.random() * window.innerHeight,
           }}
           animate={{
             y: [null, Math.random() * window.innerHeight],
-            opacity: [0, 1, 0],
+            opacity: [0, 0.6, 0],
           }}
           transition={{
             duration: Math.random() * 10 + 10,
@@ -638,20 +658,20 @@ const LoginScreen = ({ onLogin }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <Card className="backdrop-blur-2xl bg-white/10 border border-white/20 shadow-2xl overflow-hidden relative group"
+          <Card className="backdrop-blur-3xl bg-gradient-to-br from-black/40 via-red-900/30 to-black/40 border border-yellow-500/30 shadow-2xl overflow-hidden relative group"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
-              backdropFilter: 'blur(30px)',
-              WebkitBackdropFilter: 'blur(30px)'
+              backdropFilter: 'blur(40px)',
+              WebkitBackdropFilter: 'blur(40px)',
+              boxShadow: '0 0 80px rgba(251, 191, 36, 0.3), inset 0 0 60px rgba(0, 0, 0, 0.2)'
             }}
           >
           {/* Animated Border Glow */}
           <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div className="absolute inset-[-2px] bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 rounded-lg blur-sm" />
+            <div className="absolute inset-[-2px] bg-gradient-to-r from-yellow-400 via-red-500 to-yellow-400 rounded-lg blur-md animate-pulse" />
           </div>
           
           <div className="relative z-10">
-          <div className="flex gap-2 p-5 bg-gradient-to-r from-white/20 via-white/10 to-white/5 border-b border-white/20">
+          <div className="flex gap-2 p-5 bg-gradient-to-r from-yellow-500/20 via-red-600/10 to-yellow-500/20 border-b border-yellow-500/30">
             <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                 onClick={() => { setActiveTab("admin"); setError(""); }}
@@ -1049,23 +1069,23 @@ const LoginScreen = ({ onLogin }) => {
 
         {/* Forgot Password Dialog - Ultra Modern Design */}
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-          <DialogContent className="max-w-md backdrop-blur-3xl bg-white/10 border border-white/20 shadow-2xl"
+          <DialogContent className="max-w-md backdrop-blur-3xl bg-gradient-to-br from-black/50 via-red-900/40 to-black/50 border border-yellow-500/30 shadow-2xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
               backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)'
+              WebkitBackdropFilter: 'blur(40px)',
+              boxShadow: '0 0 60px rgba(251, 191, 36, 0.3)'
             }}
           >
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold flex items-center gap-3">
                 <motion.div 
-                  className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/50"
+                  className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500 to-red-600 flex items-center justify-center shadow-lg shadow-yellow-500/50"
                   whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <KeyRound className="w-7 h-7 text-white" />
+                  <KeyRound className="w-7 h-7 text-black" />
                 </motion.div>
-                <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-yellow-400 to-red-500 bg-clip-text text-transparent">
                   Password Recovery
                 </span>
               </DialogTitle>
@@ -1082,13 +1102,13 @@ const LoginScreen = ({ onLogin }) => {
                   className="space-y-5 py-4"
                 >
                   <motion.div 
-                    className="p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl"
+                    className="p-4 bg-gradient-to-r from-yellow-500/20 to-red-500/20 border border-yellow-400/40 rounded-2xl"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
                   >
                     <p className="text-sm text-white font-medium flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      <Sparkles className="w-4 h-4 text-yellow-400" />
                       Enter your registered admin email to receive OTP
                     </p>
                   </motion.div>
@@ -1101,9 +1121,9 @@ const LoginScreen = ({ onLogin }) => {
                   >
                     <Label className="text-sm font-semibold text-gray-300 mb-2 block">Email Address</Label>
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                         <input
@@ -1111,7 +1131,7 @@ const LoginScreen = ({ onLogin }) => {
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}
                           placeholder="admin@company.com"
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
                           onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()}
                         />
                       </div>
@@ -1148,10 +1168,10 @@ const LoginScreen = ({ onLogin }) => {
                     <Button
                       onClick={handleSendOTP}
                       disabled={sendingOTP}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold shadow-lg shadow-purple-500/50 relative overflow-hidden"
+                      className="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-black font-bold shadow-lg shadow-yellow-500/50 relative overflow-hidden"
                     >
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
                         initial={{ x: "-100%" }}
                         whileHover={{ x: "100%" }}
                         transition={{ duration: 0.6 }}
@@ -1179,13 +1199,13 @@ const LoginScreen = ({ onLogin }) => {
                   className="space-y-5 py-4"
                 >
                   <motion.div 
-                    className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl"
+                    className="p-4 bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-2xl"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
                   >
                     <p className="text-sm text-white font-medium flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <CheckCircle2 className="w-4 h-4 text-green-300" />
                       OTP sent to {forgotEmail}
                     </p>
                   </motion.div>
@@ -1198,16 +1218,16 @@ const LoginScreen = ({ onLogin }) => {
                   >
                     <Label className="text-sm font-semibold text-gray-300 mb-2 block">Verification Code</Label>
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
-                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                         <input
                           type="text"
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           placeholder="000000"
                           maxLength={6}
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500 font-mono text-lg tracking-[0.5em] text-center"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center"
                         />
                       </div>
                     </div>
@@ -1231,15 +1251,15 @@ const LoginScreen = ({ onLogin }) => {
                   >
                     <Label className="text-sm font-semibold text-gray-300 mb-2 block">New Password</Label>
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                         <input
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="Enter new password"
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
                         />
                       </div>
                     </div>
@@ -1253,15 +1273,15 @@ const LoginScreen = ({ onLogin }) => {
                   >
                     <Label className="text-sm font-semibold text-gray-300 mb-2 block">Confirm Password</Label>
                     <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
-                        <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                        <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                         <input
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="Confirm new password"
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
                           onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()}
                         />
                       </div>
@@ -1301,10 +1321,10 @@ const LoginScreen = ({ onLogin }) => {
                     <Button
                       onClick={handleVerifyOTP}
                       disabled={verifyingOTP}
-                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold shadow-lg shadow-purple-500/50 relative overflow-hidden"
+                      className="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-black font-bold shadow-lg shadow-yellow-500/50 relative overflow-hidden"
                     >
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
                         initial={{ x: "-100%" }}
                         whileHover={{ x: "100%" }}
                         transition={{ duration: 0.6 }}
