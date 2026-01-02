@@ -2863,6 +2863,7 @@ const AdminDashboard = ({ username, onLogout }) => {
     });
 
     saveAgentSheets(sheets);
+    setAgentSheets(sheets); // Update state immediately
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`🚨 Priority set for ${numbers.length} AWBs - All agents notified!`);
   };
@@ -2885,6 +2886,7 @@ const AdminDashboard = ({ username, onLogout }) => {
       }
 
       saveAgentSheets(sheets);
+      setAgentSheets(sheets); // Update state immediately
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`AWB ${awb} reassigned to ${newAgent}`);
     }
@@ -2896,6 +2898,7 @@ const AdminDashboard = ({ username, onLogout }) => {
       const deadlineTime = Date.now() + minutes * 60 * 1000;
       sheets.priorityTracking[awb].deadline = deadlineTime;
       saveAgentSheets(sheets);
+      setAgentSheets(sheets); // Update state immediately
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`Deadline set for AWB ${awb}: ${minutes} minutes`);
     }
@@ -2919,6 +2922,7 @@ const AdminDashboard = ({ username, onLogout }) => {
       sheets.priorityTracking = {};
       sheets.agentPriorityCompleted = {};
       saveAgentSheets(sheets);
+      setAgentSheets(sheets); // Update state immediately
       setPriorityNumbers("");
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success("Priority clearance removed");
