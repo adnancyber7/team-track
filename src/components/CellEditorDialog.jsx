@@ -26,13 +26,12 @@ export default function CellEditorDialog({
   }, [open, readOnly]);
 
   const handleKeyDown = (e) => {
+    e.stopPropagation();
     if (e.key === 'Escape') {
       e.preventDefault();
-      e.stopPropagation();
       onOpenChange(false);
     } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      e.stopPropagation();
       if (!readOnly) {
         onSave();
         onOpenChange(false);
@@ -40,12 +39,25 @@ export default function CellEditorDialog({
     }
   };
 
+  const handleOpenChange = (newOpen) => {
+    // Only allow closing via explicit user actions (buttons, Escape key)
+    // Block automatic closing from outside clicks
+    if (!newOpen) {
+      return;
+    }
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+    <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
       <DialogContent 
         className="max-w-2xl backdrop-blur-3xl bg-gradient-to-br from-black/50 via-yellow-900/40 to-black/50 border border-yellow-500/30 shadow-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          onOpenChange(false);
+        }}
         style={{
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
