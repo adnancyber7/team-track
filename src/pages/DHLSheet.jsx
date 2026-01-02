@@ -2275,6 +2275,10 @@ const AdminDashboard = ({ username, onLogout }) => {
         // Update break status in real-time
         setCSSheet(loadCSSheet());
       }
+      if (ev?.data?.priorityUnlocked) {
+        toast.info(`${ev.data.priorityUnlocked.agent} unlocked all content`, { duration: 3000 });
+        setAgentSheets(loadAgentSheets());
+      }
       if (ev?.data?.type === "app:sync") {
         setCSSheet(loadCSSheet());
         setAgentSheets(loadAgentSheets());
@@ -4053,6 +4057,7 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [pendingDoneRow, setPendingDoneRow] = useState(null);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [pendingRejectRow, setPendingRejectRow] = useState(null);
+  const [forceRefresh, setForceRefresh] = useState(0);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -4093,6 +4098,8 @@ const AgentDashboard = ({ username, onLogout }) => {
       const shouldBeInPriorityMode = updatedPList.length > 0 && !myPriorityCompleted;
       if (priorityMode !== shouldBeInPriorityMode) {
         setPriorityMode(shouldBeInPriorityMode);
+        setPriorityList(shouldBeInPriorityMode ? updatedPList : []);
+        setForceRefresh(prev => prev + 1);
         if (!shouldBeInPriorityMode && updatedPList.length > 0) {
           toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
         }
@@ -4173,6 +4180,17 @@ const AgentDashboard = ({ username, onLogout }) => {
         const sheets = loadAgentSheets();
         setAgentSheets(sheets);
 
+        // Check priority completion status
+        const myCompleted = sheets.agentPriorityCompleted?.[username] || false;
+        const updatedPList = sheets.priorityList || [];
+        const shouldBeInPriorityMode = updatedPList.length > 0 && !myCompleted;
+        
+        if (priorityMode !== shouldBeInPriorityMode) {
+          setPriorityMode(shouldBeInPriorityMode);
+          setPriorityList(shouldBeInPriorityMode ? updatedPList : []);
+          setForceRefresh(prev => prev + 1);
+        }
+
         // Update break status from other tabs/sessions
         const agentBreak = updated.agentBreaks?.[username];
         if (agentBreak?.active && agentBreak?.start) {
@@ -4202,7 +4220,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     };
     CHANNEL.addEventListener('message', handleSync);
     return () => CHANNEL.removeEventListener('message', handleSync);
-  }, [username, onBreak]);
+  }, [username, onBreak, priorityMode]);
 
   const handleCellChange = (r, c, value) => {
     // Agent can only edit their assigned rows
@@ -4301,8 +4319,12 @@ const AgentDashboard = ({ username, onLogout }) => {
           // Important: Set priority mode to false immediately and force re-render
           setPriorityMode(false);
           setPriorityList([]);
+          setForceRefresh(prev => prev + 1);
 
           toast.success(`✅ Priority AWB completed! Showing all content now.`, { duration: 5000 });
+          
+          // Force immediate sync
+          CHANNEL.postMessage({ type: "app:sync", priorityUnlocked: { agent: username } });
         }
 
         // Check if ALL priority AWBs across all agents are completed
