@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare } from 'lucide-react';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import DailyReportDialog from '../components/DailyReportDialog';
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
@@ -360,6 +360,9 @@ const LoginScreen = ({ onLogin }) => {
   const [sendingOTP, setSendingOTP] = useState(false);
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState(5);
+  const [showAdminPass, setShowAdminPass] = useState(false);
+  const [showAgentPass, setShowAgentPass] = useState(false);
+  const [showCSPass, setShowCSPass] = useState(false);
 
   const handleAdminLogin = () => {
     const state = loadState();
@@ -530,137 +533,287 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden" style={{
-      background: `
-        radial-gradient(900px 500px at 15% 10%, rgba(255,204,0,.55), transparent 60%),
-        radial-gradient(700px 400px at 85% 20%, rgba(255,204,0,.35), transparent 55%),
-        linear-gradient(180deg, #fff 0%, #fff7d1 100%)
-      `
-    }}>
-      {/* Animated Background Shapes */}
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Advanced Animated Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute w-64 h-64 bg-yellow-300/10 rounded-full blur-3xl"
+          className="absolute w-[500px] h-[500px] bg-gradient-to-r from-yellow-500/30 to-orange-500/30 rounded-full blur-3xl"
           animate={{
-            x: [0, 100, 0],
-            y: [0, -100, 0],
+            x: [0, 200, 0],
+            y: [0, -150, 0],
+            scale: [1, 1.3, 1],
           }}
           transition={{
             duration: 20,
             repeat: Infinity,
-            ease: "linear"
+            ease: "easeInOut"
           }}
-          style={{ top: '10%', left: '10%' }}
+          style={{ top: '5%', left: '5%' }}
         />
         <motion.div
-          className="absolute w-96 h-96 bg-orange-300/10 rounded-full blur-3xl"
+          className="absolute w-[600px] h-[600px] bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full blur-3xl"
           animate={{
-            x: [0, -100, 0],
-            y: [0, 100, 0],
+            x: [0, -200, 0],
+            y: [0, 150, 0],
+            scale: [1.2, 1, 1.2],
           }}
           transition={{
             duration: 25,
             repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+          style={{ bottom: '5%', right: '5%' }}
+        />
+        <motion.div
+          className="absolute w-[400px] h-[400px] bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl"
+          animate={{
+            x: [0, -100, 100, 0],
+            y: [0, 100, -100, 0],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 30,
+            repeat: Infinity,
             ease: "linear"
           }}
-          style={{ bottom: '10%', right: '10%' }}
+          style={{ top: '40%', left: '45%' }}
         />
       </div>
 
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+
+      {/* Floating Particles */}
+      {[...Array(20)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1 h-1 bg-white/20 rounded-full"
+          initial={{
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+          }}
+          animate={{
+            y: [null, Math.random() * window.innerHeight],
+            opacity: [0, 1, 0],
+          }}
+          transition={{
+            duration: Math.random() * 10 + 10,
+            repeat: Infinity,
+            delay: Math.random() * 5,
+          }}
+        />
+      ))}
+
       <div className="w-full max-w-md relative z-10">
+        {/* Brand Logo */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-center mb-8"
+        >
+          <motion.div
+            className="inline-block"
+            whileHover={{ scale: 1.05, rotate: [0, -2, 2, -2, 0] }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="text-6xl font-black bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-600 bg-clip-text text-transparent drop-shadow-2xl">
+              DHL Sheet
+            </h1>
+          </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-gray-300 mt-3 text-sm font-medium tracking-wider"
+          >
+            ✨ Premium Authentication Portal
+          </motion.p>
+        </motion.div>
+
         {/* Login Panel */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <Card className="backdrop-blur-xl bg-white/70 border border-white/20 shadow-2xl overflow-hidden"
+          <Card className="backdrop-blur-2xl bg-white/10 border border-white/20 shadow-2xl overflow-hidden relative group"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,247,209,0.8) 100%)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)'
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+              backdropFilter: 'blur(30px)',
+              WebkitBackdropFilter: 'blur(30px)'
             }}
           >
-          <div className="flex gap-2 p-4 bg-yellow-400/25 border-b border-black/10">
-            <Button
-              variant={activeTab === "admin" ? "default" : "outline"}
-              onClick={() => { setActiveTab("admin"); setError(""); }}
-              className={`flex-1 font-black text-xs ${activeTab === "admin" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
-            >
-              Admin
-            </Button>
-            <Button
-              variant={activeTab === "agent" ? "default" : "outline"}
-              onClick={() => { setActiveTab("agent"); setError(""); }}
-              className={`flex-1 font-black text-xs ${activeTab === "agent" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
-            >
-              Agent
-            </Button>
-            <Button
-              variant={activeTab === "cs_allocator" ? "default" : "outline"}
-              onClick={() => { setActiveTab("cs_allocator"); setError(""); }}
-              className={`flex-1 font-black text-xs ${activeTab === "cs_allocator" ? "bg-yellow-400/60 hover:bg-yellow-400/70 text-black border-black/15" : "bg-white/70 text-black border-black/10"}`}
-            >
-              CS Allocator
-            </Button>
+          {/* Animated Border Glow */}
+          <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="absolute inset-[-2px] bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 rounded-lg blur-sm" />
+          </div>
+          
+          <div className="relative z-10">
+          <div className="flex gap-2 p-5 bg-gradient-to-r from-white/20 via-white/10 to-white/5 border-b border-white/20">
+            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                onClick={() => { setActiveTab("admin"); setError(""); }}
+                className={`w-full font-black text-sm transition-all duration-300 ${
+                  activeTab === "admin" 
+                    ? "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" 
+                    : "bg-white/10 text-white border border-white/30 hover:bg-white/20"
+                }`}
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            </motion.div>
+            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                onClick={() => { setActiveTab("agent"); setError(""); }}
+                className={`w-full font-black text-sm transition-all duration-300 ${
+                  activeTab === "agent" 
+                    ? "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" 
+                    : "bg-white/10 text-white border border-white/30 hover:bg-white/20"
+                }`}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Agent
+              </Button>
+            </motion.div>
+            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                onClick={() => { setActiveTab("cs_allocator"); setError(""); }}
+                className={`w-full font-black text-sm transition-all duration-300 ${
+                  activeTab === "cs_allocator" 
+                    ? "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" 
+                    : "bg-white/10 text-white border border-white/30 hover:bg-white/20"
+                }`}
+              >
+                <Users className="w-4 h-4 mr-2" />
+                CS Team
+              </Button>
+            </motion.div>
           </div>
 
-          <CardContent className="p-6">
+          <CardContent className="p-8">
             <AnimatePresence mode="wait">
               {activeTab === "admin" ? (
                 <motion.div
                   key="admin"
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-4"
+                  exit={{ opacity: 0, x: 30 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-6"
                 >
-                  <div>
-                    <h2 className="text-2xl font-bold mb-1 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                      Admin Login
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-600 bg-clip-text text-transparent">
+                      Admin Portal
                     </h2>
-                    <p className="text-sm text-black/60">Access administrative dashboard</p>
-                  </div>
+                    <p className="text-sm text-gray-300">Full administrative access and control</p>
+                  </motion.div>
                   
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs text-black/70 font-semibold">Admin Username</Label>
-                      <Input
-                        value={adminUser}
-                        onChange={(e) => setAdminUser(e.target.value)}
-                        placeholder="Enter admin username"
-                        className="mt-1 border-black/20 focus:border-yellow-400 focus:ring-yellow-400"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-black/70 font-semibold">Admin Password</Label>
-                      <Input
-                        type="password"
-                        value={adminPass}
-                        onChange={(e) => setAdminPass(e.target.value)}
-                        placeholder="Enter admin password"
-                        className="mt-1 border-black/20 focus:border-yellow-400 focus:ring-yellow-400"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                      />
-                    </div>
+                  <div className="space-y-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+                          <Input
+                            value={adminUser}
+                            onChange={(e) => setAdminUser(e.target.value)}
+                            placeholder="Enter admin username"
+                            className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400/50 focus:bg-white/10 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+                          <Input
+                            type={showAdminPass ? "text" : "password"}
+                            value={adminPass}
+                            onChange={(e) => setAdminPass(e.target.value)}
+                            placeholder="Enter admin password"
+                            className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400/50 focus:bg-white/10 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                          />
+                          <motion.button
+                            type="button"
+                            onClick={() => setShowAdminPass(!showAdminPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {showAdminPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button onClick={handleAdminLogin} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black shadow-lg">
-                      Login
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="flex justify-end"
+                  >
+                    <motion.button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm text-yellow-400 hover:text-yellow-300 font-medium transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Forgot Password?
+                    </motion.button>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <Button 
+                      onClick={handleAdminLogin} 
+                      className="w-full h-12 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-black shadow-lg shadow-yellow-500/50 relative overflow-hidden group"
+                    >
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <span className="relative flex items-center justify-center gap-2">
+                        <Lock className="w-5 h-5" />
+                        Sign In as Admin
+                      </span>
                     </Button>
-                    <Button onClick={handleForgotPassword} variant="outline" className="flex-1 font-bold border-yellow-400/50 text-yellow-700 hover:bg-yellow-50">
-                      Forgot Password
-                    </Button>
-                  </div>
+                  </motion.div>
 
                   {error && (
                     <motion.div 
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm font-medium"
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
                     >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
                   )}
@@ -668,105 +821,213 @@ const LoginScreen = ({ onLogin }) => {
               ) : activeTab === "agent" ? (
                 <motion.div
                   key="agent"
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-4"
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-6"
                 >
-                  <div>
-                    <h2 className="text-xl font-bold mb-1">Agent Login</h2>
-                    <p className="text-sm text-black/60">Only agents created by Admin can login.</p>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">
+                      Agent Portal
+                    </h2>
+                    <p className="text-sm text-gray-300">Access your assigned tasks and workflows</p>
+                  </motion.div>
                   
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs text-black/60">Agent Username</Label>
-                      <Input
-                        value={agentUser}
-                        onChange={(e) => setAgentUser(e.target.value)}
-                        placeholder="Enter agent username"
-                        className="mt-1"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-black/60">Agent Password</Label>
-                      <Input
-                        type="password"
-                        value={agentPass}
-                        onChange={(e) => setAgentPass(e.target.value)}
-                        placeholder="Enter agent password"
-                        className="mt-1"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
-                      />
-                    </div>
+                  <div className="space-y-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
+                          <Input
+                            value={agentUser}
+                            onChange={(e) => setAgentUser(e.target.value)}
+                            placeholder="Enter agent username"
+                            className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400/50 focus:bg-white/10 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
+                          <Input
+                            type={showAgentPass ? "text" : "password"}
+                            value={agentPass}
+                            onChange={(e) => setAgentPass(e.target.value)}
+                            placeholder="Enter agent password"
+                            className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400/50 focus:bg-white/10 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
+                          />
+                          <motion.button
+                            type="button"
+                            onClick={() => setShowAgentPass(!showAgentPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 transition-colors"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {showAgentPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button onClick={handleAgentLogin} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black">
-                      Login
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Button 
+                      onClick={handleAgentLogin} 
+                      className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-black shadow-lg shadow-blue-500/50 relative overflow-hidden"
+                    >
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <span className="relative flex items-center justify-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Sign In as Agent
+                      </span>
                     </Button>
-                    <Button onClick={() => setActiveTab("admin")} variant="outline" className="flex-1 font-bold">
-                      Go Admin
-                    </Button>
-                  </div>
+                  </motion.div>
 
                   {error && (
-                    <div className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
+                    >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
-                    </div>
+                    </motion.div>
                   )}
                 </motion.div>
               ) : activeTab === "cs_allocator" ? (
                 <motion.div
                   key="cs_allocator"
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="space-y-4"
+                  exit={{ opacity: 0, y: -30 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-6"
                 >
-                  <div>
-                    <h2 className="text-xl font-bold mb-1">CS Allocator Login</h2>
-                    <p className="text-sm text-black/60">Only CS Allocators created by Admin can login.</p>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                      CS Team Portal
+                    </h2>
+                    <p className="text-sm text-gray-300">Manage and review agent submissions</p>
+                  </motion.div>
                   
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-xs text-black/60">CS Allocator Username</Label>
-                      <Input
-                        value={csUser}
-                        onChange={(e) => setCSUser(e.target.value)}
-                        placeholder="Enter CS Allocator username"
-                        className="mt-1"
-                        onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-black/60">CS Allocator Password</Label>
-                      <Input
-                        type="password"
-                        value={csPass}
-                        onChange={(e) => setCSPass(e.target.value)}
-                        placeholder="Enter CS Allocator password"
-                        className="mt-1"
-                        onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
-                      />
-                    </div>
+                  <div className="space-y-4">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                          <Input
+                            value={csUser}
+                            onChange={(e) => setCSUser(e.target.value)}
+                            placeholder="Enter CS username"
+                            className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-400/50 focus:bg-white/10 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
+                      <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                          <Input
+                            type={showCSPass ? "text" : "password"}
+                            value={csPass}
+                            onChange={(e) => setCSPass(e.target.value)}
+                            placeholder="Enter CS password"
+                            className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-400/50 focus:bg-white/10 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
+                          />
+                          <motion.button
+                            type="button"
+                            onClick={() => setShowCSPass(!showCSPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-400 transition-colors"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {showCSPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button onClick={handleCSLogin} className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black">
-                      Login
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Button 
+                      onClick={handleCSLogin} 
+                      className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-black shadow-lg shadow-purple-500/50 relative overflow-hidden"
+                    >
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <span className="relative flex items-center justify-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Sign In as CS Team
+                      </span>
                     </Button>
-                    <Button onClick={() => setActiveTab("admin")} variant="outline" className="flex-1 font-bold">
-                      Go Admin
-                    </Button>
-                  </div>
+                  </motion.div>
 
                   {error && (
-                    <div className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
+                    >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
-                    </div>
+                    </motion.div>
                   )}
                 </motion.div>
               ) : null}
@@ -775,21 +1036,38 @@ const LoginScreen = ({ onLogin }) => {
         </Card>
         </motion.div>
 
-        {/* Forgot Password Dialog - Modern Glassmorphism Design */}
+        {/* Footer */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="text-center mt-8"
+        >
+          <p className="text-gray-400 text-sm">© 2026 DHL Sheet. Secure Enterprise Portal.</p>
+        </motion.div>
+        </motion.div>
+
+        {/* Forgot Password Dialog - Ultra Modern Design */}
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-          <DialogContent className="max-w-md backdrop-blur-2xl bg-white/80 border border-white/30 shadow-2xl"
+          <DialogContent className="max-w-md backdrop-blur-3xl bg-white/10 border border-white/20 shadow-2xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,247,209,0.9) 100%)',
-              backdropFilter: 'blur(30px)',
-              WebkitBackdropFilter: 'blur(30px)'
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+              backdropFilter: 'blur(40px)',
+              WebkitBackdropFilter: 'blur(40px)'
             }}
           >
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold flex items-center gap-3 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
-                  <AlertCircle className="w-6 h-6 text-white" />
-                </div>
-                Password Recovery
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                <motion.div 
+                  className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/50"
+                  whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <KeyRound className="w-7 h-7 text-white" />
+                </motion.div>
+                <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                  Password Recovery
+                </span>
               </DialogTitle>
             </DialogHeader>
 
@@ -797,162 +1075,216 @@ const LoginScreen = ({ onLogin }) => {
               {forgotStep === "email" ? (
                 <motion.div
                   key="email"
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="space-y-4 py-4"
+                  exit={{ opacity: 0, x: 30 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-5 py-4"
                 >
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
-                    <p className="text-sm text-blue-900 font-medium flex items-center gap-2">
-                      <Settings className="w-4 h-4" />
-                      Enter the admin email registered in Admin Panel Settings
+                  <motion.div 
+                    className="p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 rounded-2xl"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <p className="text-sm text-white font-medium flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      Enter your registered admin email to receive OTP
                     </p>
-                  </div>
+                  </motion.div>
 
-                  <div className="relative">
-                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Email Address</Label>
+                  <motion.div 
+                    className="relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Email Address</Label>
                     <div className="relative group">
-                      <input
-                        type="email"
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="admin@company.com"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                        onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()}
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="relative">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
+                        <input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="admin@company.com"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500"
+                          onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()}
+                        />
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {error && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-sm font-medium"
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
                     >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
                   )}
 
-                  <div className="flex gap-3 pt-2">
+                  <motion.div 
+                    className="flex gap-3 pt-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
                     <Button
                       onClick={() => {
                         setShowForgotPassword(false);
                         setError("");
                       }}
                       variant="outline"
-                      className="flex-1 font-bold"
+                      className="flex-1 font-bold bg-white/10 text-white border-white/20 hover:bg-white/20"
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleSendOTP}
                       disabled={sendingOTP}
-                      className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold shadow-lg"
+                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold shadow-lg shadow-purple-500/50 relative overflow-hidden"
                     >
-                      {sendingOTP ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                      )}
-                      {sendingOTP ? 'Sending...' : 'Send OTP'}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <span className="relative flex items-center justify-center">
+                        {sendingOTP ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                        {sendingOTP ? 'Sending...' : 'Send OTP'}
+                      </span>
                     </Button>
-                  </div>
+                  </motion.div>
                 </motion.div>
               ) : (
                 <motion.div
                   key="otp"
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-4 py-4"
+                  exit={{ opacity: 0, x: -30 }}
+                  transition={{ duration: 0.4 }}
+                  className="space-y-5 py-4"
                 >
-                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
-                    <p className="text-sm text-green-900 font-medium flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" />
+                  <motion.div 
+                    className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 rounded-2xl"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <p className="text-sm text-white font-medium flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
                       OTP sent to {forgotEmail}
                     </p>
-                  </div>
+                  </motion.div>
 
-                  <div className="relative">
-                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Verification Code</Label>
+                  <motion.div 
+                    className="relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Verification Code</Label>
                     <div className="relative group">
-                      <input
-                        type="text"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="000000"
-                        maxLength={6}
-                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm font-mono text-lg tracking-widest text-center"
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="relative">
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                        <input
+                          type="text"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="000000"
+                          maxLength={6}
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500 font-mono text-lg tracking-[0.5em] text-center"
+                        />
                       </div>
                     </div>
-                  </div>
+                    {remainingAttempts < 5 && (
+                      <motion.p 
+                        className="text-xs text-orange-400 mt-2 flex items-center gap-1"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        {remainingAttempts} attempts remaining
+                      </motion.p>
+                    )}
+                  </motion.div>
 
-                  <div className="relative">
-                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">New Password</Label>
+                  <motion.div 
+                    className="relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">New Password</Label>
                     <div className="relative group">
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter new password"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500"
+                        />
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="relative">
-                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Confirm Password</Label>
+                  <motion.div 
+                    className="relative"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Confirm Password</Label>
                     <div className="relative group">
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                        onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()}
-                      />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="relative">
+                        <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm new password"
+                          className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-purple-400/50 focus:ring-4 focus:ring-purple-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-500"
+                          onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()}
+                        />
                       </div>
                     </div>
-                  </div>
-
-                  {remainingAttempts < 5 && (
-                    <div className="p-3 bg-orange-100 border border-orange-300 rounded-xl text-orange-800 text-sm font-medium">
-                      ⚠️ {remainingAttempts} attempts remaining
-                    </div>
-                  )}
+                  </motion.div>
 
                   {error && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-sm font-medium"
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
                     >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
                   )}
 
-                  <div className="flex gap-3 pt-2">
+                  <motion.div 
+                    className="flex gap-3 pt-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                  >
                     <Button
                       onClick={() => {
                         setForgotStep("email");
@@ -962,23 +1294,31 @@ const LoginScreen = ({ onLogin }) => {
                         setError("");
                       }}
                       variant="outline"
-                      className="flex-1 font-bold"
+                      className="flex-1 font-bold bg-white/10 text-white border-white/20 hover:bg-white/20"
                     >
                       Back
                     </Button>
                     <Button
                       onClick={handleVerifyOTP}
                       disabled={verifyingOTP}
-                      className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold shadow-lg"
+                      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-bold shadow-lg shadow-purple-500/50 relative overflow-hidden"
                     >
-                      {verifyingOTP ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                      )}
-                      {verifyingOTP ? 'Verifying...' : 'Reset Password'}
+                      <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                        initial={{ x: "-100%" }}
+                        whileHover={{ x: "100%" }}
+                        transition={{ duration: 0.6 }}
+                      />
+                      <span className="relative flex items-center justify-center">
+                        {verifyingOTP ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        {verifyingOTP ? 'Verifying...' : 'Reset Password'}
+                      </span>
                     </Button>
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
