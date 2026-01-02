@@ -8,6 +8,7 @@ import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
 import AdvancedReportingModule from '../components/AdvancedReportingModule';
 import AIPerformanceInsights from '../components/AIPerformanceInsights';
 import ConfirmDialog from '../components/ConfirmDialog';
+import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -3019,6 +3020,10 @@ const AdminDashboard = ({ username, onLogout }) => {
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Reports
             </TabsTrigger>
+            <TabsTrigger value="advanced" className="font-bold data-[state=active]:bg-yellow-400/60">
+              <Zap className="w-4 h-4 mr-2" />
+              Advanced Controls
+            </TabsTrigger>
             <TabsTrigger value="settings" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Settings className="w-4 h-4 mr-2" />
               Settings
@@ -3716,6 +3721,20 @@ const AdminDashboard = ({ username, onLogout }) => {
               COL_REGION={COL_REGION}
               COL_REASON={COL_REASON} />
 
+          </TabsContent>
+
+          {/* Advanced Controls Tab */}
+          <TabsContent value="advanced" className="mt-4">
+            <AdvancedAdminControls
+              agents={agents}
+              csSheet={csSheet}
+              onUpdate={() => {
+                setAgentSheets(loadAgentSheets());
+                CHANNEL.postMessage({ type: "app:sync" });
+              }}
+              ROWS_COUNT={ROWS_COUNT}
+              COL_AGENTS={COL_AGENTS}
+              COL_AWB={COL_AWB} />
           </TabsContent>
 
           {/* Settings Tab */}
