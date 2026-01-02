@@ -3801,7 +3801,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         onConfirm={confirmDialog.onConfirm} />
     </div>);
 
-};
+});
 
 // ============================================================================
 // CS ALLOCATOR DASHBOARD COMPONENT
