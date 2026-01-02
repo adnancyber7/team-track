@@ -34,14 +34,14 @@ const CS_COLUMNS = [
 "STATUS", "LINE", "TIME", "LOT", "REMARKS", "AGENTS", "AWB'S", "REASON", "REGION",
 "CONFIRMATION", "AGENT2", "2ND REJECTION", "2ND CONFIRMATION", "3RD REJECTION",
 "3RD CONFIRMATION", "4TH REJECTION", "4TH CONFIRMATION", "5TH REJECTION",
-"5TH CONFIRMATION", "6th CONFIRMATION"];
+"5TH CONFIRMATION", "6th CONFIRMATION", "PRIORITY"];
 
 
 const AGENT_COLUMNS = [
 "STATUS", "LINE", "TIME", "LOT", "REMARKS", "AGENTS", "AWB'S", "REASON", "REGION",
 "CONFIRMATION", "AGENT2", "2ND REJECTION", "2ND CONFIRMATION", "3RD REJECTION",
 "3RD CONFIRMATION", "4TH REJECTION", "4TH CONFIRMATION", "5TH REJECTION",
-"5TH CONFIRMATION", "6th CONFIRMATION"];
+"5TH CONFIRMATION", "6th CONFIRMATION", "PRIORITY"];
 
 
 const COL_STATUS = 0;
@@ -64,6 +64,7 @@ const COL_CONF4 = 16;
 const COL_REJ5 = 17;
 const COL_CONF5 = 18;
 const COL_CONF6 = 19;
+const COL_PRIORITY = 20;
 
 const ROWS_COUNT = 600;
 const AGENT_DEFAULT_ROWS = 50;
@@ -78,7 +79,7 @@ const BREAK_TYPES = [
 const ADMIN_EDITABLE_IN_CS = new Set([
 COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB,
 COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3,
-COL_CONF4, COL_CONF5, COL_CONF6]
+COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
 const AGENT_EDITABLE = new Set([
@@ -92,7 +93,7 @@ COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6]
 const CS_TEAM_EDITABLE = new Set([
 COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB,
 COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3,
-COL_CONF4, COL_CONF5, COL_CONF6]
+COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
 const DEFAULT_STATE = {
@@ -1299,6 +1300,29 @@ const ExcelSheet = ({
     const compactedTimers = [];
     const rowMapping = [];
 
+    // Calculate current priority level for this agent
+    let currentPriorityLevel = null;
+    if (priorityList && priorityList.length > 0) {
+      // Find the lowest uncompleted priority number for this agent
+      const myPriorities = [];
+      for (let r = 0; r < data.length; r++) {
+        const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+        if (agentCell !== agentUsername.toLowerCase()) continue;
+        
+        const priorityNum = parseInt(data[r]?.[COL_PRIORITY]) || 0;
+        if (priorityNum > 0) {
+          const state = timers[r]?.state?.toUpperCase() || '';
+          if (state !== 'DONE' && state !== 'REJECTED') {
+            myPriorities.push(priorityNum);
+          }
+        }
+      }
+      
+      if (myPriorities.length > 0) {
+        currentPriorityLevel = Math.min(...myPriorities);
+      }
+    }
+
     for (let r = 0; r < data.length; r++) {
       const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       const agentMatch = agentCell === agentUsername.toLowerCase();
@@ -1308,10 +1332,10 @@ const ExcelSheet = ({
       const state = timers[r]?.state?.toUpperCase() || '';
       if (state === 'DONE' || state === 'REJECTED') continue;
 
-      // Apply priority filter ONLY if priority list exists and agent hasn't completed all their priority AWBs
-      if (priorityList && priorityList.length > 0) {
-        const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
-        if (!priorityList.includes(rowAwb)) continue;
+      // Apply priority level filter: only show rows with current priority level
+      if (currentPriorityLevel !== null) {
+        const rowPriority = parseInt(data[r]?.[COL_PRIORITY]) || 0;
+        if (rowPriority !== currentPriorityLevel) continue;
       }
 
       // Apply region filter
@@ -1336,13 +1360,14 @@ const ExcelSheet = ({
       rowMapping.push(-1);
     }
 
-    return { data: compactedData, timers: compactedTimers, rowMapping };
+    return { data: compactedData, timers: compactedTimers, rowMapping, currentPriorityLevel };
   }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length]);
 
   const compactedView = getCompactedView();
   const displayData = compactedView.data;
   const displayTimers = compactedView.timers;
   const rowMapping = compactedView.rowMapping;
+  const currentPriorityLevel = compactedView.currentPriorityLevel;
 
   const getRunningMs = useCallback((r) => {
     const t = displayTimers[r];
@@ -3391,172 +3416,196 @@ const AdminDashboard = ({ username, onLogout }) => {
 
           {/* Priority Tab */}
           <TabsContent value="priority" className="mt-4 space-y-4">
-            <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-red-300 shadow-xl">
+            <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-300 shadow-xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-xl font-bold flex items-center gap-3">
-                  <Zap className="w-6 h-6 text-red-600" />
-                  🚨 Emergency / Urgent Clearance
+                  <Zap className="w-6 h-6 text-purple-600" />
+                  🎯 Priority Mode System
                 </CardTitle>
-                <p className="text-sm text-red-700 font-medium">
-                  Set priority AWBs that ALL agents must complete first. Other data will be hidden until these are done.
+                <p className="text-sm text-purple-700 font-medium">
+                  Assign priority numbers to rows. Agents will only see content for their current priority level. When they complete all rows for a priority, the next priority level unlocks automatically.
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label className="text-sm font-bold text-red-800">Priority AWB Numbers (10 digits each)</Label>
-                  <p className="text-xs text-gray-600 mb-2">Enter one or multiple AWBs separated by comma, space, or new line</p>
-                  <Textarea
-                    value={priorityNumbers}
-                    onChange={(e) => setPriorityNumbers(e.target.value)}
-                    placeholder="1234567890, 9876543210, 5555555555..."
-                    className="mt-1 min-h-[120px] font-mono text-sm" />
-
+                <div className="p-4 bg-white rounded-lg border-2 border-purple-200">
+                  <h3 className="font-bold text-purple-900 mb-3">How It Works:</h3>
+                  <ul className="text-sm space-y-2 text-gray-700">
+                    <li>• Admin assigns priority numbers (1, 2, 3, etc.) to specific rows in the PRIORITY column</li>
+                    <li>• Each agent sees only content matching their <strong>lowest uncompleted priority number</strong></li>
+                    <li>• When agent completes all rows for priority 1, priority 2 content unlocks automatically</li>
+                    <li>• Each agent progresses independently - one agent's progress doesn't affect others</li>
+                    <li>• Content without priority numbers appears after all priority levels are completed</li>
+                  </ul>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleSetPriority}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black">
-
-                    <Zap className="w-5 h-5 mr-2" />
-                    SET PRIORITY
-                  </Button>
-                  <Button
-                    onClick={handleClearPriority}
-                    variant="outline"
-                    className="font-bold">
-
-                    Clear All
-                  </Button>
-                </div>
-
-                {agentSheets.priorityList && agentSheets.priorityList.length > 0 &&
-                <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
-                    <div className="font-bold text-red-900 mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5" />
-                        Active Priority Queue: {agentSheets.priorityList.length} AWBs
-                      </div>
-                      <div className="text-sm font-normal">
-                        Completed: {Object.values(agentSheets.priorityTracking || {}).filter((t) => t.status === 'completed').length} / {agentSheets.priorityList.length}
-                      </div>
-                    </div>
-                    <ScrollArea className="max-h-[500px]">
-                      <div className="space-y-2 pr-4">
-                        {agentSheets.priorityList.map((num, idx) => {
-                        const tracking = agentSheets.priorityTracking?.[num] || { agent: null, status: 'pending', deadline: null };
-                        const isCompleted = tracking.status === 'completed';
-                        const deadlineStatus = getDeadlineStatus(tracking);
-
-                        // Find which agent is assigned to this AWB from CS sheet and check if action taken
-                        let currentAgent = tracking.agent;
-                        let actionTaken = false;
-                        let rowStatus = '';
-
-                        if (!currentAgent) {
-                         for (let r = 0; r < ROWS_COUNT; r++) {
-                           if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
-                             currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
-                             rowStatus = csSheet.timers[r]?.state?.toUpperCase() || '';
-                             actionTaken = rowStatus === 'DONE' || rowStatus === 'REJECTED' || csSheet.timers[r]?.start !== null;
-                             break;
-                           }
-                         }
-                        } else {
-                         // Check action status
-                         for (let r = 0; r < ROWS_COUNT; r++) {
-                           if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
-                             rowStatus = csSheet.timers[r]?.state?.toUpperCase() || '';
-                             actionTaken = rowStatus === 'DONE' || rowStatus === 'REJECTED' || csSheet.timers[r]?.start !== null;
-                             break;
-                           }
-                         }
+                <div className="p-3 bg-purple-100 border border-purple-300 rounded-lg">
+                  <div className="font-bold text-purple-900 mb-2">Quick Actions:</div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      onClick={() => {
+                        // Set priority 1 to all selected rows
+                        if (selectedRows.size === 0) {
+                          toast.error('No rows selected');
+                          return;
                         }
-
-                        return (
-                          <div
-                            key={idx}
-                            className={`flex items-center gap-3 p-3 rounded border ${
-                            isCompleted ? 'bg-green-50 border-green-300' :
-                            deadlineStatus?.status === 'overdue' ? 'bg-red-50 border-red-400 animate-pulse' :
-                            'bg-white border-red-200'}`
-                            }>
-
-                              <div className="flex items-center gap-2 flex-1">
-                                {isCompleted ?
-                              <CheckCircle2 className="w-5 h-5 text-green-600" /> :
-
-                              <Clock className="w-5 h-5 text-orange-600" />
-                              }
-                                <Badge className={`font-mono ${isCompleted ? 'bg-green-600' : 'bg-red-600'} text-white`}>
-                                  {num}
-                                </Badge>
-
-                                {!isCompleted ?
-                              <Select value={currentAgent || ""} onValueChange={(agent) => handleReassignPriority(num, agent)}>
-                                    <SelectTrigger className="w-[140px] h-7 text-xs">
-                                      <SelectValue placeholder="Assign Agent" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {agents.map((agent) =>
-                                  <SelectItem key={agent.username} value={agent.username}>
-                                          {agent.username}
-                                        </SelectItem>
-                                  )}
-                                    </SelectContent>
-                                  </Select> :
-
-                              <span className="text-sm font-medium text-gray-700">
-                                    {currentAgent}
-                                  </span>
-                              }
-
-                                {!isCompleted &&
-                              <Select
-                                onValueChange={(mins) => handleSetDeadline(num, parseInt(mins))}
-                                disabled={isCompleted}>
-
-                                    <SelectTrigger className="w-[120px] h-7 text-xs">
-                                      <SelectValue placeholder="Set Deadline" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="5">5 minutes</SelectItem>
-                                      <SelectItem value="10">10 minutes</SelectItem>
-                                      <SelectItem value="15">15 minutes</SelectItem>
-                                      <SelectItem value="30">30 minutes</SelectItem>
-                                      <SelectItem value="60">1 hour</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                              }
-
-                                {deadlineStatus &&
-                              <Badge className={`${deadlineStatus.color} text-white text-xs animate-pulse`}>
-                                    {deadlineStatus.text}
-                                  </Badge>
-                              }
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                {isCompleted ?
-                              <Badge className="bg-green-600 text-white text-xs">
-                                    ✓ COMPLETED
-                                  </Badge> :
-                              actionTaken ?
-                              <Badge className="bg-blue-500 text-white text-xs">
-                                    ⚡ ACTION TAKEN
-                                  </Badge> :
-                              <Badge className="bg-orange-500 text-white text-xs">
-                                    ⏳ PENDING
-                                  </Badge>
-                              }
-                              </div>
-                            </div>);
-
-                      })}
-                      </div>
-                    </ScrollArea>
+                        const newSheet = deepCopy(csSheet);
+                        selectedRows.forEach((r) => {
+                          newSheet.raw[r][COL_PRIORITY] = '1';
+                        });
+                        setCSSheet(newSheet);
+                        saveCSSheet(newSheet);
+                        CHANNEL.postMessage({ type: "app:sync" });
+                        toast.success(`Set Priority 1 for ${selectedRows.size} rows`);
+                      }}
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
+                      Set Selected → Priority 1
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        // Set priority 2 to all selected rows
+                        if (selectedRows.size === 0) {
+                          toast.error('No rows selected');
+                          return;
+                        }
+                        const newSheet = deepCopy(csSheet);
+                        selectedRows.forEach((r) => {
+                          newSheet.raw[r][COL_PRIORITY] = '2';
+                        });
+                        setCSSheet(newSheet);
+                        saveCSSheet(newSheet);
+                        CHANNEL.postMessage({ type: "app:sync" });
+                        toast.success(`Set Priority 2 for ${selectedRows.size} rows`);
+                      }}
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold">
+                      Set Selected → Priority 2
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        // Set priority 3 to all selected rows
+                        if (selectedRows.size === 0) {
+                          toast.error('No rows selected');
+                          return;
+                        }
+                        const newSheet = deepCopy(csSheet);
+                        selectedRows.forEach((r) => {
+                          newSheet.raw[r][COL_PRIORITY] = '3';
+                        });
+                        setCSSheet(newSheet);
+                        saveCSSheet(newSheet);
+                        CHANNEL.postMessage({ type: "app:sync" });
+                        toast.success(`Set Priority 3 for ${selectedRows.size} rows`);
+                      }}
+                      size="sm"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold">
+                      Set Selected → Priority 3
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        // Clear priority from selected rows
+                        if (selectedRows.size === 0) {
+                          toast.error('No rows selected');
+                          return;
+                        }
+                        const newSheet = deepCopy(csSheet);
+                        selectedRows.forEach((r) => {
+                          newSheet.raw[r][COL_PRIORITY] = '';
+                        });
+                        setCSSheet(newSheet);
+                        saveCSSheet(newSheet);
+                        CHANNEL.postMessage({ type: "app:sync" });
+                        toast.success(`Cleared priority for ${selectedRows.size} rows`);
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="font-bold">
+                      Clear Priority from Selected
+                    </Button>
                   </div>
-                }
+                </div>
+
+                {/* Priority Overview */}
+                <Card className="bg-white border-purple-200">
+                  <CardContent className="p-4">
+                    <h3 className="font-bold text-purple-900 mb-3">Priority Distribution:</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[1, 2, 3, 4, 5].map((priority) => {
+                        const count = csSheet.raw.filter((row) => parseInt(row[COL_PRIORITY]) === priority).length;
+                        const completedCount = csSheet.raw.filter((row) => {
+                          const rowPriority = parseInt(row[COL_PRIORITY]);
+                          const state = csSheet.timers[csSheet.raw.indexOf(row)]?.state?.toUpperCase() || '';
+                          return rowPriority === priority && (state === 'DONE' || state === 'REJECTED');
+                        }).length;
+                        
+                        if (count === 0) return null;
+                        
+                        return (
+                          <div key={priority} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <div className="text-xs text-purple-600 font-bold">Priority {priority}</div>
+                            <div className="text-2xl font-black text-purple-900">{count}</div>
+                            <div className="text-xs text-gray-600">
+                              {completedCount} / {count} completed
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Agent Progress */}
+                <Card className="bg-white border-purple-200">
+                  <CardContent className="p-4">
+                    <h3 className="font-bold text-purple-900 mb-3">Agent Progress:</h3>
+                    <div className="space-y-2">
+                      {agents.map((agent) => {
+                        // Calculate current priority level for this agent
+                        let lowestPriority = null;
+                        let completedPriorities = new Set();
+                        
+                        for (let r = 0; r < ROWS_COUNT; r++) {
+                          const rowAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+                          if (rowAgent !== agent.username.toLowerCase()) continue;
+                          
+                          const priorityNum = parseInt(csSheet.raw[r]?.[COL_PRIORITY]) || 0;
+                          if (priorityNum > 0) {
+                            const state = csSheet.timers[r]?.state?.toUpperCase() || '';
+                            if (state === 'DONE' || state === 'REJECTED') {
+                              completedPriorities.add(priorityNum);
+                            } else {
+                              if (lowestPriority === null || priorityNum < lowestPriority) {
+                                lowestPriority = priorityNum;
+                              }
+                            }
+                          }
+                        }
+                        
+                        if (lowestPriority === null && completedPriorities.size === 0) return null;
+                        
+                        return (
+                          <div key={agent.username} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <div className="flex items-center gap-3">
+                              <Badge className="bg-yellow-400 text-black font-black">{agent.username}</Badge>
+                              {lowestPriority !== null ? (
+                                <Badge className="bg-purple-600 text-white animate-pulse">
+                                  🎯 Working on Priority {lowestPriority}
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-green-600 text-white">
+                                  ✅ All Priorities Complete
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Completed: {Array.from(completedPriorities).sort((a, b) => a - b).join(', ') || 'None'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
               </CardContent>
             </Card>
           </TabsContent>
@@ -4062,6 +4111,7 @@ const AgentDashboard = ({ username, onLogout }) => {
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [pendingRejectRow, setPendingRejectRow] = useState(null);
   const [forceRefresh, setForceRefresh] = useState(0);
+  const [currentPriorityLevel, setCurrentPriorityLevel] = useState(null);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -4095,26 +4145,32 @@ const AgentDashboard = ({ username, onLogout }) => {
       const updatedFilter = updatedSheets.agentFilters?.[username]?.region || "";
       setRegionFilter(updatedFilter);
 
-      const updatedPList = updatedSheets.priorityList || [];
-      const myPriorityCompleted = updatedSheets.agentPriorityCompleted?.[username] || false;
-
-      // Always update priority mode based on current completion status
-      const shouldBeInPriorityMode = updatedPList.length > 0 && !myPriorityCompleted;
-      if (priorityMode !== shouldBeInPriorityMode) {
-        setPriorityMode(shouldBeInPriorityMode);
-        setPriorityList(shouldBeInPriorityMode ? updatedPList : []);
-        setForceRefresh(prev => prev + 1);
-        if (!shouldBeInPriorityMode && updatedPList.length > 0) {
-          toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
+      // Check if agent has any priority levels assigned
+      let hasPriority = false;
+      let lowestPriority = null;
+      for (let r = 0; r < ROWS_COUNT; r++) {
+        const agentCell = String(updated.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+        if (agentCell === username.toLowerCase()) {
+          const priorityNum = parseInt(updated.raw[r]?.[COL_PRIORITY]) || 0;
+          if (priorityNum > 0) {
+            hasPriority = true;
+            const state = updated.timers[r]?.state?.toUpperCase() || '';
+            if (state !== 'DONE' && state !== 'REJECTED') {
+              if (lowestPriority === null || priorityNum < lowestPriority) {
+                lowestPriority = priorityNum;
+              }
+            }
+          }
         }
       }
-
-      if (JSON.stringify(updatedPList) !== JSON.stringify(priorityList)) {
-        setPriorityList(updatedPList);
-        if (updatedPList.length > priorityList.length) {
-          toast.error(`🚨 PRIORITY ALERT: ${updatedPList.length} urgent AWBs assigned!`, { duration: 10000 });
-        } else if (updatedPList.length === 0 && priorityList.length > 0) {
-          toast.success(`✅ All priority AWBs completed system-wide! Normal mode restored.`, { duration: 5000 });
+      
+      if (lowestPriority !== currentPriorityLevel) {
+        setCurrentPriorityLevel(lowestPriority);
+        setForceRefresh(prev => prev + 1);
+        if (lowestPriority !== null) {
+          toast.info(`🎯 Now showing Priority ${lowestPriority} content`, { duration: 3000 });
+        } else if (hasPriority && lowestPriority === null) {
+          toast.success(`✅ All priority content completed! Showing remaining content.`, { duration: 5000 });
         }
       }
 
@@ -4136,7 +4192,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [username, onBreak, breakType, breakStart, priorityList, priorityMode]);
+  }, [username, onBreak, breakType, breakStart, priorityList, priorityMode, currentPriorityLevel]);
 
   const handleBreakToggle = (type) => {
     const newSheet = deepCopy(csSheet);
@@ -4184,14 +4240,25 @@ const AgentDashboard = ({ username, onLogout }) => {
         const sheets = loadAgentSheets();
         setAgentSheets(sheets);
 
-        // Check priority completion status
-        const myCompleted = sheets.agentPriorityCompleted?.[username] || false;
-        const updatedPList = sheets.priorityList || [];
-        const shouldBeInPriorityMode = updatedPList.length > 0 && !myCompleted;
+        // Check if current priority level changed
+        let lowestPriority = null;
+        for (let r = 0; r < ROWS_COUNT; r++) {
+          const agentCell = String(updated.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+          if (agentCell === username.toLowerCase()) {
+            const priorityNum = parseInt(updated.raw[r]?.[COL_PRIORITY]) || 0;
+            if (priorityNum > 0) {
+              const state = updated.timers[r]?.state?.toUpperCase() || '';
+              if (state !== 'DONE' && state !== 'REJECTED') {
+                if (lowestPriority === null || priorityNum < lowestPriority) {
+                  lowestPriority = priorityNum;
+                }
+              }
+            }
+          }
+        }
         
-        if (priorityMode !== shouldBeInPriorityMode) {
-          setPriorityMode(shouldBeInPriorityMode);
-          setPriorityList(shouldBeInPriorityMode ? updatedPList : []);
+        if (lowestPriority !== currentPriorityLevel) {
+          setCurrentPriorityLevel(lowestPriority);
           setForceRefresh(prev => prev + 1);
         }
 
@@ -4224,7 +4291,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     };
     CHANNEL.addEventListener('message', handleSync);
     return () => CHANNEL.removeEventListener('message', handleSync);
-  }, [username, onBreak, priorityMode]);
+  }, [username, onBreak, currentPriorityLevel]);
 
   const handleCellChange = (r, c, value) => {
     // Agent can only edit their assigned rows
@@ -4295,54 +4362,48 @@ const AgentDashboard = ({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
 
-      // Update priority tracking if this is a priority AWB
-      if (sheets.priorityTracking && sheets.priorityTracking[awb]) {
-        sheets.priorityTracking[awb].status = 'completed';
-        sheets.priorityTracking[awb].agent = username;
-        sheets.priorityTracking[awb].completedAt = Date.now();
-
-        // Check if THIS agent has completed all their assigned priority AWBs
-        let myPriorityAwbs = [];
+      // Check if this row had a priority number and if agent completed this priority level
+      const rowPriority = parseInt(newSheet.raw[r]?.[COL_PRIORITY]) || 0;
+      if (rowPriority > 0) {
+        // Check if this was the last uncompleted row for this priority level for this agent
+        let hasMoreInLevel = false;
         for (let i = 0; i < ROWS_COUNT; i++) {
+          if (i === r) continue;
           const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
-          const rowAwb = String(newSheet.raw[i]?.[COL_AWB] || '').trim();
-          if (rowAgent === username.toLowerCase() && sheets.priorityList && sheets.priorityList.includes(rowAwb)) {
-            myPriorityAwbs.push(rowAwb);
+          const checkPriority = parseInt(newSheet.raw[i]?.[COL_PRIORITY]) || 0;
+          const state = newSheet.timers[i]?.state?.toUpperCase() || '';
+          
+          if (rowAgent === username.toLowerCase() && checkPriority === rowPriority && state !== 'DONE' && state !== 'REJECTED') {
+            hasMoreInLevel = true;
+            break;
           }
         }
-
-        // Count how many priority AWBs this agent has completed
-        const myCompletedCount = myPriorityAwbs.filter((a) => sheets.priorityTracking[a]?.status === 'completed').length;
         
-        // Unlock all data after completing 1-2 priority AWBs (whichever comes first)
-        if (myCompletedCount >= 1 && myPriorityAwbs.length > 0) {
-          // This agent finished at least 1 priority AWB - disable priority mode for them
-          if (!sheets.agentPriorityCompleted) sheets.agentPriorityCompleted = {};
-          sheets.agentPriorityCompleted[username] = true;
-
-          // Important: Set priority mode to false immediately and force re-render
-          setPriorityMode(false);
-          setPriorityList([]);
-          setForceRefresh(prev => prev + 1);
-
-          toast.success(`✅ Priority AWB completed! Showing all content now.`, { duration: 5000 });
+        if (!hasMoreInLevel) {
+          // Completed this priority level - find next priority level
+          let nextPriority = null;
+          for (let i = 0; i < ROWS_COUNT; i++) {
+            const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
+            const checkPriority = parseInt(newSheet.raw[i]?.[COL_PRIORITY]) || 0;
+            const state = newSheet.timers[i]?.state?.toUpperCase() || '';
+            
+            if (rowAgent === username.toLowerCase() && checkPriority > rowPriority && state !== 'DONE' && state !== 'REJECTED') {
+              if (nextPriority === null || checkPriority < nextPriority) {
+                nextPriority = checkPriority;
+              }
+            }
+          }
           
-          // Force immediate sync
-          CHANNEL.postMessage({ type: "app:sync", priorityUnlocked: { agent: username } });
-        }
-
-        // Check if ALL priority AWBs across all agents are completed
-        const allCompleted = Object.values(sheets.priorityTracking).every((t) => t.status === 'completed');
-        if (allCompleted) {
-          setTimeout(() => {
-            const updatedSheets = loadAgentSheets();
-            updatedSheets.priorityNumbers = "";
-            updatedSheets.priorityList = [];
-            updatedSheets.priorityTracking = {};
-            updatedSheets.agentPriorityCompleted = {};
-            saveAgentSheets(updatedSheets);
-            CHANNEL.postMessage({ type: "app:sync", priorityCompleted: true });
-          }, 5000);
+          setCurrentPriorityLevel(nextPriority);
+          setForceRefresh(prev => prev + 1);
+          
+          if (nextPriority !== null) {
+            toast.success(`✅ Priority ${rowPriority} completed! Now showing Priority ${nextPriority}`, { duration: 5000 });
+          } else {
+            toast.success(`✅ All priority content completed! Showing remaining content.`, { duration: 5000 });
+          }
+          
+          CHANNEL.postMessage({ type: "app:sync" });
         }
       }
 
@@ -4496,10 +4557,10 @@ const AgentDashboard = ({ username, onLogout }) => {
       // Skip hidden rows for pending count
       if (csSheet.timers[r]?.hidden || state === 'DONE' || state === 'REJECTED') continue;
 
-      // Apply priority filter for pending
-      if (priorityMode && priorityList.length > 0) {
-        const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
-        if (!priorityList.includes(rowAwb)) continue;
+      // Apply priority level filter for pending
+      if (currentPriorityLevel !== null) {
+        const rowPriority = parseInt(csSheet.raw[r]?.[COL_PRIORITY]) || 0;
+        if (rowPriority !== currentPriorityLevel) continue;
       }
 
       if (csSheet.raw[r]?.[COL_AWB]?.trim()) awbPending++;
@@ -4574,20 +4635,20 @@ const AgentDashboard = ({ username, onLogout }) => {
         {/* Analytics */}
         <Card className="bg-white/95 border-black/10 shadow-lg">
           <CardContent className="p-4">
-            {priorityMode && priorityList.length > 0 &&
+            {currentPriorityLevel !== null &&
             <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 rounded-lg animate-pulse">
                 <div className="flex items-center gap-2">
                   <Zap className="w-5 h-5 text-red-600" />
-                  <span className="font-black text-red-900">🚨 PRIORITY MODE: {priorityList.length} urgent AWBs - Complete these first!</span>
+                  <span className="font-black text-red-900">🎯 PRIORITY {currentPriorityLevel} - Complete this priority level first!</span>
                 </div>
               </div>
             }
             <div className="flex items-center gap-4 flex-wrap mb-2">
               <Badge className="bg-yellow-400 text-black font-black px-3 py-1">AGENT VIEW ({username})</Badge>
-              {priorityMode &&
+              {currentPriorityLevel !== null &&
               <Badge className="bg-red-600 text-white font-black animate-pulse">
                   <Zap className="w-3 h-3 mr-1" />
-                  PRIORITY MODE
+                  PRIORITY {currentPriorityLevel}
                 </Badge>
               }
               {regionFilter &&
@@ -4714,8 +4775,8 @@ const AgentDashboard = ({ username, onLogout }) => {
               </Button>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-              {priorityMode ?
-              <b>🚨 PRIORITY MODE ACTIVE: Only showing urgent AWBs. All other data hidden until these are completed.</b> :
+              {currentPriorityLevel !== null ?
+              <b>🎯 PRIORITY {currentPriorityLevel} ACTIVE: Only showing Priority {currentPriorityLevel} content. Complete this level to unlock next priority.</b> :
 
               "Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done."
               }
@@ -4725,18 +4786,19 @@ const AgentDashboard = ({ username, onLogout }) => {
 
         {/* Agent Sheet */}
         <ExcelSheet
-          columns={AGENT_COLUMNS}
-          data={csSheet.raw}
-          timers={csSheet.timers}
-          onCellChange={handleCellChange}
-          onStatusClick={handleStatusClick}
-          isAdmin={false}
-          agentUsername={username}
-          editableCols={AGENT_EDITABLE}
-          blinkRows={csSheet.blinkRows}
-          regionFilter={regionFilter}
-          priorityList={priorityList}
-          zoomLevel={zoomLevel} />
+        key={forceRefresh}
+        columns={AGENT_COLUMNS}
+        data={csSheet.raw}
+        timers={csSheet.timers}
+        onCellChange={handleCellChange}
+        onStatusClick={handleStatusClick}
+        isAdmin={false}
+        agentUsername={username}
+        editableCols={AGENT_EDITABLE}
+        blinkRows={csSheet.blinkRows}
+        regionFilter={regionFilter}
+        priorityList={priorityList}
+        zoomLevel={zoomLevel} />
 
 
         {/* Start Reminder Dialog */}
