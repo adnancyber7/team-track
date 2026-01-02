@@ -768,77 +768,213 @@ const LoginScreen = ({ onLogin }) => {
         </Card>
         </motion.div>
 
-        {/* Forgot Password Dialog */}
+        {/* Forgot Password Dialog - Modern Glassmorphism Design */}
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-          <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm">
+          <DialogContent className="max-w-md backdrop-blur-2xl bg-white/80 border border-white/30 shadow-2xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,247,209,0.9) 100%)',
+              backdropFilter: 'blur(30px)',
+              WebkitBackdropFilter: 'blur(30px)'
+            }}
+          >
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                <AlertCircle className="w-6 h-6 text-yellow-600" />
-                Reset Admin Password
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                Password Recovery
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800 font-medium">
-                  Contact your system administrator for the reset code.
-                </p>
-              </div>
-              <div>
-                <Label className="text-xs text-black/70 font-semibold">Reset Code</Label>
-                <Input
-                  value={resetCode}
-                  onChange={(e) => setResetCode(e.target.value)}
-                  placeholder="Enter reset code"
-                  className="mt-1 border-black/20"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-black/70 font-semibold">New Password</Label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="mt-1 border-black/20"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-black/70 font-semibold">Confirm Password</Label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="mt-1 border-black/20"
-                />
-              </div>
-              {error && (
-                <div className="p-3 rounded-xl bg-red-100 border border-red-200 text-red-800 text-sm font-medium">
-                  {error}
-                </div>
+
+            <AnimatePresence mode="wait">
+              {forgotStep === "email" ? (
+                <motion.div
+                  key="email"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-4 py-4"
+                >
+                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                    <p className="text-sm text-blue-900 font-medium flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Enter the admin email registered in Admin Panel Settings
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Email Address</Label>
+                    <div className="relative group">
+                      <input
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="admin@company.com"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                        onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()}
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-sm font-medium"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setError("");
+                      }}
+                      variant="outline"
+                      className="flex-1 font-bold"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSendOTP}
+                      disabled={sendingOTP}
+                      className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold shadow-lg"
+                    >
+                      {sendingOTP ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                      {sendingOTP ? 'Sending...' : 'Send OTP'}
+                    </Button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="otp"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-4 py-4"
+                >
+                  <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                    <p className="text-sm text-green-900 font-medium flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      OTP sent to {forgotEmail}
+                    </p>
+                  </div>
+
+                  <div className="relative">
+                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Verification Code</Label>
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        maxLength={6}
+                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm font-mono text-lg tracking-widest text-center"
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">New Password</Label>
+                    <div className="relative group">
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Confirm Password</Label>
+                    <div className="relative group">
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                        onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()}
+                      />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {remainingAttempts < 5 && (
+                    <div className="p-3 bg-orange-100 border border-orange-300 rounded-xl text-orange-800 text-sm font-medium">
+                      ⚠️ {remainingAttempts} attempts remaining
+                    </div>
+                  )}
+
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-red-100 border border-red-300 text-red-800 text-sm font-medium"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      onClick={() => {
+                        setForgotStep("email");
+                        setOtpCode("");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                        setError("");
+                      }}
+                      variant="outline"
+                      className="flex-1 font-bold"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleVerifyOTP}
+                      disabled={verifyingOTP}
+                      className="flex-1 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold shadow-lg"
+                    >
+                      {verifyingOTP ? (
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      )}
+                      {verifyingOTP ? 'Verifying...' : 'Reset Password'}
+                    </Button>
+                  </div>
+                </motion.div>
               )}
-            </div>
-            <DialogFooter className="flex gap-2">
-              <Button 
-                onClick={() => {
-                  setShowForgotPassword(false);
-                  setResetCode("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  setError("");
-                }} 
-                variant="outline" 
-                className="flex-1 font-bold"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleResetPassword} 
-                className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold shadow-lg"
-              >
-                Reset Password
-              </Button>
-            </DialogFooter>
+            </AnimatePresence>
           </DialogContent>
         </Dialog>
       </div>
