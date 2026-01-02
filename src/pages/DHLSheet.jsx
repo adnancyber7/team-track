@@ -350,9 +350,14 @@ const LoginScreen = ({ onLogin }) => {
   const [csPass, setCSPass] = useState("");
   const [error, setError] = useState("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetCode, setResetCode] = useState("");
+  const [forgotStep, setForgotStep] = useState("email");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [sendingOTP, setSendingOTP] = useState(false);
+  const [verifyingOTP, setVerifyingOTP] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState(5);
 
   const handleAdminLogin = () => {
     const state = loadState();
@@ -403,41 +408,118 @@ const LoginScreen = ({ onLogin }) => {
 
   const handleForgotPassword = () => {
     setShowForgotPassword(true);
+    setForgotStep("email");
+    setForgotEmail("");
+    setOtpCode("");
+    setNewPassword("");
+    setConfirmPassword("");
     setError("");
+    setRemainingAttempts(5);
   };
 
-  const handleResetPassword = () => {
-    if (!resetCode.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+  const handleSendOTP = async () => {
+    if (!forgotEmail.trim()) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setSendingOTP(true);
+    setError("");
+
+    try {
+      const response = await fetch('/api/functions/sendOTP', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to send OTP");
+        return;
+      }
+
+      toast.success("OTP sent to your email!");
+      setForgotStep("otp");
+      setError("");
+    } catch (error) {
+      setError("Network error. Please try again.");
+    } finally {
+      setSendingOTP(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpCode.trim() || !newPassword.trim() || !confirmPassword.trim()) {
       setError("Please fill all fields");
       return;
     }
-    
-    // Security code verification
-    if (resetCode !== "DHLRESET2026") {
-      setError("Invalid reset code");
+
+    if (otpCode.length !== 6 || !/^\d+$/.test(otpCode)) {
+      setError("OTP must be 6 digits");
       return;
     }
-    
+
     if (newPassword.length < 4) {
       setError("Password must be at least 4 characters");
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-    
-    const state = loadState();
-    state.admin.password = newPassword;
-    saveState(state);
-    
-    setShowForgotPassword(false);
-    setResetCode("");
-    setNewPassword("");
-    setConfirmPassword("");
+
+    setVerifyingOTP(true);
     setError("");
-    toast.success("Admin password reset successfully!");
+
+    try {
+      const response = await fetch('/api/functions/verifyOTP', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail,
+          otp: otpCode,
+          newPassword: newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.attemptsLeft !== undefined) {
+          setRemainingAttempts(data.attemptsLeft);
+          setError(`${data.error}. ${data.attemptsLeft} attempts remaining.`);
+        } else {
+          setError(data.error || "Failed to verify OTP");
+        }
+        return;
+      }
+
+      const state = loadState();
+      state.admin.password = newPassword;
+      saveState(state);
+
+      toast.success("Password reset successfully!");
+      setShowForgotPassword(false);
+      setForgotStep("email");
+      setForgotEmail("");
+      setOtpCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setError("");
+    } catch (error) {
+      setError("Network error. Please try again.");
+    } finally {
+      setVerifyingOTP(false);
+    }
   };
 
   return (
