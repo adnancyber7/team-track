@@ -1086,10 +1086,9 @@ const LoginScreen = ({ onLogin }) => {
                         onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()} />
 
                       </div>
-                    </div>
-                  </motion.div>
+                      </motion.div>
 
-                  {error &&
+                      {error &&
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
