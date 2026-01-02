@@ -1460,19 +1460,12 @@ const ExcelSheet = ({
   }, [copiedData, activeCell, canEdit, onCellChange, columns.length, rowMapping]);
 
   const handleKeyDown = (e) => {
+    // Don't handle keys when cell editor dialog is open
+    if (showCellEditor) {
+      return;
+    }
+
     if (editingCell) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        commitEdit();
-        setActiveCell((prev) => ({ r: Math.min(prev.r + 1, ROWS_COUNT - 1), c: prev.c }));
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelEdit();
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        commitEdit();
-        setActiveCell((prev) => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
-      }
       return;
     }
 
@@ -1528,7 +1521,7 @@ const ExcelSheet = ({
       case 'Enter':
       case 'F2':
         e.preventDefault();
-        if (canEdit(activeCell.r, activeCell.c) && activeCell.c !== COL_STATUS) {
+        if (activeCell.c !== COL_STATUS) {
           handleCellDoubleClick(activeCell.r, activeCell.c);
         }
         break;
@@ -1547,16 +1540,14 @@ const ExcelSheet = ({
         break;
       default:
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-          if (canEdit(activeCell.r, activeCell.c) && activeCell.c !== COL_STATUS) {
-            setEditingCell(activeCell);
+          if (activeCell.c !== COL_STATUS) {
+            const isEditable = canEdit(activeCell.r, activeCell.c);
+            const isViewOnly = [COL_REASON, COL_CONF1, COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(activeCell.c);
+            
+            setEditingCell({ r: activeCell.r, c: activeCell.c, readOnly: !isEditable || isViewOnly });
             setEditValue(e.key);
+            setShowCellEditor(true);
             e.preventDefault();
-            setTimeout(() => {
-              if (editorRef.current) {
-                editorRef.current.focus();
-                editorRef.current.setSelectionRange(1, 1);
-              }
-            }, 0);
           }
         }
     }
