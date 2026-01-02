@@ -658,27 +658,24 @@ const LoginScreen = ({ onLogin }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}>
 
-          <Card className="backdrop-blur-3xl bg-gradient-to-br from-black/40 via-red-900/30 to-black/40 border border-yellow-500/30 shadow-2xl overflow-hidden relative group"
+          <Card className="backdrop-blur-3xl bg-gradient-to-br from-black/40 via-red-900/30 to-black/40 border border-yellow-500/30 shadow-2xl overflow-hidden relative"
           style={{
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',
             boxShadow: '0 0 80px rgba(251, 191, 36, 0.3), inset 0 0 60px rgba(0, 0, 0, 0.2)'
           }}>
 
-          {/* Animated Border Glow */}
-          <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div className="absolute inset-[-2px] bg-gradient-to-r from-yellow-400 via-red-500 to-yellow-400 rounded-lg blur-md animate-pulse" />
-          </div>
+
           
           <div className="relative z-10">
-          <div className="flex gap-2 p-5 bg-gradient-to-r from-yellow-500/20 via-red-600/10 to-yellow-500/20 border-b border-yellow-500/30">
+          <div className="flex gap-2 p-5 bg-yellow-400 border-b border-black/10">
             <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
                     onClick={() => {setActiveTab("admin");setError("");}}
                     className={`w-full font-black text-sm transition-all duration-300 ${
                     activeTab === "admin" ?
-                    "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" :
-                    "bg-white/10 text-white border border-white/30 hover:bg-white/20"}`
+                    "bg-red-600 text-white border-0" :
+                    "bg-yellow-400/60 text-black border border-black/10 hover:bg-yellow-400"}`
                     }>
 
                 <Shield className="w-4 h-4 mr-2" />
@@ -690,8 +687,8 @@ const LoginScreen = ({ onLogin }) => {
                     onClick={() => {setActiveTab("agent");setError("");}}
                     className={`w-full font-black text-sm transition-all duration-300 ${
                     activeTab === "agent" ?
-                    "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" :
-                    "bg-white/10 text-white border border-white/30 hover:bg-white/20"}`
+                    "bg-red-600 text-white border-0" :
+                    "bg-yellow-400/60 text-black border border-black/10 hover:bg-yellow-400"}`
                     }>
 
                 <Users className="w-4 h-4 mr-2" />
@@ -703,8 +700,8 @@ const LoginScreen = ({ onLogin }) => {
                     onClick={() => {setActiveTab("cs_allocator");setError("");}}
                     className={`w-full font-black text-sm transition-all duration-300 ${
                     activeTab === "cs_allocator" ?
-                    "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" :
-                    "bg-white/10 text-white border border-white/30 hover:bg-white/20"}`
+                    "bg-red-600 text-white border-0" :
+                    "bg-yellow-400/60 text-black border border-black/10 hover:bg-yellow-400"}`
                     }>
 
                 <Users className="w-4 h-4 mr-2" />
@@ -729,7 +726,7 @@ const LoginScreen = ({ onLogin }) => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}>
 
-                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-600 bg-clip-text text-transparent">
+                    <h2 className="text-3xl font-black mb-2 text-yellow-400">
                       Admin Portal
                     </h2>
                     <p className="text-sm text-gray-300">Full administrative access and control</p>
@@ -741,19 +738,15 @@ const LoginScreen = ({ onLogin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}>
 
-                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
-                          <Input
+                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Username</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                        <Input
                               value={adminUser}
                               onChange={(e) => setAdminUser(e.target.value)}
                               placeholder="Enter admin username"
-                              className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400/50 focus:bg-white/10 transition-all"
+                              className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
-
-                        </div>
                       </div>
                     </motion.div>
                     <motion.div
@@ -761,29 +754,22 @@ const LoginScreen = ({ onLogin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4 }}>
 
-                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
-                          <Input
+                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                        <Input
                               type={showAdminPass ? "text" : "password"}
                               value={adminPass}
                               onChange={(e) => setAdminPass(e.target.value)}
                               placeholder="Enter admin password"
-                              className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400/50 focus:bg-white/10 transition-all"
+                              className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
-
-                          <motion.button
+                          <button
                               type="button"
                               onClick={() => setShowAdminPass(!showAdminPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.95 }}>
-
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
                             {showAdminPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </motion.button>
-                        </div>
+                          </button>
                       </div>
                     </motion.div>
                   </div>
@@ -812,15 +798,8 @@ const LoginScreen = ({ onLogin }) => {
 
                     <Button
                         onClick={handleAdminLogin}
-                        className="w-full h-12 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-black shadow-lg shadow-yellow-500/50 relative overflow-hidden group">
-
-                      <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: "100%" }}
-                          transition={{ duration: 0.6 }} />
-
-                      <span className="relative flex items-center justify-center gap-2">
+                        className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black">
+                      <span className="flex items-center justify-center gap-2">
                         <Lock className="w-5 h-5" />
                         Sign In as Admin
                       </span>
@@ -852,7 +831,7 @@ const LoginScreen = ({ onLogin }) => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}>
 
-                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">
+                    <h2 className="text-3xl font-black mb-2 text-yellow-400">
                       Agent Portal
                     </h2>
                     <p className="text-sm text-gray-300">Access your assigned tasks and workflows</p>
@@ -864,19 +843,15 @@ const LoginScreen = ({ onLogin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}>
 
-                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
-                          <Input
+                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Username</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                        <Input
                               value={agentUser}
                               onChange={(e) => setAgentUser(e.target.value)}
                               placeholder="Enter agent username"
-                              className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400/50 focus:bg-white/10 transition-all"
+                              className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
-
-                        </div>
                       </div>
                     </motion.div>
                     <motion.div
@@ -884,29 +859,22 @@ const LoginScreen = ({ onLogin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4 }}>
 
-                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
-                          <Input
+                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                        <Input
                               type={showAgentPass ? "text" : "password"}
                               value={agentPass}
                               onChange={(e) => setAgentPass(e.target.value)}
                               placeholder="Enter agent password"
-                              className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400/50 focus:bg-white/10 transition-all"
+                              className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
-
-                          <motion.button
+                          <button
                               type="button"
                               onClick={() => setShowAgentPass(!showAgentPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 transition-colors"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.95 }}>
-
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
                             {showAgentPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </motion.button>
-                        </div>
+                          </button>
                       </div>
                     </motion.div>
                   </div>
@@ -918,15 +886,8 @@ const LoginScreen = ({ onLogin }) => {
 
                     <Button
                         onClick={handleAgentLogin}
-                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-black shadow-lg shadow-blue-500/50 relative overflow-hidden">
-
-                      <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: "100%" }}
-                          transition={{ duration: 0.6 }} />
-
-                      <span className="relative flex items-center justify-center gap-2">
+                        className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black">
+                      <span className="flex items-center justify-center gap-2">
                         <Users className="w-5 h-5" />
                         Sign In as Agent
                       </span>
@@ -958,7 +919,7 @@ const LoginScreen = ({ onLogin }) => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}>
 
-                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                    <h2 className="text-3xl font-black mb-2 text-yellow-400">
                       CS Team Portal
                     </h2>
                     <p className="text-sm text-gray-300">Manage and review agent submissions</p>
@@ -970,19 +931,15 @@ const LoginScreen = ({ onLogin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}>
 
-                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
-                          <Input
+                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Username</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                        <Input
                               value={csUser}
                               onChange={(e) => setCSUser(e.target.value)}
                               placeholder="Enter CS username"
-                              className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-400/50 focus:bg-white/10 transition-all"
+                              className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
-
-                        </div>
                       </div>
                     </motion.div>
                     <motion.div
@@ -990,29 +947,22 @@ const LoginScreen = ({ onLogin }) => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4 }}>
 
-                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
-                      <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
-                          <Input
+                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                        <Input
                               type={showCSPass ? "text" : "password"}
                               value={csPass}
                               onChange={(e) => setCSPass(e.target.value)}
                               placeholder="Enter CS password"
-                              className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-400/50 focus:bg-white/10 transition-all"
+                              className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
                               onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
-
-                          <motion.button
+                          <button
                               type="button"
                               onClick={() => setShowCSPass(!showCSPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-400 transition-colors"
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.95 }}>
-
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
                             {showCSPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </motion.button>
-                        </div>
+                          </button>
                       </div>
                     </motion.div>
                   </div>
@@ -1024,15 +974,8 @@ const LoginScreen = ({ onLogin }) => {
 
                     <Button
                         onClick={handleCSLogin}
-                        className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-black shadow-lg shadow-purple-500/50 relative overflow-hidden">
-
-                      <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: "100%" }}
-                          transition={{ duration: 0.6 }} />
-
-                      <span className="relative flex items-center justify-center gap-2">
+                        className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black">
+                      <span className="flex items-center justify-center gap-2">
                         <Users className="w-5 h-5" />
                         Sign In as CS Team
                       </span>
@@ -1101,17 +1044,12 @@ const LoginScreen = ({ onLogin }) => {
                 transition={{ duration: 0.4 }}
                 className="space-y-5 py-4">
 
-                  <motion.div
-                  className="p-4 bg-gradient-to-r from-yellow-500/20 to-red-500/20 border border-yellow-400/40 rounded-2xl"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 }}>
-
+                  <div className="p-4 bg-yellow-400/20 border border-yellow-400/40 rounded-2xl">
                     <p className="text-sm text-white font-medium flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-yellow-400" />
                       Enter your registered admin email to receive OTP
                     </p>
-                  </motion.div>
+                  </div>
 
                   <motion.div
                   className="relative"
@@ -1119,22 +1057,18 @@ const LoginScreen = ({ onLogin }) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}>
 
-                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Email Address</Label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <input
+                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">Email Address</Label>
+                    <div className="relative">
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <input
                         type="email"
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         placeholder="admin@company.com"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
                         onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()} />
-
-                      </div>
                     </div>
                   </motion.div>
 
@@ -1168,15 +1102,8 @@ const LoginScreen = ({ onLogin }) => {
                     <Button
                     onClick={handleSendOTP}
                     disabled={sendingOTP}
-                    className="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-black font-bold shadow-lg shadow-yellow-500/50 relative overflow-hidden">
-
-                      <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: "100%" }}
-                      transition={{ duration: 0.6 }} />
-
-                      <span className="relative flex items-center justify-center">
+                    className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black">
+                      <span className="flex items-center justify-center">
                         {sendingOTP ?
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
 
@@ -1198,17 +1125,12 @@ const LoginScreen = ({ onLogin }) => {
                 transition={{ duration: 0.4 }}
                 className="space-y-5 py-4">
 
-                  <motion.div
-                  className="p-4 bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-2xl"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 }}>
-
+                  <div className="p-4 bg-green-600/20 border border-green-500/40 rounded-2xl">
                     <p className="text-sm text-white font-medium flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-300" />
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
                       OTP sent to {forgotEmail}
                     </p>
-                  </motion.div>
+                  </div>
 
                   <motion.div
                   className="relative"
@@ -1216,30 +1138,22 @@ const LoginScreen = ({ onLogin }) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}>
 
-                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Verification Code</Label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative">
-                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
-                        <input
+                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">Verification Code</Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                      <input
                         type="text"
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="000000"
                         maxLength={6}
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center" />
-
-                      </div>
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center" />
                     </div>
                     {remainingAttempts < 5 &&
-                  <motion.p
-                    className="text-xs text-orange-400 mt-2 flex items-center gap-1"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}>
-
+                  <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
                         {remainingAttempts} attempts remaining
-                      </motion.p>
+                      </p>
                   }
                   </motion.div>
 
@@ -1249,19 +1163,15 @@ const LoginScreen = ({ onLogin }) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}>
 
-                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">New Password</Label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
-                        <input
+                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">New Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                      <input
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Enter new password"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400" />
-
-                      </div>
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400" />
                     </div>
                   </motion.div>
 
@@ -1271,20 +1181,16 @@ const LoginScreen = ({ onLogin }) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}>
 
-                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Confirm Password</Label>
-                    <div className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="relative">
-                        <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
-                        <input
+                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">Confirm Password</Label>
+                    <div className="relative">
+                      <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
+                      <input
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Confirm new password"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
                         onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()} />
-
-                      </div>
                     </div>
                   </motion.div>
 
@@ -1321,15 +1227,8 @@ const LoginScreen = ({ onLogin }) => {
                     <Button
                     onClick={handleVerifyOTP}
                     disabled={verifyingOTP}
-                    className="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-black font-bold shadow-lg shadow-yellow-500/50 relative overflow-hidden">
-
-                      <motion.div
-                      className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
-                      initial={{ x: "-100%" }}
-                      whileHover={{ x: "100%" }}
-                      transition={{ duration: 0.6 }} />
-
-                      <span className="relative flex items-center justify-center">
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black">
+                      <span className="flex items-center justify-center">
                         {verifyingOTP ?
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
 
