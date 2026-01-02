@@ -31,18 +31,18 @@ const APP_STORE_KEY = "DHL_APP_STORE_V4";
 const CS_SHEET_KEY = "DHL_CS_SHEET_V1";
 
 const CS_COLUMNS = [
-  "STATUS", "LINE", "TIME", "LOT", "REMARKS", "AGENTS", "AWB'S", "REASON", "REGION", 
-  "CONFIRMATION", "AGENT2", "2ND REJECTION", "2ND CONFIRMATION", "3RD REJECTION", 
-  "3RD CONFIRMATION", "4TH REJECTION", "4TH CONFIRMATION", "5TH REJECTION", 
-  "5TH CONFIRMATION", "6th CONFIRMATION"
-];
+"STATUS", "LINE", "TIME", "LOT", "REMARKS", "AGENTS", "AWB'S", "REASON", "REGION",
+"CONFIRMATION", "AGENT2", "2ND REJECTION", "2ND CONFIRMATION", "3RD REJECTION",
+"3RD CONFIRMATION", "4TH REJECTION", "4TH CONFIRMATION", "5TH REJECTION",
+"5TH CONFIRMATION", "6th CONFIRMATION"];
+
 
 const AGENT_COLUMNS = [
-  "STATUS", "LINE", "TIME", "LOT", "REMARKS", "AGENTS", "AWB'S", "REASON", "REGION",
-  "CONFIRMATION", "AGENT2", "2ND REJECTION", "2ND CONFIRMATION", "3RD REJECTION",
-  "3RD CONFIRMATION", "4TH REJECTION", "4TH CONFIRMATION", "5TH REJECTION",
-  "5TH CONFIRMATION", "6th CONFIRMATION"
-];
+"STATUS", "LINE", "TIME", "LOT", "REMARKS", "AGENTS", "AWB'S", "REASON", "REGION",
+"CONFIRMATION", "AGENT2", "2ND REJECTION", "2ND CONFIRMATION", "3RD REJECTION",
+"3RD CONFIRMATION", "4TH REJECTION", "4TH CONFIRMATION", "5TH REJECTION",
+"5TH CONFIRMATION", "6th CONFIRMATION"];
+
 
 const COL_STATUS = 0;
 const COL_LINE = 1;
@@ -69,31 +69,31 @@ const ROWS_COUNT = 600;
 const AGENT_DEFAULT_ROWS = 50;
 
 const BREAK_TYPES = [
-  { id: 'prayer', label: 'Prayer Break', icon: Moon, color: 'bg-purple-100 text-purple-800 border-purple-300' },
-  { id: 'lunch', label: 'Lunch Break', icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-800 border-orange-300' },
-  { id: 'tea', label: 'Tea Break', icon: Coffee, color: 'bg-amber-100 text-amber-800 border-amber-300' },
-  { id: 'washroom', label: 'Washroom Break', icon: Droplet, color: 'bg-blue-100 text-blue-800 border-blue-300' }
-];
+{ id: 'prayer', label: 'Prayer Break', icon: Moon, color: 'bg-purple-100 text-purple-800 border-purple-300' },
+{ id: 'lunch', label: 'Lunch Break', icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-800 border-orange-300' },
+{ id: 'tea', label: 'Tea Break', icon: Coffee, color: 'bg-amber-100 text-amber-800 border-amber-300' },
+{ id: 'washroom', label: 'Washroom Break', icon: Droplet, color: 'bg-blue-100 text-blue-800 border-blue-300' }];
+
 
 const ADMIN_EDITABLE_IN_CS = new Set([
-  COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB, 
-  COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3, 
-  COL_CONF4, COL_CONF5, COL_CONF6
-]);
+COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB,
+COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3,
+COL_CONF4, COL_CONF5, COL_CONF6]
+);
 
 const AGENT_EDITABLE = new Set([
-  COL_LINE, COL_LOT, COL_REMARKS, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5
-]);
+COL_LINE, COL_LOT, COL_REMARKS, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
+);
 
 const CS_ALLOCATOR_EDITABLE = new Set([
-  COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6
-]);
+COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6]
+);
 
 const CS_TEAM_EDITABLE = new Set([
-  COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB, 
-  COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3, 
-  COL_CONF4, COL_CONF5, COL_CONF6
-]);
+COL_STATUS, COL_LINE, COL_TIME, COL_LOT, COL_REMARKS, COL_AGENTS, COL_AWB,
+COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3,
+COL_CONF4, COL_CONF5, COL_CONF6]
+);
 
 const DEFAULT_STATE = {
   admin: { username: "admin", password: "admin123", email: "" },
@@ -112,7 +112,7 @@ const formatMs = (ms) => {
   ms = Math.max(0, Math.floor(ms));
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
+  const m = Math.floor(totalSec % 3600 / 60);
   const s = totalSec % 60;
   const pad = (x) => String(x).padStart(2, "0");
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
@@ -123,7 +123,7 @@ const isValidAwb = (v) => /^\d{10}$/.test(String(v || "").trim());
 const parseLineSum = (lineVal) => {
   const str = String(lineVal || "").trim();
   if (!str) return 0;
-  const nums = str.split(/[+\s]+/).map(s => parseFloat(s)).filter(n => !isNaN(n));
+  const nums = str.split(/[+\s]+/).map((s) => parseFloat(s)).filter((n) => !isNaN(n));
   return nums.reduce((a, b) => a + b, 0);
 };
 
@@ -198,16 +198,16 @@ const saveAgentSheets = (data) => {
 };
 
 const downloadCSV = (data, filename) => {
-  const csvContent = data.map(row => 
-    row.map(cell => {
-      const cellStr = String(cell || '');
-      if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
-        return `"${cellStr.replace(/"/g, '""')}"`;
-      }
-      return cellStr;
-    }).join(',')
+  const csvContent = data.map((row) =>
+  row.map((cell) => {
+    const cellStr = String(cell || '');
+    if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+      return `"${cellStr.replace(/"/g, '""')}"`;
+    }
+    return cellStr;
+  }).join(',')
   ).join('\n');
-  
+
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -222,18 +222,18 @@ const excelSerialToTime = (serial) => {
   if (typeof serial === 'string' && (serial.includes(':') || serial.includes('AM') || serial.includes('PM'))) {
     return serial;
   }
-  
+
   // Convert Excel decimal to time
   const num = parseFloat(serial);
   if (isNaN(num) || num < 0 || num > 1) return String(serial);
-  
+
   const totalMinutes = Math.round(num * 24 * 60);
   let hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  
+
   const period = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
-  
+
   return `${hours}:${String(minutes).padStart(2, '0')} ${period}`;
 };
 
@@ -257,7 +257,7 @@ const parseUploadedFile = async (file) => {
 };
 
 const colToName = (c) => {
-  let n = c + 1, s = '';
+  let n = c + 1,s = '';
   while (n > 0) {
     const rem = (n - 1) % 26;
     s = String.fromCharCode(65 + rem) + s;
@@ -269,9 +269,9 @@ const colToName = (c) => {
 const evaluateFormula = (formula, data, currentRow, currentCol) => {
   try {
     if (!formula.startsWith('=')) return formula;
-    
+
     let expr = formula.slice(1).toUpperCase();
-    
+
     // Handle SUM function
     const sumMatch = expr.match(/SUM\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)/);
     if (sumMatch) {
@@ -281,7 +281,7 @@ const evaluateFormula = (formula, data, currentRow, currentCol) => {
       const ec = endCol.charCodeAt(0) - 65;
       const sr = parseInt(startRow) - 1;
       const er = parseInt(endRow) - 1;
-      
+
       for (let r = sr; r <= er && r < data.length; r++) {
         for (let c = sc; c <= ec && c < (data[r]?.length || 0); c++) {
           const val = parseFloat(data[r][c]);
@@ -290,17 +290,17 @@ const evaluateFormula = (formula, data, currentRow, currentCol) => {
       }
       return sum.toString();
     }
-    
+
     // Handle AVERAGE function
     const avgMatch = expr.match(/AVERAGE\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)/);
     if (avgMatch) {
       const [, startCol, startRow, endCol, endRow] = avgMatch;
-      let sum = 0, count = 0;
+      let sum = 0,count = 0;
       const sc = startCol.charCodeAt(0) - 65;
       const ec = endCol.charCodeAt(0) - 65;
       const sr = parseInt(startRow) - 1;
       const er = parseInt(endRow) - 1;
-      
+
       for (let r = sr; r <= er && r < data.length; r++) {
         for (let c = sc; c <= ec && c < (data[r]?.length || 0); c++) {
           const val = parseFloat(data[r][c]);
@@ -312,7 +312,7 @@ const evaluateFormula = (formula, data, currentRow, currentCol) => {
       }
       return count > 0 ? (sum / count).toString() : '0';
     }
-    
+
     // Handle cell references like A1, B2, etc.
     expr = expr.replace(/([A-Z]+)(\d+)/g, (match, col, row) => {
       const c = col.charCodeAt(0) - 65;
@@ -323,7 +323,7 @@ const evaluateFormula = (formula, data, currentRow, currentCol) => {
       }
       return '0';
     });
-    
+
     // Evaluate simple arithmetic
     const result = Function(`"use strict"; return (${expr})`)();
     return isNaN(result) ? formula : result.toString();
@@ -385,7 +385,7 @@ const LoginScreen = ({ onLogin }) => {
       setError("Please enter agent username and password.");
       return;
     }
-    const found = state.agents.find(a => a.username === agentUser && a.password === agentPass);
+    const found = state.agents.find((a) => a.username === agentUser && a.password === agentPass);
     if (found) {
       state.session = { role: "agent", username: agentUser };
       saveState(state);
@@ -401,7 +401,7 @@ const LoginScreen = ({ onLogin }) => {
       setError("Please enter CS Allocator username and password.");
       return;
     }
-    const found = state.csAllocators.find(a => a.username === csUser && a.password === csPass);
+    const found = state.csAllocators.find((a) => a.username === csUser && a.password === csPass);
     if (found) {
       state.session = { role: "cs_allocator", username: csUser };
       saveState(state);
@@ -440,13 +440,13 @@ const LoginScreen = ({ onLogin }) => {
     try {
       const state = loadState();
       const savedEmail = state.admin.email || "";
-      
+
       if (!savedEmail) {
         setError("No recovery email configured. Please contact admin to set up email in Admin Panel Settings.");
         setSendingOTP(false);
         return;
       }
-      
+
       if (forgotEmail.toLowerCase() !== savedEmail.toLowerCase()) {
         setError("Email does not match registered email");
         setSendingOTP(false);
@@ -541,21 +541,21 @@ const LoginScreen = ({ onLogin }) => {
           animate={{
             x: [0, 250, 0],
             y: [0, -180, 0],
-            scale: [1, 1.4, 1],
+            scale: [1, 1.4, 1]
           }}
           transition={{
             duration: 18,
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          style={{ top: '0%', left: '5%' }}
-        />
+          style={{ top: '0%', left: '5%' }} />
+
         <motion.div
           className="absolute w-[700px] h-[700px] bg-gradient-to-r from-red-600/35 to-orange-600/35 rounded-full blur-3xl"
           animate={{
             x: [0, -220, 0],
             y: [0, 180, 0],
-            scale: [1.3, 1, 1.3],
+            scale: [1.3, 1, 1.3]
           }}
           transition={{
             duration: 22,
@@ -563,29 +563,29 @@ const LoginScreen = ({ onLogin }) => {
             ease: "easeInOut",
             delay: 1.5
           }}
-          style={{ bottom: '0%', right: '5%' }}
-        />
+          style={{ bottom: '0%', right: '5%' }} />
+
         <motion.div
           className="absolute w-[500px] h-[500px] bg-gradient-to-r from-yellow-500/25 to-red-500/25 rounded-full blur-3xl"
           animate={{
             x: [0, -120, 120, 0],
             y: [0, 120, -120, 0],
             rotate: [0, 180, 360],
-            scale: [1, 1.2, 1],
+            scale: [1, 1.2, 1]
           }}
           transition={{
             duration: 28,
             repeat: Infinity,
             ease: "linear"
           }}
-          style={{ top: '35%', left: '40%' }}
-        />
+          style={{ top: '35%', left: '40%' }} />
+
         <motion.div
           className="absolute w-[450px] h-[450px] bg-gradient-to-r from-amber-600/30 to-yellow-700/30 rounded-full blur-3xl"
           animate={{
             x: [0, 150, -150, 0],
             y: [0, -100, 100, 0],
-            scale: [1.1, 1.3, 1.1],
+            scale: [1.1, 1.3, 1.1]
           }}
           transition={{
             duration: 24,
@@ -593,37 +593,37 @@ const LoginScreen = ({ onLogin }) => {
             ease: "easeInOut",
             delay: 0.5
           }}
-          style={{ top: '60%', right: '30%' }}
-        />
+          style={{ top: '60%', right: '30%' }} />
+
       </div>
 
       {/* Grid Pattern Overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#fbbf2405_1px,transparent_1px),linear-gradient(to_bottom,#fbbf2405_1px,transparent_1px)] bg-[size:4rem_4rem]" />
 
       {/* Floating Particles */}
-      {[...Array(30)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full"
-          style={{
-            background: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#f59e0b' : '#dc2626',
-            opacity: 0.3
-          }}
-          initial={{
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
-          }}
-          animate={{
-            y: [null, Math.random() * window.innerHeight],
-            opacity: [0, 0.6, 0],
-          }}
-          transition={{
-            duration: Math.random() * 10 + 10,
-            repeat: Infinity,
-            delay: Math.random() * 5,
-          }}
-        />
-      ))}
+      {[...Array(30)].map((_, i) =>
+      <motion.div
+        key={i}
+        className="absolute w-1 h-1 rounded-full"
+        style={{
+          background: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#f59e0b' : '#dc2626',
+          opacity: 0.3
+        }}
+        initial={{
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight
+        }}
+        animate={{
+          y: [null, Math.random() * window.innerHeight],
+          opacity: [0, 0.6, 0]
+        }}
+        transition={{
+          duration: Math.random() * 10 + 10,
+          repeat: Infinity,
+          delay: Math.random() * 5
+        }} />
+
+      )}
 
       <div className="w-full max-w-md relative z-10">
         {/* Brand Logo */}
@@ -631,23 +631,23 @@ const LoginScreen = ({ onLogin }) => {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-center mb-8"
-        >
+          className="text-center mb-8">
+
           <motion.div
             className="inline-block"
             whileHover={{ scale: 1.05, rotate: [0, -2, 2, -2, 0] }}
-            transition={{ duration: 0.5 }}
-          >
-            <h1 className="text-6xl font-black bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-600 bg-clip-text text-transparent drop-shadow-2xl">
-              DHL Sheet
+            transition={{ duration: 0.5 }}>
+
+            <h1 className="text-6xl font-black bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-600 bg-clip-text text-transparent drop-shadow-2xl">TEAM TRACK
+
             </h1>
           </motion.div>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-gray-300 mt-3 text-sm font-medium tracking-wider"
-          >
+            className="text-gray-300 mt-3 text-sm font-medium tracking-wider">
+
             ✨ Premium Authentication Portal
           </motion.p>
         </motion.div>
@@ -656,57 +656,57 @@ const LoginScreen = ({ onLogin }) => {
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-        >
+          transition={{ duration: 0.7, delay: 0.2 }}>
+
           <Card className="backdrop-blur-3xl bg-gradient-to-br from-black/40 via-red-900/30 to-black/40 border border-yellow-500/30 shadow-2xl overflow-hidden relative group"
-            style={{
-              backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)',
-              boxShadow: '0 0 80px rgba(251, 191, 36, 0.3), inset 0 0 60px rgba(0, 0, 0, 0.2)'
-            }}
-          >
+          style={{
+            backdropFilter: 'blur(40px)',
+            WebkitBackdropFilter: 'blur(40px)',
+            boxShadow: '0 0 80px rgba(251, 191, 36, 0.3), inset 0 0 60px rgba(0, 0, 0, 0.2)'
+          }}>
+
           {/* Animated Border Glow */}
           <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div className="absolute inset-[-2px] bg-gradient-to-r from-yellow-400 via-red-500 to-yellow-400 rounded-lg blur-md" />
+            <div className="absolute inset-[-2px] bg-gradient-to-r from-yellow-400 via-red-500 to-yellow-400 rounded-lg blur-md animate-pulse" />
           </div>
           
           <div className="relative z-10">
-          <div className="flex gap-2 p-5 bg-yellow-400/90 border-b border-black/10">
+          <div className="flex gap-2 p-5 bg-gradient-to-r from-yellow-500/20 via-red-600/10 to-yellow-500/20 border-b border-yellow-500/30">
             <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
-                onClick={() => { setActiveTab("admin"); setError(""); }}
-                className={`w-full font-black text-sm transition-all duration-300 ${
-                  activeTab === "admin" 
-                    ? "bg-red-600 text-white shadow-lg border-0" 
-                    : "bg-yellow-400/50 text-black border border-black/10 hover:bg-yellow-400/70"
-                }`}
-              >
+                    onClick={() => {setActiveTab("admin");setError("");}}
+                    className={`w-full font-black text-sm transition-all duration-300 ${
+                    activeTab === "admin" ?
+                    "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" :
+                    "bg-white/10 text-white border border-white/30 hover:bg-white/20"}`
+                    }>
+
                 <Shield className="w-4 h-4 mr-2" />
                 Admin
               </Button>
             </motion.div>
             <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
-                onClick={() => { setActiveTab("agent"); setError(""); }}
-                className={`w-full font-black text-sm transition-all duration-300 ${
-                  activeTab === "agent" 
-                    ? "bg-red-600 text-white shadow-lg border-0" 
-                    : "bg-yellow-400/50 text-black border border-black/10 hover:bg-yellow-400/70"
-                }`}
-              >
+                    onClick={() => {setActiveTab("agent");setError("");}}
+                    className={`w-full font-black text-sm transition-all duration-300 ${
+                    activeTab === "agent" ?
+                    "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" :
+                    "bg-white/10 text-white border border-white/30 hover:bg-white/20"}`
+                    }>
+
                 <Users className="w-4 h-4 mr-2" />
                 Agent
               </Button>
             </motion.div>
             <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Button
-                onClick={() => { setActiveTab("cs_allocator"); setError(""); }}
-                className={`w-full font-black text-sm transition-all duration-300 ${
-                  activeTab === "cs_allocator" 
-                    ? "bg-red-600 text-white shadow-lg border-0" 
-                    : "bg-yellow-400/50 text-black border border-black/10 hover:bg-yellow-400/70"
-                }`}
-              >
+                    onClick={() => {setActiveTab("cs_allocator");setError("");}}
+                    className={`w-full font-black text-sm transition-all duration-300 ${
+                    activeTab === "cs_allocator" ?
+                    "bg-gradient-to-r from-yellow-400 to-orange-500 text-black shadow-lg shadow-yellow-500/50 border-0" :
+                    "bg-white/10 text-white border border-white/30 hover:bg-white/20"}`
+                    }>
+
                 <Users className="w-4 h-4 mr-2" />
                 CS Team
               </Button>
@@ -715,21 +715,21 @@ const LoginScreen = ({ onLogin }) => {
 
           <CardContent className="p-8">
             <AnimatePresence mode="wait">
-              {activeTab === "admin" ? (
-                <motion.div
-                  key="admin"
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 30 }}
-                  transition={{ duration: 0.4 }}
-                  className="space-y-6"
-                >
+              {activeTab === "admin" ?
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <h2 className="text-3xl font-black mb-2 text-yellow-400">
+                    key="admin"
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 30 }}
+                    transition={{ duration: 0.4 }}
+                    className="space-y-6">
+
+                  <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}>
+
+                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-600 bg-clip-text text-transparent">
                       Admin Portal
                     </h2>
                     <p className="text-sm text-gray-300">Full administrative access and control</p>
@@ -737,48 +737,50 @@ const LoginScreen = ({ onLogin }) => {
                   
                   <div className="space-y-4">
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Username</Label>
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}>
+
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
                       <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="relative">
                           <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                           <Input
-                            value={adminUser}
-                            onChange={(e) => setAdminUser(e.target.value)}
-                            placeholder="Enter admin username"
-                            className="pl-11 h-12 bg-yellow-400/10 border-yellow-400/30 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/20 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                          />
+                              value={adminUser}
+                              onChange={(e) => setAdminUser(e.target.value)}
+                              placeholder="Enter admin username"
+                              className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400/50 focus:bg-white/10 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
+
                         </div>
                       </div>
                     </motion.div>
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Password</Label>
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}>
+
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
                       <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                           <Input
-                            type={showAdminPass ? "text" : "password"}
-                            value={adminPass}
-                            onChange={(e) => setAdminPass(e.target.value)}
-                            placeholder="Enter admin password"
-                            className="pl-11 pr-11 h-12 bg-yellow-400/10 border-yellow-400/30 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/20 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                          />
+                              type={showAdminPass ? "text" : "password"}
+                              value={adminPass}
+                              onChange={(e) => setAdminPass(e.target.value)}
+                              placeholder="Enter admin password"
+                              className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-yellow-400/50 focus:bg-white/10 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
+
                           <motion.button
-                            type="button"
-                            onClick={() => setShowAdminPass(!showAdminPass)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
+                              type="button"
+                              onClick={() => setShowAdminPass(!showAdminPass)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}>
+
                             {showAdminPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </motion.button>
                         </div>
@@ -787,37 +789,37 @@ const LoginScreen = ({ onLogin }) => {
                   </div>
 
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="flex justify-end"
-                  >
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="flex justify-end">
+
                     <motion.button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="text-sm text-yellow-400 hover:text-yellow-300 font-medium transition-colors"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="text-sm text-yellow-400 hover:text-yellow-300 font-medium transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}>
+
                       Forgot Password?
                     </motion.button>
                   </motion.div>
 
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <Button 
-                      onClick={handleAdminLogin} 
-                      className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black shadow-lg relative overflow-hidden group"
-                    >
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 }}>
+
+                    <Button
+                        onClick={handleAdminLogin}
+                        className="w-full h-12 bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-black shadow-lg shadow-yellow-500/50 relative overflow-hidden group">
+
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: "100%" }}
-                        transition={{ duration: 0.6 }}
-                      />
+                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                          initial={{ x: "-100%" }}
+                          whileHover={{ x: "100%" }}
+                          transition={{ duration: 0.6 }} />
+
                       <span className="relative flex items-center justify-center gap-2">
                         <Lock className="w-5 h-5" />
                         Sign In as Admin
@@ -825,32 +827,32 @@ const LoginScreen = ({ onLogin }) => {
                     </Button>
                   </motion.div>
 
-                  {error && (
-                    <motion.div 
+                  {error &&
+                    <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
-                    >
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2">
+
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
-                  )}
-                </motion.div>
-              ) : activeTab === "agent" ? (
-                <motion.div
-                  key="agent"
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -30 }}
-                  transition={{ duration: 0.4 }}
-                  className="space-y-6"
-                >
+                    }
+                </motion.div> :
+                  activeTab === "agent" ?
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <h2 className="text-3xl font-black mb-2 text-yellow-400">
+                    key="agent"
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.4 }}
+                    className="space-y-6">
+
+                  <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}>
+
+                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-blue-400 to-cyan-500 bg-clip-text text-transparent">
                       Agent Portal
                     </h2>
                     <p className="text-sm text-gray-300">Access your assigned tasks and workflows</p>
@@ -858,48 +860,50 @@ const LoginScreen = ({ onLogin }) => {
                   
                   <div className="space-y-4">
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Username</Label>
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}>
+
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
                       <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
                           <Input
-                            value={agentUser}
-                            onChange={(e) => setAgentUser(e.target.value)}
-                            placeholder="Enter agent username"
-                            className="pl-11 h-12 bg-yellow-400/10 border-yellow-400/30 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/20 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
-                          />
+                              value={agentUser}
+                              onChange={(e) => setAgentUser(e.target.value)}
+                              placeholder="Enter agent username"
+                              className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400/50 focus:bg-white/10 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
+
                         </div>
                       </div>
                     </motion.div>
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Password</Label>
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}>
+
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
                       <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-400 transition-colors" />
                           <Input
-                            type={showAgentPass ? "text" : "password"}
-                            value={agentPass}
-                            onChange={(e) => setAgentPass(e.target.value)}
-                            placeholder="Enter agent password"
-                            className="pl-11 pr-11 h-12 bg-yellow-400/10 border-yellow-400/30 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/20 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()}
-                          />
+                              type={showAgentPass ? "text" : "password"}
+                              value={agentPass}
+                              onChange={(e) => setAgentPass(e.target.value)}
+                              placeholder="Enter agent password"
+                              className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-400/50 focus:bg-white/10 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
+
                           <motion.button
-                            type="button"
-                            onClick={() => setShowAgentPass(!showAgentPass)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
+                              type="button"
+                              onClick={() => setShowAgentPass(!showAgentPass)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 transition-colors"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}>
+
                             {showAgentPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </motion.button>
                         </div>
@@ -908,20 +912,20 @@ const LoginScreen = ({ onLogin }) => {
                   </div>
 
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <Button 
-                      onClick={handleAgentLogin} 
-                      className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black shadow-lg relative overflow-hidden"
-                    >
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}>
+
+                    <Button
+                        onClick={handleAgentLogin}
+                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-black shadow-lg shadow-blue-500/50 relative overflow-hidden">
+
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: "100%" }}
-                        transition={{ duration: 0.6 }}
-                      />
+                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                          initial={{ x: "-100%" }}
+                          whileHover={{ x: "100%" }}
+                          transition={{ duration: 0.6 }} />
+
                       <span className="relative flex items-center justify-center gap-2">
                         <Users className="w-5 h-5" />
                         Sign In as Agent
@@ -929,32 +933,32 @@ const LoginScreen = ({ onLogin }) => {
                     </Button>
                   </motion.div>
 
-                  {error && (
-                    <motion.div 
+                  {error &&
+                    <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
-                    >
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2">
+
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
-                  )}
-                </motion.div>
-              ) : activeTab === "cs_allocator" ? (
-                <motion.div
-                  key="cs_allocator"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -30 }}
-                  transition={{ duration: 0.4 }}
-                  className="space-y-6"
-                >
+                    }
+                </motion.div> :
+                  activeTab === "cs_allocator" ?
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
+                    key="cs_allocator"
+                    initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <h2 className="text-3xl font-black mb-2 text-yellow-400">
+                    exit={{ opacity: 0, y: -30 }}
+                    transition={{ duration: 0.4 }}
+                    className="space-y-6">
+
+                  <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}>
+
+                    <h2 className="text-3xl font-black mb-2 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
                       CS Team Portal
                     </h2>
                     <p className="text-sm text-gray-300">Manage and review agent submissions</p>
@@ -962,48 +966,50 @@ const LoginScreen = ({ onLogin }) => {
                   
                   <div className="space-y-4">
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Username</Label>
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}>
+
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Username</Label>
                       <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
                           <Input
-                            value={csUser}
-                            onChange={(e) => setCSUser(e.target.value)}
-                            placeholder="Enter CS username"
-                            className="pl-11 h-12 bg-yellow-400/10 border-yellow-400/30 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/20 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
-                          />
+                              value={csUser}
+                              onChange={(e) => setCSUser(e.target.value)}
+                              placeholder="Enter CS username"
+                              className="pl-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-400/50 focus:bg-white/10 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
+
                         </div>
                       </div>
                     </motion.div>
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <Label className="text-sm text-yellow-400 font-semibold mb-2 block">Password</Label>
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}>
+
+                      <Label className="text-sm text-gray-300 font-semibold mb-2 block">Password</Label>
                       <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                         <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-400 transition-colors" />
                           <Input
-                            type={showCSPass ? "text" : "password"}
-                            value={csPass}
-                            onChange={(e) => setCSPass(e.target.value)}
-                            placeholder="Enter CS password"
-                            className="pl-11 pr-11 h-12 bg-yellow-400/10 border-yellow-400/30 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/20 transition-all"
-                            onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()}
-                          />
+                              type={showCSPass ? "text" : "password"}
+                              value={csPass}
+                              onChange={(e) => setCSPass(e.target.value)}
+                              placeholder="Enter CS password"
+                              className="pl-11 pr-11 h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-purple-400/50 focus:bg-white/10 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
+
                           <motion.button
-                            type="button"
-                            onClick={() => setShowCSPass(!showCSPass)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
+                              type="button"
+                              onClick={() => setShowCSPass(!showCSPass)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-400 transition-colors"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}>
+
                             {showCSPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </motion.button>
                         </div>
@@ -1012,20 +1018,20 @@ const LoginScreen = ({ onLogin }) => {
                   </div>
 
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <Button 
-                      onClick={handleCSLogin} 
-                      className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-black shadow-lg relative overflow-hidden"
-                    >
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}>
+
+                    <Button
+                        onClick={handleCSLogin}
+                        className="w-full h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-black shadow-lg shadow-purple-500/50 relative overflow-hidden">
+
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: "100%" }}
-                        transition={{ duration: 0.6 }}
-                      />
+                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0"
+                          initial={{ x: "-100%" }}
+                          whileHover={{ x: "100%" }}
+                          transition={{ duration: 0.6 }} />
+
                       <span className="relative flex items-center justify-center gap-2">
                         <Users className="w-5 h-5" />
                         Sign In as CS Team
@@ -1033,18 +1039,18 @@ const LoginScreen = ({ onLogin }) => {
                     </Button>
                   </motion.div>
 
-                  {error && (
-                    <motion.div 
+                  {error &&
+                    <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
-                    >
+                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2">
+
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
-                  )}
-                </motion.div>
-              ) : null}
+                    }
+                </motion.div> :
+                  null}
             </AnimatePresence>
           </CardContent>
           </div>
@@ -1056,27 +1062,27 @@ const LoginScreen = ({ onLogin }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="text-center mt-8"
-        >
+          className="text-center mt-8">
+
           <p className="text-gray-400 text-sm">© 2026 DHL Sheet. Secure Enterprise Portal.</p>
         </motion.div>
 
         {/* Forgot Password Dialog - Ultra Modern Design */}
         <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
           <DialogContent className="max-w-md backdrop-blur-3xl bg-gradient-to-br from-black/50 via-red-900/40 to-black/50 border border-yellow-500/30 shadow-2xl"
-            style={{
-              backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)',
-              boxShadow: '0 0 60px rgba(251, 191, 36, 0.3)'
-            }}
-          >
+          style={{
+            backdropFilter: 'blur(40px)',
+            WebkitBackdropFilter: 'blur(40px)',
+            boxShadow: '0 0 60px rgba(251, 191, 36, 0.3)'
+          }}>
+
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                <motion.div 
+                <motion.div
                   className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500 to-red-600 flex items-center justify-center shadow-lg shadow-yellow-500/50"
                   whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
-                  transition={{ duration: 0.5 }}
-                >
+                  transition={{ duration: 0.5 }}>
+
                   <KeyRound className="w-7 h-7 text-black" />
                 </motion.div>
                 <span className="bg-gradient-to-r from-yellow-400 to-red-500 bg-clip-text text-transparent">
@@ -1086,268 +1092,272 @@ const LoginScreen = ({ onLogin }) => {
             </DialogHeader>
 
             <AnimatePresence mode="wait">
-              {forgotStep === "email" ? (
-                <motion.div
-                  key="email"
-                  initial={{ opacity: 0, x: -30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 30 }}
-                  transition={{ duration: 0.4 }}
-                  className="space-y-5 py-4"
-                >
-                  <motion.div 
-                    className="p-4 bg-yellow-400/20 border border-yellow-400/40 rounded-2xl"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
+              {forgotStep === "email" ?
+              <motion.div
+                key="email"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-5 py-4">
+
+                  <motion.div
+                  className="p-4 bg-gradient-to-r from-yellow-500/20 to-red-500/20 border border-yellow-400/40 rounded-2xl"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}>
+
                     <p className="text-sm text-white font-medium flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-yellow-400" />
                       Enter your registered admin email to receive OTP
                     </p>
                   </motion.div>
 
-                  <motion.div 
-                    className="relative"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">Email Address</Label>
+                  <motion.div
+                  className="relative"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}>
+
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Email Address</Label>
                     <div className="relative group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                         <input
-                          type="email"
-                          value={forgotEmail}
-                          onChange={(e) => setForgotEmail(e.target.value)}
-                          placeholder="admin@company.com"
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/30 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/10 text-white placeholder:text-gray-400"
-                          onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()}
-                        />
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="admin@company.com"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
+                        onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()} />
+
                       </div>
                     </div>
                   </motion.div>
 
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
-                    >
+                  {error &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2">
+
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
-                  )}
+                }
 
-                  <motion.div 
-                    className="flex gap-3 pt-2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
+                  <motion.div
+                  className="flex gap-3 pt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}>
+
                     <Button
-                      onClick={() => {
-                        setShowForgotPassword(false);
-                        setError("");
-                      }}
-                      variant="outline"
-                      className="flex-1 font-bold bg-yellow-400/20 text-white border-yellow-400/30 hover:bg-yellow-400/30"
-                    >
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setError("");
+                    }}
+                    variant="outline"
+                    className="flex-1 font-bold bg-white/10 text-white border-white/20 hover:bg-white/20">
+
                       Cancel
                     </Button>
                     <Button
-                      onClick={handleSendOTP}
-                      disabled={sendingOTP}
-                      className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-black shadow-lg relative overflow-hidden"
-                    >
+                    onClick={handleSendOTP}
+                    disabled={sendingOTP}
+                    className="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-black font-bold shadow-lg shadow-yellow-500/50 relative overflow-hidden">
+
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: "100%" }}
-                        transition={{ duration: 0.6 }}
-                      />
+                      className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: "100%" }}
+                      transition={{ duration: 0.6 }} />
+
                       <span className="relative flex items-center justify-center">
-                        {sendingOTP ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {sendingOTP ?
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
+
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                           </svg>
-                        )}
+                      }
                         {sendingOTP ? 'Sending...' : 'Send OTP'}
                       </span>
                     </Button>
                   </motion.div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="otp"
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -30 }}
-                  transition={{ duration: 0.4 }}
-                  className="space-y-5 py-4"
-                >
-                  <motion.div 
-                    className="p-4 bg-green-600/20 border border-green-500/40 rounded-2xl"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
+                </motion.div> :
+
+              <motion.div
+                key="otp"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.4 }}
+                className="space-y-5 py-4">
+
+                  <motion.div
+                  className="p-4 bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-2xl"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}>
+
                     <p className="text-sm text-white font-medium flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                      <CheckCircle2 className="w-4 h-4 text-green-300" />
                       OTP sent to {forgotEmail}
                     </p>
                   </motion.div>
 
-                  <motion.div 
-                    className="relative"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">Verification Code</Label>
+                  <motion.div
+                  className="relative"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}>
+
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Verification Code</Label>
                     <div className="relative group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
                         <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                         <input
-                          type="text"
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="000000"
-                          maxLength={6}
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/30 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/10 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center"
-                        />
+                        type="text"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="000000"
+                        maxLength={6}
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center" />
+
                       </div>
                     </div>
-                    {remainingAttempts < 5 && (
-                      <motion.p 
-                        className="text-xs text-red-400 mt-2 flex items-center gap-1"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                      >
+                    {remainingAttempts < 5 &&
+                  <motion.p
+                    className="text-xs text-orange-400 mt-2 flex items-center gap-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}>
+
                         <AlertTriangle className="w-3 h-3" />
                         {remainingAttempts} attempts remaining
                       </motion.p>
-                    )}
+                  }
                   </motion.div>
 
-                  <motion.div 
-                    className="relative"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">New Password</Label>
+                  <motion.div
+                  className="relative"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}>
+
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">New Password</Label>
                     <div className="relative group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                         <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Enter new password"
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/30 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/10 text-white placeholder:text-gray-400"
-                        />
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400" />
+
                       </div>
                     </div>
                   </motion.div>
 
-                  <motion.div 
-                    className="relative"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <Label className="text-sm font-semibold text-yellow-400 mb-2 block">Confirm Password</Label>
+                  <motion.div
+                  className="relative"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}>
+
+                    <Label className="text-sm font-semibold text-gray-300 mb-2 block">Confirm Password</Label>
                     <div className="relative group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-red-400/20 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="relative">
                         <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-yellow-400 transition-colors" />
                         <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Confirm new password"
-                          className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/30 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/10 text-white placeholder:text-gray-400"
-                          onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()}
-                        />
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="w-full px-4 py-3 pl-12 rounded-xl border border-white/10 focus:border-yellow-400/50 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-white/5 text-white placeholder:text-gray-400"
+                        onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()} />
+
                       </div>
                     </div>
                   </motion.div>
 
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2"
-                    >
+                  {error &&
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm font-medium flex items-center gap-2">
+
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {error}
                     </motion.div>
-                  )}
+                }
 
-                  <motion.div 
-                    className="flex gap-3 pt-2"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                  >
+                  <motion.div
+                  className="flex gap-3 pt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}>
+
                     <Button
-                      onClick={() => {
-                        setForgotStep("email");
-                        setOtpCode("");
-                        setNewPassword("");
-                        setConfirmPassword("");
-                        setError("");
-                      }}
-                      variant="outline"
-                      className="flex-1 font-bold bg-yellow-400/20 text-white border-yellow-400/30 hover:bg-yellow-400/30"
-                    >
+                    onClick={() => {
+                      setForgotStep("email");
+                      setOtpCode("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      setError("");
+                    }}
+                    variant="outline"
+                    className="flex-1 font-bold bg-white/10 text-white border-white/20 hover:bg-white/20">
+
                       Back
                     </Button>
                     <Button
-                      onClick={handleVerifyOTP}
-                      disabled={verifyingOTP}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black shadow-lg relative overflow-hidden"
-                    >
+                    onClick={handleVerifyOTP}
+                    disabled={verifyingOTP}
+                    className="flex-1 bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 text-black font-bold shadow-lg shadow-yellow-500/50 relative overflow-hidden">
+
                       <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
-                        initial={{ x: "-100%" }}
-                        whileHover={{ x: "100%" }}
-                        transition={{ duration: 0.6 }}
-                      />
+                      className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0"
+                      initial={{ x: "-100%" }}
+                      whileHover={{ x: "100%" }}
+                      transition={{ duration: 0.6 }} />
+
                       <span className="relative flex items-center justify-center">
-                        {verifyingOTP ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                        )}
+                        {verifyingOTP ?
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> :
+
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      }
                         {verifyingOTP ? 'Verifying...' : 'Reset Password'}
                       </span>
                     </Button>
                   </motion.div>
                 </motion.div>
-              )}
+              }
             </AnimatePresence>
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 // ============================================================================
 // EXCEL-LIKE SHEET COMPONENT (Virtualized for Performance)
 // ============================================================================
 
-const ExcelSheet = ({ 
-  columns, 
-  data, 
+const ExcelSheet = ({
+  columns,
+  data,
   timers,
-  onCellChange, 
+  onCellChange,
   onStatusClick,
   isAdmin,
   agentUsername,
@@ -1385,48 +1395,48 @@ const ExcelSheet = ({
     if (isAdmin) {
       return { data, timers, rowMapping: data.map((_, i) => i) };
     }
-    
+
     const compactedData = [];
     const compactedTimers = [];
     const rowMapping = [];
-    
+
     for (let r = 0; r < data.length; r++) {
       const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       const agentMatch = agentCell === agentUsername.toLowerCase();
-      
+
       if (!agentMatch) continue;
-      
+
       const state = timers[r]?.state?.toUpperCase() || '';
       if (state === 'DONE' || state === 'REJECTED') continue;
-      
+
       // Apply priority filter ONLY if priority list exists and agent hasn't completed all their priority AWBs
       if (priorityList && priorityList.length > 0) {
         const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
         if (!priorityList.includes(rowAwb)) continue;
       }
-      
+
       // Apply region filter
       if (regionFilter) {
         const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
         const filterUpper = regionFilter.toUpperCase();
         if (!(regionCell === filterUpper || regionCell.includes(filterUpper))) continue;
       }
-      
+
       compactedData.push(data[r]);
       compactedTimers.push(timers[r]);
       rowMapping.push(r);
     }
-    
+
     // For agents, limit to default rows or actual data count, whichever is higher
     const targetRows = isAdmin ? ROWS_COUNT : Math.max(AGENT_DEFAULT_ROWS, compactedData.length);
-    
+
     // Fill remaining with empty rows
     while (compactedData.length < targetRows) {
       compactedData.push(Array(columns.length).fill(''));
       compactedTimers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
       rowMapping.push(-1);
     }
-    
+
     return { data: compactedData, timers: compactedTimers, rowMapping };
   }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length]);
 
@@ -1464,11 +1474,11 @@ const ExcelSheet = ({
 
   const handleCellDoubleClick = (r, c) => {
     if (c === COL_STATUS) return;
-    
+
     // Allow viewing (and editing if permitted) for all cells except STATUS
     const isEditable = canEdit(r, c);
     const isViewOnly = [COL_REASON, COL_CONF1, COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c);
-    
+
     setEditingCell({ r, c, readOnly: !isEditable || isViewOnly });
     setEditValue(displayData[r]?.[c] || '');
     setTimeout(() => {
@@ -1527,14 +1537,14 @@ const ExcelSheet = ({
       copied.push(row);
     }
     setCopiedData(copied);
-    toast.success(`Copied ${(r2-r1+1) * (c2-c1+1)} cells`);
+    toast.success(`Copied ${(r2 - r1 + 1) * (c2 - c1 + 1)} cells`);
   }, [selection, displayData]);
 
   const handlePaste = useCallback(() => {
     if (!copiedData) return;
     const startR = activeCell.r;
     const startC = activeCell.c;
-    
+
     copiedData.forEach((row, ri) => {
       row.forEach((cell, ci) => {
         const displayRow = startR + ri;
@@ -1553,14 +1563,14 @@ const ExcelSheet = ({
       if (e.key === 'Enter') {
         e.preventDefault();
         commitEdit();
-        setActiveCell(prev => ({ r: Math.min(prev.r + 1, ROWS_COUNT - 1), c: prev.c }));
+        setActiveCell((prev) => ({ r: Math.min(prev.r + 1, ROWS_COUNT - 1), c: prev.c }));
       } else if (e.key === 'Escape') {
         e.preventDefault();
         cancelEdit();
       } else if (e.key === 'Tab') {
         e.preventDefault();
         commitEdit();
-        setActiveCell(prev => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
+        setActiveCell((prev) => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
       }
       return;
     }
@@ -1580,38 +1590,38 @@ const ExcelSheet = ({
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
-        setActiveCell(prev => ({ r: Math.max(0, prev.r - 1), c: prev.c }));
+        setActiveCell((prev) => ({ r: Math.max(0, prev.r - 1), c: prev.c }));
         if (e.shiftKey) {
-          setSelection(prev => ({ ...prev, r2: Math.max(0, prev.r2 - 1) }));
+          setSelection((prev) => ({ ...prev, r2: Math.max(0, prev.r2 - 1) }));
         } else {
-          setSelection(prev => ({ r1: activeCell.r - 1, c1: activeCell.c, r2: activeCell.r - 1, c2: activeCell.c }));
+          setSelection((prev) => ({ r1: activeCell.r - 1, c1: activeCell.c, r2: activeCell.r - 1, c2: activeCell.c }));
         }
         break;
       case 'ArrowDown':
         e.preventDefault();
-        setActiveCell(prev => ({ r: Math.min(ROWS_COUNT - 1, prev.r + 1), c: prev.c }));
+        setActiveCell((prev) => ({ r: Math.min(ROWS_COUNT - 1, prev.r + 1), c: prev.c }));
         if (e.shiftKey) {
-          setSelection(prev => ({ ...prev, r2: Math.min(ROWS_COUNT - 1, prev.r2 + 1) }));
+          setSelection((prev) => ({ ...prev, r2: Math.min(ROWS_COUNT - 1, prev.r2 + 1) }));
         } else {
-          setSelection(prev => ({ r1: activeCell.r + 1, c1: activeCell.c, r2: activeCell.r + 1, c2: activeCell.c }));
+          setSelection((prev) => ({ r1: activeCell.r + 1, c1: activeCell.c, r2: activeCell.r + 1, c2: activeCell.c }));
         }
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        setActiveCell(prev => ({ r: prev.r, c: Math.max(0, prev.c - 1) }));
+        setActiveCell((prev) => ({ r: prev.r, c: Math.max(0, prev.c - 1) }));
         if (e.shiftKey) {
-          setSelection(prev => ({ ...prev, c2: Math.max(0, prev.c2 - 1) }));
+          setSelection((prev) => ({ ...prev, c2: Math.max(0, prev.c2 - 1) }));
         } else {
-          setSelection(prev => ({ r1: activeCell.r, c1: activeCell.c - 1, r2: activeCell.r, c2: activeCell.c - 1 }));
+          setSelection((prev) => ({ r1: activeCell.r, c1: activeCell.c - 1, r2: activeCell.r, c2: activeCell.c - 1 }));
         }
         break;
       case 'ArrowRight':
         e.preventDefault();
-        setActiveCell(prev => ({ r: prev.r, c: Math.min(columns.length - 1, prev.c + 1) }));
+        setActiveCell((prev) => ({ r: prev.r, c: Math.min(columns.length - 1, prev.c + 1) }));
         if (e.shiftKey) {
-          setSelection(prev => ({ ...prev, c2: Math.min(columns.length - 1, prev.c2 + 1) }));
+          setSelection((prev) => ({ ...prev, c2: Math.min(columns.length - 1, prev.c2 + 1) }));
         } else {
-          setSelection(prev => ({ r1: activeCell.r, c1: activeCell.c + 1, r2: activeCell.r, c2: activeCell.c + 1 }));
+          setSelection((prev) => ({ r1: activeCell.r, c1: activeCell.c + 1, r2: activeCell.r, c2: activeCell.c + 1 }));
         }
         break;
       case 'Enter':
@@ -1648,8 +1658,8 @@ const ExcelSheet = ({
             }, 0);
           }
         }
-      }
-      };
+    }
+  };
 
   const handleResizerMouseDown = (e) => {
     const resizer = e.target.closest('.col-resizer');
@@ -1691,22 +1701,22 @@ const ExcelSheet = ({
     if (r >= selection.r1 && r <= selection.r2 && c >= selection.c1 && c <= selection.c2) {
       classes.push('selected');
     }
-    
+
     const actualRow = rowMapping[r];
     const state = displayTimers[r]?.state?.toUpperCase() || '';
     if (state === 'DONE') classes.push('row-done');
     if (state === 'REJECTED') classes.push('row-rejected');
-    
+
     if (actualRow !== -1 && blinkRows && blinkRows[actualRow]) classes.push('blink-row');
-    
+
     if (rowMapping[r] === -1) classes.push('hidden-row');
-    
+
     if (r % 2 === 0) classes.push('even-row');
-    
+
     if (isAdmin && selectedRows && selectedRows.has(actualRow)) classes.push('row-selected');
-    
+
     if (typingCell && typingCell.r === r && typingCell.c === c) classes.push('typing-indicator');
-    
+
     return classes.join(' ');
   };
 
@@ -1720,10 +1730,10 @@ const ExcelSheet = ({
 
   const handleCellMouseDown = (r, c, e) => {
     if (e.target.closest('.status-btn')) return;
-    
+
     setActiveCell({ r, c });
     if (e.shiftKey) {
-      setSelection(prev => ({
+      setSelection((prev) => ({
         r1: Math.min(prev.r1, r),
         c1: Math.min(prev.c1, c),
         r2: Math.max(prev.r2, r),
@@ -1737,7 +1747,7 @@ const ExcelSheet = ({
 
   const handleMouseEnter = (r, c) => {
     if (dragSelecting) {
-      setSelection(prev => ({
+      setSelection((prev) => ({
         r1: Math.min(prev.r1, r),
         c1: Math.min(prev.c1, c),
         r2: Math.max(prev.r2, r),
@@ -1826,43 +1836,43 @@ const ExcelSheet = ({
 
     return (
       <div className="status-wrap">
-        {!isAdmin && actualRow !== -1 && (
-          <>
-            {!timer.start && (
-              <button 
-                className="status-btn start" 
-                onClick={handleStart}
-                type="button"
-              >
+        {!isAdmin && actualRow !== -1 &&
+        <>
+            {!timer.start &&
+          <button
+            className="status-btn start"
+            onClick={handleStart}
+            type="button">
+
                 START
               </button>
-            )}
-            <button 
-              className="status-btn done" 
-              onClick={handleDone}
-              type="button"
-            >
+          }
+            <button
+            className="status-btn done"
+            onClick={handleDone}
+            type="button">
+
               DONE
             </button>
-            <button 
-              className="status-btn reject" 
-              onClick={handleReject}
-              type="button"
-            >
+            <button
+            className="status-btn reject"
+            onClick={handleReject}
+            type="button">
+
               REJ
             </button>
           </>
-        )}
-        {isAdmin && statusText && (
-          <span className="text-xs font-bold text-red-600">{statusText}</span>
-        )}
-        {actualRow !== -1 && (
-          <span className="status-label">
+        }
+        {isAdmin && statusText &&
+        <span className="text-xs font-bold text-red-600">{statusText}</span>
+        }
+        {actualRow !== -1 &&
+        <span className="status-label">
             D:{timer.doneClicks || 0} R:{timer.rejClicks || 0} T:{timeStr}
           </span>
-        )}
-      </div>
-    );
+        }
+      </div>);
+
   };
 
   const renderCellContent = (r, c) => {
@@ -1873,25 +1883,25 @@ const ExcelSheet = ({
     if (c === COL_TIME) {
       return displayData[r]?.[COL_TIME] || '';
     }
-    
+
     const visible = isRowVisible(r);
     if (!visible) return '';
-    
+
     // Hide rejection columns if no value
     if ([COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5].includes(c)) {
       const val = displayData[r]?.[c] || '';
       if (!val.trim() && !isAdmin) return '';
     }
-    
+
     return displayData[r]?.[c] || '';
   };
 
   const visibleRows = isAdmin ? ROWS_COUNT : compactedView.data.length;
   const gridStyle = {
     display: 'grid',
-    gridTemplateColumns: `48px ${colWidths.map(w => `${w}px`).join(' ')}`,
+    gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
     gridTemplateRows: `30px repeat(${visibleRows}, 30px)`,
-    width: 'fit-content',
+    width: 'fit-content'
   };
 
   useEffect(() => {
@@ -1903,13 +1913,13 @@ const ExcelSheet = ({
   }, []);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="excel-sheet-container"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}
-    >
+      style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}>
+
       <style>{`
         :root {
           --bg: #070a12;
@@ -2182,122 +2192,122 @@ const ExcelSheet = ({
           <div className="corner" style={{ gridRow: 1, gridColumn: 1 }}></div>
           
           {/* Column Headers */}
-          {columns.map((col, c) => (
-            <div 
-              key={`col-${c}`} 
-              className="col-header" 
-              style={{ gridRow: 1, gridColumn: c + 2, position: 'relative' }}
-              onClick={() => handleSort(c)}
-              title={`Click to sort by ${col}`}
-            >
+          {columns.map((col, c) =>
+          <div
+            key={`col-${c}`}
+            className="col-header"
+            style={{ gridRow: 1, gridColumn: c + 2, position: 'relative' }}
+            onClick={() => handleSort(c)}
+            title={`Click to sort by ${col}`}>
+
               <span>{colToName(c)}</span>
               <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.7 }}>{col}</span>
-              {sortConfig.column === c && (
-                <span style={{ marginLeft: '4px' }}>
+              {sortConfig.column === c &&
+            <span style={{ marginLeft: '4px' }}>
                   {sortConfig.direction === 'asc' ? '▲' : '▼'}
                 </span>
-              )}
-              <div 
-                className="col-resizer" 
-                data-c={c}
-                onMouseDown={handleResizerMouseDown}
-              />
+            }
+              <div
+              className="col-resizer"
+              data-c={c}
+              onMouseDown={handleResizerMouseDown} />
+
             </div>
-          ))}
+          )}
           
           {/* Row Headers & Cells */}
-          {Array.from({ length: visibleRows }).map((_, r) => (
-            <React.Fragment key={`row-${r}`}>
-              <div 
-                className="row-header" 
-                style={{ gridRow: r + 2, gridColumn: 1, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
-                onClick={() => {
-                  const actualRow = rowMapping[r];
-                  if (isAdmin && onRowSelect && actualRow !== -1) {
-                    onRowSelect(actualRow);
-                  }
-                }}
-              >
-                {isAdmin && onRowSelect && selectedRows ? (
-                  rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" />
-                ) : (
-                  r + 1
-                )}
+          {Array.from({ length: visibleRows }).map((_, r) =>
+          <React.Fragment key={`row-${r}`}>
+              <div
+              className="row-header"
+              style={{ gridRow: r + 2, gridColumn: 1, cursor: isAdmin && onRowSelect ? 'pointer' : 'default' }}
+              onClick={() => {
+                const actualRow = rowMapping[r];
+                if (isAdmin && onRowSelect && actualRow !== -1) {
+                  onRowSelect(actualRow);
+                }
+              }}>
+
+                {isAdmin && onRowSelect && selectedRows ?
+              rowMapping[r] !== -1 && selectedRows.has(rowMapping[r]) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" /> :
+
+              r + 1
+              }
               </div>
-              {columns.map((_, c) => (
-                <div
-                  key={`cell-${r}-${c}`}
-                  className={getCellClass(r, c)}
-                  style={{ gridRow: r + 2, gridColumn: c + 2, position: 'relative' }}
-                  onMouseDown={(e) => handleCellMouseDown(r, c, e)}
-                  onMouseEnter={() => handleMouseEnter(r, c)}
-                  onMouseUp={handleCellMouseUp}
-                  onClick={() => handleCellClick(r, c)}
-                  onDoubleClick={() => handleCellDoubleClick(r, c)}
-                >
+              {columns.map((_, c) =>
+            <div
+              key={`cell-${r}-${c}`}
+              className={getCellClass(r, c)}
+              style={{ gridRow: r + 2, gridColumn: c + 2, position: 'relative' }}
+              onMouseDown={(e) => handleCellMouseDown(r, c, e)}
+              onMouseEnter={() => handleMouseEnter(r, c)}
+              onMouseUp={handleCellMouseUp}
+              onClick={() => handleCellClick(r, c)}
+              onDoubleClick={() => handleCellDoubleClick(r, c)}>
+
                   {editingCell && editingCell.r === r && editingCell.c === c ? null : renderCellContent(r, c)}
                 </div>
-              ))}
+            )}
             </React.Fragment>
-          ))}
+          )}
         </div>
       </div>
       
       {/* Inline Cell Editor */}
-      {editingCell && (
-        <div
-          style={{
-            gridRow: editingCell.r + 2,
-            gridColumn: editingCell.c + 2,
-            position: 'absolute',
-            zIndex: 100,
-            width: colWidths[editingCell.c] + 'px',
-            height: '30px',
-          }}
-        >
+      {editingCell &&
+      <div
+        style={{
+          gridRow: editingCell.r + 2,
+          gridColumn: editingCell.c + 2,
+          position: 'absolute',
+          zIndex: 100,
+          width: colWidths[editingCell.c] + 'px',
+          height: '30px'
+        }}>
+
           <textarea
-            ref={editorRef}
-            className="cell-editor"
-            readOnly={editingCell.readOnly}
-            style={{
-              width: '100%',
-              minHeight: '30px',
-              maxHeight: '200px',
-              height: 'auto',
-              border: editingCell.readOnly ? '2px solid #3b82f6' : '2px solid var(--activeBorder)',
-              background: editingCell.readOnly ? '#dbeafe' : '#ffffff',
-              color: '#000000',
-              fontSize: '13px',
-              padding: '6px 10px',
-              outline: 'none',
-              boxShadow: editingCell.readOnly ? '0 0 0 3px rgba(59,130,246,0.3)' : '0 0 0 3px rgba(255,210,0,0.2)',
-              fontFamily: 'inherit',
-              boxSizing: 'border-box',
-              cursor: editingCell.readOnly ? 'text' : 'text',
-              resize: 'vertical',
-              overflow: 'auto',
-            }}
-            value={editValue}
-            onChange={(e) => !editingCell.readOnly && handleEditValueChange(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={(e) => {
-              if (editingCell.readOnly) {
-                if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); commitEdit(); }
-                return;
-              }
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); }
-              if (e.key === 'Escape') { e.preventDefault(); commitEdit(); }
-              if (e.key === 'Tab') { 
-                e.preventDefault(); 
-                commitEdit(); 
-                setActiveCell(prev => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
-              }
-            }}
-          />
+          ref={editorRef}
+          className="cell-editor"
+          readOnly={editingCell.readOnly}
+          style={{
+            width: '100%',
+            minHeight: '30px',
+            maxHeight: '200px',
+            height: 'auto',
+            border: editingCell.readOnly ? '2px solid #3b82f6' : '2px solid var(--activeBorder)',
+            background: editingCell.readOnly ? '#dbeafe' : '#ffffff',
+            color: '#000000',
+            fontSize: '13px',
+            padding: '6px 10px',
+            outline: 'none',
+            boxShadow: editingCell.readOnly ? '0 0 0 3px rgba(59,130,246,0.3)' : '0 0 0 3px rgba(255,210,0,0.2)',
+            fontFamily: 'inherit',
+            boxSizing: 'border-box',
+            cursor: editingCell.readOnly ? 'text' : 'text',
+            resize: 'vertical',
+            overflow: 'auto'
+          }}
+          value={editValue}
+          onChange={(e) => !editingCell.readOnly && handleEditValueChange(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (editingCell.readOnly) {
+              if (e.key === 'Enter' || e.key === 'Escape') {e.preventDefault();commitEdit();}
+              return;
+            }
+            if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault();commitEdit();}
+            if (e.key === 'Escape') {e.preventDefault();commitEdit();}
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              commitEdit();
+              setActiveCell((prev) => ({ r: prev.r, c: Math.min(prev.c + 1, columns.length - 1) }));
+            }
+          }} />
+
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 };
 
 // ============================================================================
@@ -2341,7 +2351,7 @@ const AdminDashboard = ({ username, onLogout }) => {
     setPriorityNumbers(sheets.priorityNumbers || "");
 
     const interval = setInterval(() => {
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
     }, 1000);
 
     return () => clearInterval(interval);
@@ -2357,7 +2367,7 @@ const AdminDashboard = ({ username, onLogout }) => {
       }
       if (ev?.data?.breakUpdate) {
         const breakInfo = ev.data.breakUpdate;
-        const breakLabel = BREAK_TYPES.find(b => b.id === breakInfo.type)?.label || 'Break';
+        const breakLabel = BREAK_TYPES.find((b) => b.id === breakInfo.type)?.label || 'Break';
         if (breakInfo.status === 'started') {
           toast.info(`${breakInfo.agent} started ${breakLabel}`, { duration: 3000 });
         } else if (breakInfo.status === 'ended') {
@@ -2393,7 +2403,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const handleCSCellChange = (r, c, value) => {
     const newSheet = deepCopy(csSheet);
     newSheet.raw[r][c] = value;
-    
+
     // If admin enters AWB, start timer
     if (c === COL_AWB && isValidAwb(value)) {
       newSheet.timers[r] = {
@@ -2404,18 +2414,18 @@ const AdminDashboard = ({ username, onLogout }) => {
         state: ""
       };
     }
-    
+
     // If CS team adds value to confirmation columns, blink for agent and update state
     if ([COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c) && value.trim()) {
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
-      
+
       // Clear rejected state if CS team confirms
       if (newSheet.timers[r]?.state === "REJECTED") {
         newSheet.timers[r].state = "";
         newSheet.raw[r][COL_STATUS] = "";
       }
-      
+
       setTimeout(() => {
         const updated = loadCSSheet();
         if (updated.blinkRows) {
@@ -2425,16 +2435,16 @@ const AdminDashboard = ({ username, onLogout }) => {
         }
       }, 5000);
     }
-    
+
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
 
   const handleCSStatusClick = (r, action) => {
+
     // Admin doesn't use status buttons in CS sheet
   };
-
   const createAgent = () => {
     if (!newAgentUser.trim() || !newAgentPass.trim()) {
       toast.error("Please enter agent username and password");
@@ -2444,17 +2454,17 @@ const AdminDashboard = ({ username, onLogout }) => {
       toast.error("Password must be at least 4 characters");
       return;
     }
-    
+
     const state = loadState();
     if (newAgentUser === state.admin.username) {
       toast.error("Agent username cannot be same as admin");
       return;
     }
-    if (state.agents.some(a => a.username === newAgentUser)) {
+    if (state.agents.some((a) => a.username === newAgentUser)) {
       toast.error("Agent already exists");
       return;
     }
-    
+
     state.agents.push({ username: newAgentUser, password: newAgentPass });
     saveState(state);
     setAgents(state.agents);
@@ -2465,7 +2475,7 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const deleteAgent = (username) => {
     const state = loadState();
-    state.agents = state.agents.filter(a => a.username !== username);
+    state.agents = state.agents.filter((a) => a.username !== username);
     saveState(state);
     setAgents(state.agents);
     toast.success(`Agent "${username}" deleted`);
@@ -2480,13 +2490,13 @@ const AdminDashboard = ({ username, onLogout }) => {
       toast.error("Password must be at least 4 characters");
       return;
     }
-    
+
     const state = loadState();
-    if (state.csAllocators.some(a => a.username === newCSUser)) {
+    if (state.csAllocators.some((a) => a.username === newCSUser)) {
       toast.error("CS Allocator already exists");
       return;
     }
-    
+
     state.csAllocators.push({ username: newCSUser, password: newCSPass });
     saveState(state);
     setCSAllocators(state.csAllocators);
@@ -2497,7 +2507,7 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const deleteCSAllocator = (username) => {
     const state = loadState();
-    state.csAllocators = state.csAllocators.filter(a => a.username !== username);
+    state.csAllocators = state.csAllocators.filter((a) => a.username !== username);
     saveState(state);
     setCSAllocators(state.csAllocators);
     toast.success(`CS Allocator "${username}" deleted`);
@@ -2523,13 +2533,13 @@ const AdminDashboard = ({ username, onLogout }) => {
       toast.error("Please enter an email address");
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(adminEmail)) {
       toast.error("Please enter a valid email address");
       return;
     }
-    
+
     const state = loadState();
     state.admin.email = adminEmail;
     saveState(state);
@@ -2538,15 +2548,15 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const getAgentMetrics = (agentUser) => {
     const sheet = csSheet;
-    let awbPending = 0, lineSumPending = 0, done = 0, rej = 0, totalDoneLines = 0, totalRejectedLines = 0;
-    
+    let awbPending = 0,lineSumPending = 0,done = 0,rej = 0,totalDoneLines = 0,totalRejectedLines = 0;
+
     for (let r = 0; r < ROWS_COUNT; r++) {
       const agent = String(sheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       if (agent !== agentUser.toLowerCase()) continue;
-      
+
       const state = sheet.timers[r]?.state?.toUpperCase() || '';
       const lineSum = parseLineSum(sheet.raw[r]?.[COL_LINE]);
-      
+
       if (state === 'DONE') {
         done++;
         totalDoneLines += lineSum;
@@ -2555,18 +2565,18 @@ const AdminDashboard = ({ username, onLogout }) => {
         rej++;
         totalRejectedLines += lineSum;
       }
-      
+
       // Count pending (not done/rejected)
       if (state !== 'DONE' && state !== 'REJECTED') {
         if (sheet.raw[r]?.[COL_AWB]?.trim()) awbPending++;
         lineSumPending += lineSum;
       }
     }
-    
-    return { 
-      awb: awbPending, 
-      lineSum: lineSumPending, 
-      done, 
+
+    return {
+      awb: awbPending,
+      lineSum: lineSumPending,
+      done,
       rej,
       totalDoneLines,
       totalRejectedLines
@@ -2581,10 +2591,10 @@ const AdminDashboard = ({ username, onLogout }) => {
         const rowAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
         if (rowAgent !== agentUser.toLowerCase()) continue;
       }
-      
+
       const region = String(csSheet.raw[r]?.[COL_REGION] || '').trim();
       if (region) {
-        region.split(/[\s,;|]+/).forEach(s => {
+        region.split(/[\s,;|]+/).forEach((s) => {
           if (s.trim()) regions.add(s.trim());
         });
       }
@@ -2623,21 +2633,21 @@ const AdminDashboard = ({ username, onLogout }) => {
   const downloadAgentData = (agentUser) => {
     const headers = CS_COLUMNS;
     const rows = [headers];
-    
+
     for (let r = 0; r < ROWS_COUNT; r++) {
       const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       if (agent === agentUser.toLowerCase()) {
         rows.push(csSheet.raw[r]);
       }
     }
-    
+
     downloadCSV(rows, `agent_${agentUser}_data.csv`);
     toast.success(`Downloaded data for ${agentUser}`);
   };
 
   const downloadAllCSData = () => {
     const headers = CS_COLUMNS;
-    const rows = [headers, ...csSheet.raw.filter(row => row.some(cell => cell.trim()))];
+    const rows = [headers, ...csSheet.raw.filter((row) => row.some((cell) => cell.trim()))];
     downloadCSV(rows, 'cs_sheet_data.csv');
     toast.success("Downloaded CS Sheet data");
   };
@@ -2645,43 +2655,43 @@ const AdminDashboard = ({ username, onLogout }) => {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setUploading(true);
     try {
       const parsedData = await parseUploadedFile(file);
-      
+
       if (parsedData.length === 0) {
         toast.error("File is empty");
         setUploading(false);
         return;
       }
-      
+
       // First row should be headers
       const headers = parsedData[0];
       const dataRows = parsedData.slice(1);
-      
+
       // Map uploaded columns to CS sheet columns
       const colMapping = {};
       headers.forEach((header, idx) => {
         const headerUpper = String(header).toUpperCase().trim();
-        const csIdx = CS_COLUMNS.findIndex(col => col.toUpperCase() === headerUpper);
+        const csIdx = CS_COLUMNS.findIndex((col) => col.toUpperCase() === headerUpper);
         if (csIdx !== -1) {
           colMapping[idx] = csIdx;
         }
       });
-      
+
       const newSheet = deepCopy(csSheet);
       let rowsAdded = 0;
-      
+
       // Find first empty row in CS sheet (append at end)
       let startRow = 0;
       for (let r = 0; r < ROWS_COUNT; r++) {
-        if (csSheet.raw[r].every(cell => !cell.trim())) {
+        if (csSheet.raw[r].every((cell) => !cell.trim())) {
           startRow = r;
           break;
         }
       }
-      
+
       // Add data rows
       dataRows.forEach((row, idx) => {
         const targetRow = startRow + idx;
@@ -2718,7 +2728,7 @@ const AdminDashboard = ({ username, onLogout }) => {
 
         rowsAdded++;
       });
-      
+
       setCSSheet(newSheet);
       saveCSSheet(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
@@ -2732,17 +2742,17 @@ const AdminDashboard = ({ username, onLogout }) => {
   };
 
   const getCSMetrics = () => {
-    let awb = 0, lineSum = 0, done = 0, rej = 0;
-    
+    let awb = 0,lineSum = 0,done = 0,rej = 0;
+
     for (let r = 0; r < ROWS_COUNT; r++) {
       if (csSheet.raw[r]?.[COL_AWB]?.trim()) awb++;
       lineSum += parseLineSum(csSheet.raw[r]?.[COL_LINE]);
-      
+
       const state = csSheet.timers[r]?.state?.toUpperCase() || '';
       if (state === 'DONE') done++;
       if (state === 'REJECTED') rej++;
     }
-    
+
     return { awb, lineSum, done, rej };
   };
 
@@ -2761,7 +2771,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const handleSelectAll = () => {
     const allRows = new Set();
     for (let r = 0; r < ROWS_COUNT; r++) {
-      if (csSheet.raw[r].some(cell => cell.trim())) {
+      if (csSheet.raw[r].some((cell) => cell.trim())) {
         allRows.add(r);
       }
     }
@@ -2779,10 +2789,10 @@ const AdminDashboard = ({ username, onLogout }) => {
       toast.error('No rows selected');
       return;
     }
-    
+
     if (confirm(`Clear ${selectedRows.size} selected rows?`)) {
       const newSheet = deepCopy(csSheet);
-      selectedRows.forEach(r => {
+      selectedRows.forEach((r) => {
         newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
         newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" };
       });
@@ -2799,18 +2809,18 @@ const AdminDashboard = ({ username, onLogout }) => {
       toast.error('No rows selected');
       return;
     }
-    
+
     if (confirm(`Delete ${selectedRows.size} selected rows? This will shift rows up.`)) {
       const newSheet = deepCopy(csSheet);
       const sortedRows = Array.from(selectedRows).sort((a, b) => b - a);
-      
-      sortedRows.forEach(r => {
+
+      sortedRows.forEach((r) => {
         newSheet.raw.splice(r, 1);
         newSheet.timers.splice(r, 1);
         newSheet.raw.push(Array(CS_COLUMNS.length).fill(''));
         newSheet.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
       });
-      
+
       setCSSheet(newSheet);
       saveCSSheet(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
@@ -2821,8 +2831,8 @@ const AdminDashboard = ({ username, onLogout }) => {
 
   const applyFilters = (filters) => {
     setActiveFilters(filters);
-    
-    if (!filters || (!filters.remarkKeyword && !filters.reasonKeyword && !filters.timeFrom && !filters.timeTo && (!filters.sortColumns || filters.sortColumns.length === 0))) {
+
+    if (!filters || !filters.remarkKeyword && !filters.reasonKeyword && !filters.timeFrom && !filters.timeTo && (!filters.sortColumns || filters.sortColumns.length === 0)) {
       setFilteredData(null);
       return;
     }
@@ -2832,22 +2842,22 @@ const AdminDashboard = ({ username, onLogout }) => {
     // Keyword filters
     if (filters.remarkKeyword) {
       const keyword = filters.remarkKeyword.toLowerCase();
-      filtered = filtered.filter(item => 
-        String(item.row[COL_REMARKS] || '').toLowerCase().includes(keyword)
+      filtered = filtered.filter((item) =>
+      String(item.row[COL_REMARKS] || '').toLowerCase().includes(keyword)
       );
     }
     if (filters.reasonKeyword) {
       const keyword = filters.reasonKeyword.toLowerCase();
-      filtered = filtered.filter(item => 
-        String(item.row[COL_REASON] || '').toLowerCase().includes(keyword)
+      filtered = filtered.filter((item) =>
+      String(item.row[COL_REASON] || '').toLowerCase().includes(keyword)
       );
     }
 
     // Time range filter
     if (filters.timeFrom || filters.timeTo) {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         const elapsed = item.timer.elapsed || 0;
-        const running = item.timer.start ? (elapsed + (Date.now() - item.timer.start)) : elapsed;
+        const running = item.timer.start ? elapsed + (Date.now() - item.timer.start) : elapsed;
         if (filters.timeFrom && running < filters.timeFrom) return false;
         if (filters.timeTo && running > filters.timeTo) return false;
         return true;
@@ -2861,17 +2871,17 @@ const AdminDashboard = ({ username, onLogout }) => {
           if (!sort.column) continue;
           const colIdx = CS_COLUMNS.indexOf(sort.column);
           if (colIdx === -1) continue;
-          
+
           const valA = String(a.row[colIdx] || '').toLowerCase();
           const valB = String(b.row[colIdx] || '').toLowerCase();
-          
+
           let comparison = 0;
           if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
             comparison = parseFloat(valA) - parseFloat(valB);
           } else {
             comparison = valA.localeCompare(valB);
           }
-          
+
           if (comparison !== 0) {
             return sort.direction === 'asc' ? comparison : -comparison;
           }
@@ -2903,14 +2913,14 @@ const AdminDashboard = ({ username, onLogout }) => {
     if (filteredData) {
       const result = Array(ROWS_COUNT).fill(null).map(() => Array(CS_COLUMNS.length).fill(''));
       const resultTimers = Array(ROWS_COUNT).fill(null).map(() => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" }));
-      
+
       filteredData.forEach((item, newIdx) => {
         if (newIdx < ROWS_COUNT) {
           result[newIdx] = item.row;
           resultTimers[newIdx] = item.timer;
         }
       });
-      
+
       return { raw: result, timers: resultTimers };
     }
     return { raw: csSheet.raw, timers: csSheet.timers };
@@ -2919,7 +2929,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const displayData = getDisplayData();
 
   const handleSetPriority = () => {
-    const numbers = priorityNumbers.split(/[\s,;\n]+/).map(n => n.trim()).filter(n => /^\d{10}$/.test(n));
+    const numbers = priorityNumbers.split(/[\s,;\n]+/).map((n) => n.trim()).filter((n) => /^\d{10}$/.test(n));
     if (numbers.length === 0) {
       toast.error("Please enter valid 10-digit AWB numbers");
       return;
@@ -2932,7 +2942,7 @@ const AdminDashboard = ({ username, onLogout }) => {
     sheets.agentPriorityCompleted = {}; // Reset completion status
 
     // Scan CS sheet to find which agent has which AWB
-    numbers.forEach(awb => {
+    numbers.forEach((awb) => {
       let foundAgent = null;
       for (let r = 0; r < ROWS_COUNT; r++) {
         const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
@@ -2941,8 +2951,8 @@ const AdminDashboard = ({ username, onLogout }) => {
           break;
         }
       }
-      sheets.priorityTracking[awb] = { 
-        agent: foundAgent || null, 
+      sheets.priorityTracking[awb] = {
+        agent: foundAgent || null,
         status: 'pending',
         startedAt: Date.now(),
         deadline: null
@@ -2980,7 +2990,7 @@ const AdminDashboard = ({ username, onLogout }) => {
   const handleSetDeadline = (awb, minutes) => {
     const sheets = loadAgentSheets();
     if (sheets.priorityTracking && sheets.priorityTracking[awb]) {
-      const deadlineTime = Date.now() + (minutes * 60 * 1000);
+      const deadlineTime = Date.now() + minutes * 60 * 1000;
       sheets.priorityTracking[awb].deadline = deadlineTime;
       saveAgentSheets(sheets);
       CHANNEL.postMessage({ type: "app:sync" });
@@ -3051,16 +3061,16 @@ const AdminDashboard = ({ username, onLogout }) => {
             <TabsTrigger value="priority" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Zap className="w-4 h-4 mr-2" />
               Priority
-              {agentSheets.priorityList?.length > 0 && (
-                <Badge className="ml-2 bg-red-500 text-white">{agentSheets.priorityList.length}</Badge>
-              )}
+              {agentSheets.priorityList?.length > 0 &&
+              <Badge className="ml-2 bg-red-500 text-white">{agentSheets.priorityList.length}</Badge>
+              }
             </TabsTrigger>
             <TabsTrigger value="uploads" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Upload className="w-4 h-4 mr-2" />
               CS Uploads
-              {csUploads.length > 0 && (
-                <Badge className="ml-2 bg-blue-500 text-white">{csUploads.length}</Badge>
-              )}
+              {csUploads.length > 0 &&
+              <Badge className="ml-2 bg-blue-500 text-white">{csUploads.length}</Badge>
+              }
             </TabsTrigger>
             <TabsTrigger value="reports" className="font-bold data-[state=active]:bg-yellow-400/60">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
@@ -3101,20 +3111,20 @@ const AdminDashboard = ({ username, onLogout }) => {
                       type="file"
                       accept=".xlsx,.xls,.csv"
                       onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <Button 
-                      onClick={() => fileInputRef.current?.click()} 
-                      variant="outline" 
-                      size="sm" 
+                      className="hidden" />
+
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
+                      size="sm"
                       className="font-bold bg-green-50 hover:bg-green-100 border-green-300"
-                      disabled={uploading}
-                    >
-                      {uploading ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4 mr-2" />
-                      )}
+                      disabled={uploading}>
+
+                      {uploading ?
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> :
+
+                      <Upload className="w-4 h-4 mr-2" />
+                      }
                       Upload
                     </Button>
                     <Button onClick={downloadAllCSData} variant="outline" size="sm" className="font-bold">
@@ -3147,33 +3157,33 @@ const AdminDashboard = ({ username, onLogout }) => {
                     <Square className="w-4 h-4 mr-2" />
                     Deselect All
                   </Button>
-                  <Button 
-                    onClick={handleClearSelected} 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    onClick={handleClearSelected}
+                    size="sm"
+                    variant="outline"
                     className="font-bold text-orange-600 hover:bg-orange-50"
-                    disabled={selectedRows.size === 0}
-                  >
+                    disabled={selectedRows.size === 0}>
+
                     <Trash2 className="w-4 h-4 mr-2" />
                     Clear Selected ({selectedRows.size})
                   </Button>
-                  <Button 
-                    onClick={handleDeleteSelected} 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    onClick={handleDeleteSelected}
+                    size="sm"
+                    variant="outline"
                     className="font-bold text-red-600 hover:bg-red-50"
-                    disabled={selectedRows.size === 0}
-                  >
+                    disabled={selectedRows.size === 0}>
+
                     <X className="w-4 h-4 mr-2" />
                     Delete Selected ({selectedRows.size})
                   </Button>
                   <div className="ml-auto flex items-center gap-2">
-                    <Button 
-                      onClick={() => setFastEditMode(!fastEditMode)} 
-                      size="sm" 
+                    <Button
+                      onClick={() => setFastEditMode(!fastEditMode)}
+                      size="sm"
                       variant={fastEditMode ? "default" : "outline"}
-                      className={`font-bold ${fastEditMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                    >
+                      className={`font-bold ${fastEditMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}>
+
                       <Zap className="w-4 h-4 mr-2" />
                       Fast Edit Mode {fastEditMode ? 'ON' : 'OFF'}
                     </Button>
@@ -3195,8 +3205,8 @@ const AdminDashboard = ({ username, onLogout }) => {
               blinkRows={csSheet.blinkRows}
               selectedRows={selectedRows}
               onRowSelect={handleRowSelect}
-              fastEditMode={fastEditMode}
-            />
+              fastEditMode={fastEditMode} />
+
           </TabsContent>
 
           {/* Agents Tab */}
@@ -3211,10 +3221,10 @@ const AdminDashboard = ({ username, onLogout }) => {
               COL_REJ2={COL_REJ2}
               COL_REJ3={COL_REJ3}
               COL_REJ4={COL_REJ4}
-              COL_REJ5={COL_REJ5}
-            />
+              COL_REJ5={COL_REJ5} />
+
             
-            <AgentPerformanceDashboard 
+            <AgentPerformanceDashboard
               csSheet={csSheet}
               agents={agents}
               ROWS_COUNT={ROWS_COUNT}
@@ -3224,8 +3234,8 @@ const AdminDashboard = ({ username, onLogout }) => {
               COL_REJ2={COL_REJ2}
               COL_REJ3={COL_REJ3}
               COL_REJ4={COL_REJ4}
-              COL_REJ5={COL_REJ5}
-            />
+              COL_REJ5={COL_REJ5} />
+
             
             <div className="grid md:grid-cols-3 gap-4">
               {/* Create Agent */}
@@ -3243,8 +3253,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={newAgentUser}
                       onChange={(e) => setNewAgentUser(e.target.value)}
                       placeholder="e.g. agent01"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label className="text-xs text-black/60">Agent Password</Label>
@@ -3253,8 +3263,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={newAgentPass}
                       onChange={(e) => setNewAgentPass(e.target.value)}
                       placeholder="Min 4 characters"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                   </div>
                   <Button onClick={createAgent} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
                     Create Agent
@@ -3277,8 +3287,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={newCSUser}
                       onChange={(e) => setNewCSUser(e.target.value)}
                       placeholder="e.g. cs01"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label className="text-xs text-black/60">CS Password</Label>
@@ -3287,8 +3297,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={newCSPass}
                       onChange={(e) => setNewCSPass(e.target.value)}
                       placeholder="Min 4 characters"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                   </div>
                   <Button onClick={createCSAllocator} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
                     Create CS Allocator
@@ -3306,65 +3316,65 @@ const AdminDashboard = ({ username, onLogout }) => {
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[200px]">
-                    {agents.length === 0 ? (
-                      <p className="text-sm text-black/50 text-center py-8">No agents created yet</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {agents.map(agent => {
-                          const metrics = getAgentMetrics(agent.username);
-                          const agentBreak = csSheet.agentBreaks?.[agent.username];
-                          const breakActive = agentBreak?.active && agentBreak?.start;
-                          const breakType = breakActive ? BREAK_TYPES.find(b => b.id === agentBreak.type) : null;
-                          const breakDuration = breakActive && agentBreak.start ? 
-                            Math.floor((Date.now() - agentBreak.start) / 1000 / 60) : 0;
+                    {agents.length === 0 ?
+                    <p className="text-sm text-black/50 text-center py-8">No agents created yet</p> :
 
-                          return (
-                            <div key={agent.username} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
+                    <div className="space-y-2">
+                        {agents.map((agent) => {
+                        const metrics = getAgentMetrics(agent.username);
+                        const agentBreak = csSheet.agentBreaks?.[agent.username];
+                        const breakActive = agentBreak?.active && agentBreak?.start;
+                        const breakType = breakActive ? BREAK_TYPES.find((b) => b.id === agentBreak.type) : null;
+                        const breakDuration = breakActive && agentBreak.start ?
+                        Math.floor((Date.now() - agentBreak.start) / 1000 / 60) : 0;
+
+                        return (
+                          <div key={agent.username} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <div className="font-bold">{agent.username}</div>
-                                  {breakActive && breakType && (
-                                    <Badge className={`${breakType.color} text-xs animate-pulse`}>
+                                  {breakActive && breakType &&
+                                <Badge className={`${breakType.color} text-xs animate-pulse`}>
                                       {breakType.icon && <breakType.icon className="w-3 h-3 mr-1" />}
                                       {breakType.label} • {breakDuration}m
                                     </Badge>
-                                  )}
+                                }
                                 </div>
                                 <div className="text-xs text-black/50">
                                   Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => setSelectedAgent(agent.username)}
-                                  className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50"
-                                >
+                                <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedAgent(agent.username)}
+                                className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
+
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => downloadAgentData(agent.username)}
-                                  className="font-bold"
-                                >
+                                <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadAgentData(agent.username)}
+                                className="font-bold">
+
                                   <Download className="w-4 h-4" />
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => deleteAgent(agent.username)}
-                                  className="font-bold text-red-600 hover:bg-red-50"
-                                >
+                                <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deleteAgent(agent.username)}
+                                className="font-bold text-red-600 hover:bg-red-50">
+
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
-                            </div>
-                          );
-                        })}
+                            </div>);
+
+                      })}
                       </div>
-                    )}
+                    }
                   </ScrollArea>
                 </CardContent>
               </Card>
@@ -3379,63 +3389,63 @@ const AdminDashboard = ({ username, onLogout }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {csAllocators.length === 0 ? (
-                  <p className="text-sm text-black/50 text-center py-4">No CS Allocators created yet</p>
-                ) : (
-                  <div className="grid md:grid-cols-3 gap-2">
-                    {csAllocators.map(cs => (
-                      <div key={cs.username} className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200">
+                {csAllocators.length === 0 ?
+                <p className="text-sm text-black/50 text-center py-4">No CS Allocators created yet</p> :
+
+                <div className="grid md:grid-cols-3 gap-2">
+                    {csAllocators.map((cs) =>
+                  <div key={cs.username} className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200">
                         <div className="font-bold">{cs.username}</div>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => deleteCSAllocator(cs.username)}
-                          className="font-bold text-red-600 hover:bg-red-50 h-7 w-7 p-0"
-                        >
+                        <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => deleteCSAllocator(cs.username)}
+                      className="font-bold text-red-600 hover:bg-red-50 h-7 w-7 p-0">
+
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
-                    ))}
+                  )}
                   </div>
-                )}
+                }
               </CardContent>
             </Card>
 
             {/* Agent Profile View */}
-            {selectedAgent && (
-              <Card className="bg-white/95 border-black/10 shadow-lg">
+            {selectedAgent &&
+            <Card className="bg-white/95 border-black/10 shadow-lg">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Badge className="bg-yellow-400 text-black font-black">AGENT PROFILE</Badge>
                       <span className="font-bold text-lg">{selectedAgent}</span>
                       {(() => {
-                        const m = getAgentMetrics(selectedAgent);
-                        const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
-                        return (
-                          <span className="text-sm text-black/50">
+                      const m = getAgentMetrics(selectedAgent);
+                      const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
+                      return (
+                        <span className="text-sm text-black/50">
                             Pending: {m.awb} ({m.lineSum} lines) | Done: {m.done} ({m.totalDoneLines} lines) | Rej: {m.rej} ({m.totalRejectedLines} lines)
                             {currentFilter && ` | Region: ${currentFilter}`}
-                          </span>
-                        );
-                      })()}
+                          </span>);
+
+                    })()}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Select 
-                        value={agentSheets.agentFilters?.[selectedAgent]?.region || ""} 
-                        onValueChange={(v) => {
-                          applyRegionFilter(selectedAgent, v);
-                          setRegionFilter(v);
-                        }}
-                      >
+                      <Select
+                      value={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
+                      onValueChange={(v) => {
+                        applyRegionFilter(selectedAgent, v);
+                        setRegionFilter(v);
+                      }}>
+
                         <SelectTrigger className="w-[150px]">
                           <SelectValue placeholder="ALL REGIONS" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={null}>ALL REGIONS</SelectItem>
-                          {getUniqueRegions(selectedAgent).map(r => (
-                            <SelectItem key={r} value={r}>{r}</SelectItem>
-                          ))}
+                          {getUniqueRegions(selectedAgent).map((r) =>
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                        )}
                         </SelectContent>
                       </Select>
                       <Button onClick={() => downloadAgentData(selectedAgent)} variant="outline" size="sm" className="font-bold">
@@ -3443,9 +3453,9 @@ const AdminDashboard = ({ username, onLogout }) => {
                         Download
                       </Button>
                       <Button onClick={() => {
-                        setSelectedAgent(null);
-                        setRegionFilter("");
-                      }} variant="outline" size="sm" className="font-bold">
+                      setSelectedAgent(null);
+                      setRegionFilter("");
+                    }} variant="outline" size="sm" className="font-bold">
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
@@ -3456,20 +3466,20 @@ const AdminDashboard = ({ username, onLogout }) => {
                     Showing only rows assigned to {selectedAgent} {regionFilter && `with region: ${regionFilter}`}
                   </div>
                   <ExcelSheet
-                    columns={AGENT_COLUMNS}
-                    data={csSheet.raw}
-                    timers={csSheet.timers}
-                    onCellChange={handleCSCellChange}
-                    onStatusClick={() => {}}
-                    isAdmin={true}
-                    agentUsername={selectedAgent}
-                    editableCols={ADMIN_EDITABLE_IN_CS}
-                    blinkRows={csSheet.blinkRows}
-                    regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
-                  />
+                  columns={AGENT_COLUMNS}
+                  data={csSheet.raw}
+                  timers={csSheet.timers}
+                  onCellChange={handleCSCellChange}
+                  onStatusClick={() => {}}
+                  isAdmin={true}
+                  agentUsername={selectedAgent}
+                  editableCols={ADMIN_EDITABLE_IN_CS}
+                  blinkRows={csSheet.blinkRows}
+                  regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""} />
+
                 </CardContent>
               </Card>
-            )}
+            }
           </TabsContent>
 
           {/* Priority Tab */}
@@ -3492,99 +3502,99 @@ const AdminDashboard = ({ username, onLogout }) => {
                     value={priorityNumbers}
                     onChange={(e) => setPriorityNumbers(e.target.value)}
                     placeholder="1234567890, 9876543210, 5555555555..."
-                    className="mt-1 min-h-[120px] font-mono text-sm"
-                  />
+                    className="mt-1 min-h-[120px] font-mono text-sm" />
+
                 </div>
 
                 <div className="flex gap-3">
-                  <Button 
-                    onClick={handleSetPriority} 
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black"
-                  >
+                  <Button
+                    onClick={handleSetPriority}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black">
+
                     <Zap className="w-5 h-5 mr-2" />
                     SET PRIORITY
                   </Button>
-                  <Button 
-                    onClick={handleClearPriority} 
-                    variant="outline" 
-                    className="font-bold"
-                  >
+                  <Button
+                    onClick={handleClearPriority}
+                    variant="outline"
+                    className="font-bold">
+
                     Clear All
                   </Button>
                 </div>
 
-                {agentSheets.priorityList && agentSheets.priorityList.length > 0 && (
-                  <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
+                {agentSheets.priorityList && agentSheets.priorityList.length > 0 &&
+                <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
                     <div className="font-bold text-red-900 mb-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="w-5 h-5" />
                         Active Priority Queue: {agentSheets.priorityList.length} AWBs
                       </div>
                       <div className="text-sm font-normal">
-                        Completed: {Object.values(agentSheets.priorityTracking || {}).filter(t => t.status === 'completed').length} / {agentSheets.priorityList.length}
+                        Completed: {Object.values(agentSheets.priorityTracking || {}).filter((t) => t.status === 'completed').length} / {agentSheets.priorityList.length}
                       </div>
                     </div>
                     <ScrollArea className="max-h-[500px]">
                       <div className="space-y-2 pr-4">
                         {agentSheets.priorityList.map((num, idx) => {
-                          const tracking = agentSheets.priorityTracking?.[num] || { agent: null, status: 'pending', deadline: null };
-                          const isCompleted = tracking.status === 'completed';
-                          const deadlineStatus = getDeadlineStatus(tracking);
+                        const tracking = agentSheets.priorityTracking?.[num] || { agent: null, status: 'pending', deadline: null };
+                        const isCompleted = tracking.status === 'completed';
+                        const deadlineStatus = getDeadlineStatus(tracking);
 
-                          // Find which agent is assigned to this AWB from CS sheet
-                          let currentAgent = tracking.agent;
-                          if (!currentAgent) {
-                            for (let r = 0; r < ROWS_COUNT; r++) {
-                              if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
-                                currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
-                                break;
-                              }
+                        // Find which agent is assigned to this AWB from CS sheet
+                        let currentAgent = tracking.agent;
+                        if (!currentAgent) {
+                          for (let r = 0; r < ROWS_COUNT; r++) {
+                            if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === num) {
+                              currentAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
+                              break;
                             }
                           }
+                        }
 
-                          return (
-                            <div 
-                              key={idx} 
-                              className={`flex items-center gap-3 p-3 rounded border ${
-                                isCompleted ? 'bg-green-50 border-green-300' : 
-                                deadlineStatus?.status === 'overdue' ? 'bg-red-50 border-red-400 animate-pulse' :
-                                'bg-white border-red-200'
-                              }`}
-                            >
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex items-center gap-3 p-3 rounded border ${
+                            isCompleted ? 'bg-green-50 border-green-300' :
+                            deadlineStatus?.status === 'overdue' ? 'bg-red-50 border-red-400 animate-pulse' :
+                            'bg-white border-red-200'}`
+                            }>
+
                               <div className="flex items-center gap-2 flex-1">
-                                {isCompleted ? (
-                                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                ) : (
-                                  <Clock className="w-5 h-5 text-orange-600" />
-                                )}
+                                {isCompleted ?
+                              <CheckCircle2 className="w-5 h-5 text-green-600" /> :
+
+                              <Clock className="w-5 h-5 text-orange-600" />
+                              }
                                 <Badge className={`font-mono ${isCompleted ? 'bg-green-600' : 'bg-red-600'} text-white`}>
                                   {num}
                                 </Badge>
 
-                                {!isCompleted ? (
-                                  <Select value={currentAgent || ""} onValueChange={(agent) => handleReassignPriority(num, agent)}>
+                                {!isCompleted ?
+                              <Select value={currentAgent || ""} onValueChange={(agent) => handleReassignPriority(num, agent)}>
                                     <SelectTrigger className="w-[140px] h-7 text-xs">
                                       <SelectValue placeholder="Assign Agent" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {agents.map(agent => (
-                                        <SelectItem key={agent.username} value={agent.username}>
+                                      {agents.map((agent) =>
+                                  <SelectItem key={agent.username} value={agent.username}>
                                           {agent.username}
                                         </SelectItem>
-                                      ))}
+                                  )}
                                     </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <span className="text-sm font-medium text-gray-700">
+                                  </Select> :
+
+                              <span className="text-sm font-medium text-gray-700">
                                     {currentAgent}
                                   </span>
-                                )}
+                              }
 
-                                {!isCompleted && (
-                                  <Select 
-                                    onValueChange={(mins) => handleSetDeadline(num, parseInt(mins))}
-                                    disabled={isCompleted}
-                                  >
+                                {!isCompleted &&
+                              <Select
+                                onValueChange={(mins) => handleSetDeadline(num, parseInt(mins))}
+                                disabled={isCompleted}>
+
                                     <SelectTrigger className="w-[120px] h-7 text-xs">
                                       <SelectValue placeholder="Set Deadline" />
                                     </SelectTrigger>
@@ -3596,33 +3606,33 @@ const AdminDashboard = ({ username, onLogout }) => {
                                       <SelectItem value="60">1 hour</SelectItem>
                                     </SelectContent>
                                   </Select>
-                                )}
+                              }
 
-                                {deadlineStatus && (
-                                  <Badge className={`${deadlineStatus.color} text-white text-xs animate-pulse`}>
+                                {deadlineStatus &&
+                              <Badge className={`${deadlineStatus.color} text-white text-xs animate-pulse`}>
                                     {deadlineStatus.text}
                                   </Badge>
-                                )}
+                              }
                               </div>
 
                               <div className="flex items-center gap-2">
-                                {isCompleted ? (
-                                  <Badge className="bg-green-600 text-white text-xs">
+                                {isCompleted ?
+                              <Badge className="bg-green-600 text-white text-xs">
                                     ✓ COMPLETED
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-orange-500 text-white text-xs">
+                                  </Badge> :
+
+                              <Badge className="bg-orange-500 text-white text-xs">
                                     IN PROGRESS
                                   </Badge>
-                                )}
+                              }
                               </div>
-                            </div>
-                          );
-                        })}
+                            </div>);
+
+                      })}
                       </div>
                     </ScrollArea>
                   </div>
-                )}
+                }
               </CardContent>
             </Card>
           </TabsContent>
@@ -3637,21 +3647,21 @@ const AdminDashboard = ({ username, onLogout }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {csUploads.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                {csUploads.length === 0 ?
+                <div className="text-center py-12 text-gray-500">
                     <Upload className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>No uploads yet from CS team</p>
-                  </div>
-                ) : (
-                  <ScrollArea className="h-[500px]">
+                  </div> :
+
+                <ScrollArea className="h-[500px]">
                     <div className="space-y-3">
-                      {csUploads.map((upload, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
-                        >
+                      {csUploads.map((upload, idx) =>
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors">
+
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
@@ -3662,67 +3672,67 @@ const AdminDashboard = ({ username, onLogout }) => {
                               <div className="text-sm text-gray-600">
                                 {upload.rowCount} rows uploaded
                               </div>
-                              {upload.remarks && (
-                                <div className="mt-2 text-sm text-gray-700 bg-white p-2 rounded border border-blue-200">
+                              {upload.remarks &&
+                          <div className="mt-2 text-sm text-gray-700 bg-white p-2 rounded border border-blue-200">
                                   <span className="font-semibold">Remarks:</span> {upload.remarks}
                                 </div>
-                              )}
-                              {upload.downloadedBy && (
-                                <div className="mt-2 flex items-center gap-2 text-sm bg-green-50 p-2 rounded border border-green-200">
+                          }
+                              {upload.downloadedBy &&
+                          <div className="mt-2 flex items-center gap-2 text-sm bg-green-50 p-2 rounded border border-green-200">
                                   <CheckCircle2 className="w-4 h-4 text-green-600" />
                                   <div className="text-green-800">
                                     <div className="font-semibold">✓ Downloaded</div>
                                     <div className="text-xs">By {upload.downloadedBy} on {new Date(upload.downloadedAt).toLocaleString()}</div>
                                   </div>
                                 </div>
-                              )}
+                          }
                             </div>
                             <div className="flex flex-col gap-2">
-                              {upload.fileData && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = upload.fileData;
-                                    link.download = upload.filename;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                    
-                                    // Mark as downloaded
-                                    const sheets = loadAgentSheets();
-                                    const uploadIndex = sheets.csUploads.findIndex(u => 
-                                      u.timestamp === upload.timestamp && u.filename === upload.filename
-                                    );
-                                    if (uploadIndex !== -1) {
-                                      sheets.csUploads[uploadIndex].downloadedBy = username;
-                                      sheets.csUploads[uploadIndex].downloadedAt = new Date().toISOString();
-                                      saveAgentSheets(sheets);
-                                      setCSUploads(sheets.csUploads || []);
-                                      CHANNEL.postMessage({ type: "app:sync" });
-                                    }
-                                    
-                                    toast.success(`Downloaded ${upload.filename}`);
-                                  }}
-                                  className="font-bold"
-                                >
+                              {upload.fileData &&
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = upload.fileData;
+                              link.download = upload.filename;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+
+                              // Mark as downloaded
+                              const sheets = loadAgentSheets();
+                              const uploadIndex = sheets.csUploads.findIndex((u) =>
+                              u.timestamp === upload.timestamp && u.filename === upload.filename
+                              );
+                              if (uploadIndex !== -1) {
+                                sheets.csUploads[uploadIndex].downloadedBy = username;
+                                sheets.csUploads[uploadIndex].downloadedAt = new Date().toISOString();
+                                saveAgentSheets(sheets);
+                                setCSUploads(sheets.csUploads || []);
+                                CHANNEL.postMessage({ type: "app:sync" });
+                              }
+
+                              toast.success(`Downloaded ${upload.filename}`);
+                            }}
+                            className="font-bold">
+
                                   <Download className="w-4 h-4 mr-1" />
                                   File
                                 </Button>
-                              )}
-                              {upload.downloadedBy ? (
-                                <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto" />
-                              ) : (
-                                <Clock className="w-6 h-6 text-orange-500 mx-auto" />
-                              )}
+                          }
+                              {upload.downloadedBy ?
+                          <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto" /> :
+
+                          <Clock className="w-6 h-6 text-orange-500 mx-auto" />
+                          }
                             </div>
                           </div>
                         </motion.div>
-                      ))}
+                    )}
                     </div>
                   </ScrollArea>
-                )}
+                }
               </CardContent>
             </Card>
           </TabsContent>
@@ -3741,8 +3751,8 @@ const AdminDashboard = ({ username, onLogout }) => {
               COL_REJ4={COL_REJ4}
               COL_REJ5={COL_REJ5}
               COL_REGION={COL_REGION}
-              COL_REASON={COL_REASON}
-            />
+              COL_REASON={COL_REASON} />
+
           </TabsContent>
 
           {/* Settings Tab */}
@@ -3762,8 +3772,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={newAdminUser}
                       onChange={(e) => setNewAdminUser(e.target.value)}
                       placeholder="Enter new username"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                   </div>
                   <div>
                     <Label className="text-xs text-black/60">New Password (optional)</Label>
@@ -3772,8 +3782,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={newAdminPass}
                       onChange={(e) => setNewAdminPass(e.target.value)}
                       placeholder="Leave empty to keep current"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                   </div>
                   <Button onClick={saveAdminCreds} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
                     <Save className="w-4 h-4 mr-2" />
@@ -3801,8 +3811,8 @@ const AdminDashboard = ({ username, onLogout }) => {
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
                       placeholder="admin@company.com"
-                      className="mt-1"
-                    />
+                      className="mt-1" />
+
                     <p className="text-xs text-gray-500 mt-1">
                       Used for password recovery via OTP
                     </p>
@@ -3823,8 +3833,8 @@ const AdminDashboard = ({ username, onLogout }) => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 // ============================================================================
@@ -3838,19 +3848,19 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
 
   useEffect(() => {
     const sheets = loadAgentSheets();
-    const uploads = (sheets.csUploads || []).filter(u => u.csUser === username);
+    const uploads = (sheets.csUploads || []).filter((u) => u.csUser === username);
     setMyUploads(uploads);
-    
+
     const interval = setInterval(() => {
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
       const updated = loadCSSheet();
       setCSSheet(updated);
-      
+
       const updatedSheets = loadAgentSheets();
-      const updatedUploads = (updatedSheets.csUploads || []).filter(u => u.csUser === username);
+      const updatedUploads = (updatedSheets.csUploads || []).filter((u) => u.csUser === username);
       setMyUploads(updatedUploads);
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [username]);
 
@@ -3875,20 +3885,20 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
   const handleCellChange = (r, c, value) => {
     // CS Allocator can only edit confirmation columns
     if (!CS_ALLOCATOR_EDITABLE.has(c)) return;
-    
+
     const newSheet = deepCopy(csSheet);
     newSheet.raw[r][c] = value;
-    
+
     // If CS team adds confirmation, blink for agent and clear rejected state
     if (value.trim()) {
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
-      
+
       if (newSheet.timers[r]?.state === "REJECTED") {
         newSheet.timers[r].state = "";
         newSheet.raw[r][COL_STATUS] = "";
       }
-      
+
       setTimeout(() => {
         const updated = loadCSSheet();
         if (updated.blinkRows) {
@@ -3898,14 +3908,14 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         }
       }, 5000);
     }
-    
+
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
 
   const getRejectedCount = () => {
-    return csSheet.raw.filter(row => {
+    return csSheet.raw.filter((row) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
       return status === 'REJECT' || status === 'REJECTED';
     }).length;
@@ -3913,7 +3923,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
 
   const downloadCSData = () => {
     const headers = CS_COLUMNS;
-    const rejectedRows = csSheet.raw.filter(row => {
+    const rejectedRows = csSheet.raw.filter((row) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
       return status === 'REJECT' || status === 'REJECTED';
     });
@@ -3944,14 +3954,14 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
   const handleUploadFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     try {
       const parsedData = await parseUploadedFile(file);
       if (parsedData.length === 0) {
         toast.error("File is empty");
         return;
       }
-      
+
       // Convert file to base64 for storage
       const fileReader = new FileReader();
       const fileDataPromise = new Promise((resolve) => {
@@ -3969,12 +3979,12 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         fileData: fileData,
         remarks: ""
       };
-      
+
       const sheets = loadAgentSheets();
       if (!sheets.csUploads) sheets.csUploads = [];
       sheets.csUploads.unshift(uploadLog);
       saveAgentSheets(sheets);
-      
+
       CHANNEL.postMessage({ type: "app:sync", uploadNotification: uploadLog });
       toast.success(`✅ File uploaded successfully. Admin notified.`);
     } catch (error) {
@@ -3985,7 +3995,7 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
   const getFilteredData = () => {
     const filtered = [];
     const filteredTimers = [];
-    
+
     csSheet.raw.forEach((row, idx) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
       if (status === 'REJECT' || status === 'REJECTED') {
@@ -3993,13 +4003,13 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
         filteredTimers.push(csSheet.timers[idx]);
       }
     });
-    
+
     // Fill remaining with empty rows
     while (filtered.length < ROWS_COUNT) {
       filtered.push(Array(CS_COLUMNS.length).fill(''));
       filteredTimers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
     }
-    
+
     return { data: filtered, timers: filteredTimers };
   };
 
@@ -4021,23 +4031,23 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
               <div className="flex items-center gap-3">
                 <Badge className="bg-blue-400 text-white font-black border-blue-500">CS TEAM</Badge>
                 <span className="font-bold">Welcome, {username}</span>
-                {myUploads.length > 0 && (
-                  <div className="flex items-center gap-2">
+                {myUploads.length > 0 &&
+                <div className="flex items-center gap-2">
                     <Badge className="bg-blue-100 text-blue-800">
                       {myUploads.length} uploads
                     </Badge>
                     <Badge className="bg-green-100 text-green-800">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
-                      {myUploads.filter(u => u.downloadedBy).length} received
+                      {myUploads.filter((u) => u.downloadedBy).length} received
                     </Badge>
-                    {myUploads.some(u => !u.downloadedBy) && (
-                      <Badge className="bg-orange-100 text-orange-800">
+                    {myUploads.some((u) => !u.downloadedBy) &&
+                  <Badge className="bg-orange-100 text-orange-800">
                         <Clock className="w-3 h-3 mr-1" />
-                        {myUploads.filter(u => !u.downloadedBy).length} pending
+                        {myUploads.filter((u) => !u.downloadedBy).length} pending
                       </Badge>
-                    )}
+                  }
                   </div>
-                )}
+                }
               </div>
               <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
                 <LogOut className="w-4 h-4 mr-2" />
@@ -4063,14 +4073,14 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
                   accept=".xlsx,.xls,.csv"
                   onChange={handleUploadFile}
                   className="hidden"
-                  id="cs-upload"
-                />
-                <Button 
-                  onClick={() => document.getElementById('cs-upload').click()} 
-                  variant="outline" 
-                  size="sm" 
-                  className="font-bold bg-green-50 hover:bg-green-100"
-                >
+                  id="cs-upload" />
+
+                <Button
+                  onClick={() => document.getElementById('cs-upload').click()}
+                  variant="outline"
+                  size="sm"
+                  className="font-bold bg-green-50 hover:bg-green-100">
+
                   <Upload className="w-4 h-4 mr-2" />
                   Upload
                 </Button>
@@ -4100,11 +4110,11 @@ const CSAllocatorDashboard = ({ username, onLogout }) => {
           isAdmin={true}
           agentUsername=""
           editableCols={CS_ALLOCATOR_EDITABLE}
-          blinkRows={csSheet.blinkRows}
-        />
+          blinkRows={csSheet.blinkRows} />
+
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 // ============================================================================
@@ -4152,7 +4162,7 @@ const AgentDashboard = ({ username, onLogout }) => {
     }
 
     const interval = setInterval(() => {
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
       const updated = loadCSSheet();
       setCSSheet(updated);
 
@@ -4180,7 +4190,7 @@ const AgentDashboard = ({ username, onLogout }) => {
           toast.success(`✅ All priority AWBs completed system-wide! Normal mode restored.`, { duration: 5000 });
         }
       }
-      
+
       // Sync break status in real-time
       const agentBreak = updated.agentBreaks?.[username];
       if (agentBreak?.active && agentBreak?.start) {
@@ -4197,16 +4207,16 @@ const AgentDashboard = ({ username, onLogout }) => {
         }
       }
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [username, onBreak, breakType, breakStart, priorityList, priorityMode]);
 
   const handleBreakToggle = (type) => {
     const newSheet = deepCopy(csSheet);
     if (!newSheet.agentBreaks) newSheet.agentBreaks = {};
-    
+
     const isEndingBreak = onBreak && breakType === type;
-    
+
     if (isEndingBreak) {
       // End break - completely remove from breaks object
       delete newSheet.agentBreaks[username];
@@ -4220,22 +4230,22 @@ const AgentDashboard = ({ username, onLogout }) => {
       setOnBreak(true);
       setBreakType(type);
       setBreakStart(Date.now());
-      const breakLabel = BREAK_TYPES.find(b => b.id === type)?.label || 'Break';
+      const breakLabel = BREAK_TYPES.find((b) => b.id === type)?.label || 'Break';
       toast.success(`${breakLabel} started`);
     }
-    
+
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    
+
     // Send break update notification immediately
-    CHANNEL.postMessage({ 
-      type: "app:sync", 
-      breakUpdate: { 
-        agent: username, 
-        status: isEndingBreak ? 'ended' : 'started', 
+    CHANNEL.postMessage({
+      type: "app:sync",
+      breakUpdate: {
+        agent: username,
+        status: isEndingBreak ? 'ended' : 'started',
         type,
         timestamp: Date.now()
-      } 
+      }
     });
   };
 
@@ -4246,7 +4256,7 @@ const AgentDashboard = ({ username, onLogout }) => {
         setCSSheet(updated);
         const sheets = loadAgentSheets();
         setAgentSheets(sheets);
-        
+
         // Update break status from other tabs/sessions
         const agentBreak = updated.agentBreaks?.[username];
         if (agentBreak?.active && agentBreak?.start) {
@@ -4262,10 +4272,10 @@ const AgentDashboard = ({ username, onLogout }) => {
             setBreakStart(null);
           }
         }
-        
+
         // Check for cleared rejections (blink notification)
         if (updated.blinkRows) {
-          Object.keys(updated.blinkRows).forEach(r => {
+          Object.keys(updated.blinkRows).forEach((r) => {
             if (updated.blinkRows[r] && updated.raw[r]?.[COL_AGENTS]?.toLowerCase() === username.toLowerCase()) {
               const awb = updated.raw[r]?.[COL_AWB] || '';
               toast.info(`✅ Rejection cleared for AWB ${awb}`, { duration: 5000 });
@@ -4282,9 +4292,9 @@ const AgentDashboard = ({ username, onLogout }) => {
     // Agent can only edit their assigned rows
     const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
     if (agent !== username.toLowerCase()) return;
-    
+
     if (!AGENT_EDITABLE.has(c)) return;
-    
+
     const newSheet = deepCopy(csSheet);
     newSheet.raw[r][c] = value;
     setCSSheet(newSheet);
@@ -4363,21 +4373,21 @@ const AgentDashboard = ({ username, onLogout }) => {
           }
         }
 
-        const myCompleted = myPriorityAwbs.every(a => sheets.priorityTracking[a]?.status === 'completed');
+        const myCompleted = myPriorityAwbs.every((a) => sheets.priorityTracking[a]?.status === 'completed');
         if (myCompleted && myPriorityAwbs.length > 0) {
           // This agent finished all their priority AWBs - disable priority mode for them
           if (!sheets.agentPriorityCompleted) sheets.agentPriorityCompleted = {};
           sheets.agentPriorityCompleted[username] = true;
-          
+
           // Important: Set priority mode to false immediately and force re-render
           setPriorityMode(false);
           setPriorityList([]);
-          
+
           toast.success(`✅ All your priority AWBs completed! Showing all content now.`, { duration: 5000 });
         }
 
         // Check if ALL priority AWBs across all agents are completed
-        const allCompleted = Object.values(sheets.priorityTracking).every(t => t.status === 'completed');
+        const allCompleted = Object.values(sheets.priorityTracking).every((t) => t.status === 'completed');
         if (allCompleted) {
           setTimeout(() => {
             const updatedSheets = loadAgentSheets();
@@ -4405,9 +4415,9 @@ const AgentDashboard = ({ username, onLogout }) => {
           const rowRegion = String(newSheet.raw[i]?.[COL_REGION] || '').trim().toUpperCase();
           const rowState = newSheet.timers[i]?.state?.toUpperCase() || '';
 
-          if (rowAgent === username.toLowerCase() && 
-              (rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
-              rowState !== 'DONE') {
+          if (rowAgent === username.toLowerCase() && (
+          rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
+          rowState !== 'DONE') {
             allDone = false;
             break;
           }
@@ -4479,7 +4489,7 @@ const AgentDashboard = ({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
       saveAgentSheets(sheets);
-      
+
       // Update metrics immediately
       toast.error(`❌ AWB ${awb} rejected`);
 
@@ -4488,7 +4498,7 @@ const AgentDashboard = ({ username, onLogout }) => {
       newSheet.blinkRows[r] = true;
 
       // Notify CS team about rejection
-      CHANNEL.postMessage({ 
+      CHANNEL.postMessage({
         type: "app:sync",
         rejectionNotification: {
           agent: username,
@@ -4510,24 +4520,24 @@ const AgentDashboard = ({ username, onLogout }) => {
           CHANNEL.postMessage({ type: "app:sync" });
         }
       }, 5000);
-      }
+    }
 
-      newSheet.timers[r] = timer;
-      setCSSheet(newSheet);
-      saveCSSheet(newSheet);
-      CHANNEL.postMessage({ type: "app:sync" });
+    newSheet.timers[r] = timer;
+    setCSSheet(newSheet);
+    saveCSSheet(newSheet);
+    CHANNEL.postMessage({ type: "app:sync" });
   };
 
   const getAgentMetrics = () => {
-    let awbPending = 0, lineSumPending = 0, done = 0, rej = 0, totalDone = 0, totalRejected = 0, totalDoneLines = 0, totalRejectedLines = 0;
-    
+    let awbPending = 0,lineSumPending = 0,done = 0,rej = 0,totalDone = 0,totalRejected = 0,totalDoneLines = 0,totalRejectedLines = 0;
+
     for (let r = 0; r < ROWS_COUNT; r++) {
       const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
       if (agent !== username.toLowerCase()) continue;
-      
+
       const state = csSheet.timers[r]?.state?.toUpperCase() || '';
       const lineSum = parseLineSum(csSheet.raw[r]?.[COL_LINE]);
-      
+
       // Count total done/rejected
       if (state === 'DONE') {
         totalDone++;
@@ -4537,24 +4547,24 @@ const AgentDashboard = ({ username, onLogout }) => {
         totalRejected++;
         totalRejectedLines += lineSum;
       }
-      
+
       // Skip hidden rows for pending count
       if (csSheet.timers[r]?.hidden || state === 'DONE' || state === 'REJECTED') continue;
-      
+
       // Apply priority filter for pending
       if (priorityMode && priorityList.length > 0) {
         const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
         if (!priorityList.includes(rowAwb)) continue;
       }
-      
+
       if (csSheet.raw[r]?.[COL_AWB]?.trim()) awbPending++;
       lineSumPending += lineSum;
     }
-    
-    return { 
-      awb: awbPending, 
-      lineSum: lineSumPending, 
-      done: totalDone, 
+
+    return {
+      awb: awbPending,
+      lineSum: lineSumPending,
+      done: totalDone,
       rej: totalRejected,
       totalDoneLines,
       totalRejectedLines
@@ -4562,7 +4572,7 @@ const AgentDashboard = ({ username, onLogout }) => {
   };
 
   const metrics = getAgentMetrics();
-  
+
   const getBreakDuration = () => {
     if (!onBreak || !breakStart) return 0;
     return Math.floor((Date.now() - breakStart) / 1000 / 60);
@@ -4584,14 +4594,14 @@ const AgentDashboard = ({ username, onLogout }) => {
               <div className="flex items-center gap-3">
                 <Badge className="bg-yellow-400 text-black font-black border-black/10">AGENT</Badge>
                 <span className="font-bold">Welcome, {username}</span>
-                {onBreak && (
-                  <Badge className="bg-orange-400 text-white font-black border-orange-500 animate-pulse">
+                {onBreak &&
+                <Badge className="bg-orange-400 text-white font-black border-orange-500 animate-pulse">
                     ON BREAK • {getBreakDuration()}m
                   </Badge>
-                )}
+                }
               </div>
               <div className="flex items-center gap-2">
-                {BREAK_TYPES.map(bt => {
+                {BREAK_TYPES.map((bt) => {
                   const Icon = bt.icon;
                   const isActive = onBreak && breakType === bt.id;
                   return (
@@ -4600,12 +4610,12 @@ const AgentDashboard = ({ username, onLogout }) => {
                       onClick={() => handleBreakToggle(bt.id)}
                       size="sm"
                       variant="outline"
-                      className={`font-bold transition-all ${isActive ? bt.color + ' border-2' : 'bg-white hover:bg-gray-50'}`}
-                    >
+                      className={`font-bold transition-all ${isActive ? bt.color + ' border-2' : 'bg-white hover:bg-gray-50'}`}>
+
                       {isActive ? <Pause className="w-4 h-4 mr-1" /> : <Icon className="w-4 h-4 mr-1" />}
                       {bt.label}
-                    </Button>
-                  );
+                    </Button>);
+
                 })}
                 <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
                   <LogOut className="w-4 h-4 mr-2" />
@@ -4619,25 +4629,25 @@ const AgentDashboard = ({ username, onLogout }) => {
         {/* Analytics */}
         <Card className="bg-white/95 border-black/10 shadow-lg">
           <CardContent className="p-4">
-            {priorityMode && priorityList.length > 0 && (
-              <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 rounded-lg animate-pulse">
+            {priorityMode && priorityList.length > 0 &&
+            <div className="mb-3 p-3 bg-red-100 border-2 border-red-500 rounded-lg animate-pulse">
                 <div className="flex items-center gap-2">
                   <Zap className="w-5 h-5 text-red-600" />
                   <span className="font-black text-red-900">🚨 PRIORITY MODE: {priorityList.length} urgent AWBs - Complete these first!</span>
                 </div>
               </div>
-            )}
+            }
             <div className="flex items-center gap-4 flex-wrap mb-2">
               <Badge className="bg-yellow-400 text-black font-black px-3 py-1">AGENT VIEW ({username})</Badge>
-              {priorityMode && (
-                <Badge className="bg-red-600 text-white font-black animate-pulse">
+              {priorityMode &&
+              <Badge className="bg-red-600 text-white font-black animate-pulse">
                   <Zap className="w-3 h-3 mr-1" />
                   PRIORITY MODE
                 </Badge>
-              )}
-              {regionFilter && (
-                <Badge className="bg-blue-100 text-blue-800 font-bold">Region: {regionFilter}</Badge>
-              )}
+              }
+              {regionFilter &&
+              <Badge className="bg-blue-100 text-blue-800 font-bold">Region: {regionFilter}</Badge>
+              }
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                 <span className="text-sm font-medium">Pending:</span>
                 <span className="font-mono font-bold">{metrics.awb}</span>
@@ -4662,7 +4672,7 @@ const AgentDashboard = ({ username, onLogout }) => {
                 <span className="text-sm font-medium text-red-800">Rej Lines:</span>
                 <span className="font-mono font-bold text-red-800">{metrics.totalRejectedLines}</span>
               </div>
-              <Button 
+              <Button
                 onClick={() => {
                   // Get all done AWBs for this agent
                   const doneAwbs = [];
@@ -4680,13 +4690,13 @@ const AgentDashboard = ({ username, onLogout }) => {
                   navigator.clipboard.writeText(copyText);
                   toast.success(`Copied ${doneAwbs.length} DONE AWBs`);
                 }}
-                variant="outline" 
-                size="sm" 
-                className="font-bold bg-green-50 hover:bg-green-100"
-              >
+                variant="outline"
+                size="sm"
+                className="font-bold bg-green-50 hover:bg-green-100">
+
                 Copy Done
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   // Get all rejected AWBs for this agent
                   const rejAwbs = [];
@@ -4704,32 +4714,32 @@ const AgentDashboard = ({ username, onLogout }) => {
                   navigator.clipboard.writeText(copyText);
                   toast.success(`Copied ${rejAwbs.length} REJECTED AWBs`);
                 }}
-                variant="outline" 
-                size="sm" 
-                className="font-bold bg-red-50 hover:bg-red-100"
-              >
+                variant="outline"
+                size="sm"
+                className="font-bold bg-red-50 hover:bg-red-100">
+
                 Copy Reject
               </Button>
               <div className="flex items-center gap-2">
-                <Button 
+                <Button
                   onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}
-                  variant="outline" 
-                  size="sm" 
-                  className="font-bold"
-                >
+                  variant="outline"
+                  size="sm"
+                  className="font-bold">
+
                   Zoom -
                 </Button>
                 <span className="text-sm font-mono font-bold">{zoomLevel}%</span>
-                <Button 
+                <Button
                   onClick={() => setZoomLevel(Math.min(150, zoomLevel + 10))}
-                  variant="outline" 
-                  size="sm" 
-                  className="font-bold"
-                >
+                  variant="outline"
+                  size="sm"
+                  className="font-bold">
+
                   Zoom +
                 </Button>
               </div>
-              <Button 
+              <Button
                 onClick={() => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
@@ -4737,33 +4747,33 @@ const AgentDashboard = ({ username, onLogout }) => {
 
                   // Done sheet
                   const doneData = [['AWB', 'LINE', 'LOT', 'REGION', 'TIMESTAMP']];
-                  stats.done.forEach(item => doneData.push([item.awb, item.line, item.lot, item.region, item.timestamp]));
+                  stats.done.forEach((item) => doneData.push([item.awb, item.line, item.lot, item.region, item.timestamp]));
                   const doneWs = XLSX.utils.aoa_to_sheet(doneData);
                   XLSX.utils.book_append_sheet(wb, doneWs, 'Done');
 
                   // Rejected sheet
                   const rejData = [['AWB', 'LINE', 'LOT', 'REGION', 'REASON', 'TIMESTAMP']];
-                  stats.rejected.forEach(item => rejData.push([item.awb, item.line, item.lot, item.region, item.reason, item.timestamp]));
+                  stats.rejected.forEach((item) => rejData.push([item.awb, item.line, item.lot, item.region, item.reason, item.timestamp]));
                   const rejWs = XLSX.utils.aoa_to_sheet(rejData);
                   XLSX.utils.book_append_sheet(wb, rejWs, 'Rejected');
 
                   XLSX.writeFile(wb, `${username}_tracking_${new Date().toISOString().split('T')[0]}.xlsx`);
                   toast.success('Downloaded tracking report');
                 }}
-                variant="outline" 
-                size="sm" 
-                className="font-bold ml-auto"
-              >
+                variant="outline"
+                size="sm"
+                className="font-bold ml-auto">
+
                 <Download className="w-4 h-4 mr-2" />
                 My Report
               </Button>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-              {priorityMode ? (
-                <b>🚨 PRIORITY MODE ACTIVE: Only showing urgent AWBs. All other data hidden until these are completed.</b>
-              ) : (
-                "Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done."
-              )}
+              {priorityMode ?
+              <b>🚨 PRIORITY MODE ACTIVE: Only showing urgent AWBs. All other data hidden until these are completed.</b> :
+
+              "Only your assigned rows shown. Fill rejection reason before clicking REJECT. Region filter auto-clears when all items done."
+              }
             </div>
           </CardContent>
         </Card>
@@ -4781,8 +4791,8 @@ const AgentDashboard = ({ username, onLogout }) => {
           blinkRows={csSheet.blinkRows}
           regionFilter={regionFilter}
           priorityList={priorityList}
-          zoomLevel={zoomLevel}
-        />
+          zoomLevel={zoomLevel} />
+
 
         {/* Start Reminder Dialog */}
         <Dialog open={showStartReminder} onOpenChange={setShowStartReminder}>
@@ -4821,26 +4831,26 @@ const AgentDashboard = ({ username, onLogout }) => {
               </p>
             </div>
             <DialogFooter className="flex gap-2">
-              <Button 
+              <Button
                 onClick={() => {
                   setShowReleaseConfirm(false);
                   setPendingDoneRow(null);
-                }} 
-                variant="outline" 
-                className="flex-1 font-bold"
-              >
+                }}
+                variant="outline"
+                className="flex-1 font-bold">
+
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   setShowReleaseConfirm(false);
                   if (pendingDoneRow !== null) {
                     handleStatusClick(pendingDoneRow, 'confirmDone');
                   }
                   setPendingDoneRow(null);
-                }} 
-                className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
-              >
+                }}
+                className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
+
                 OK
               </Button>
             </DialogFooter>
@@ -4862,35 +4872,35 @@ const AgentDashboard = ({ username, onLogout }) => {
               </p>
             </div>
             <DialogFooter className="flex gap-2">
-              <Button 
+              <Button
                 onClick={() => {
                   setShowRejectConfirm(false);
                   setPendingRejectRow(null);
-                }} 
-                variant="outline" 
-                className="flex-1 font-bold"
-              >
+                }}
+                variant="outline"
+                className="flex-1 font-bold">
+
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   setShowRejectConfirm(false);
                   if (pendingRejectRow !== null) {
                     handleStatusClick(pendingRejectRow, 'confirmReject');
                   }
                   setPendingRejectRow(null);
-                }} 
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
-              >
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold">
+
                 OK
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
         </div>
-        </div>
-        );
-        };
+        </div>);
+
+};
 
 // ============================================================================
 // MAIN APP COMPONENT
@@ -4916,25 +4926,25 @@ export default function DHLSheet() {
     const state = loadState();
     const currentUsername = state.session.username;
     const currentRole = state.session.role;
-    
+
     // Clear agent break status when logging out
     if (currentRole === 'agent' && currentUsername) {
       const sheet = loadCSSheet();
       if (sheet.agentBreaks && sheet.agentBreaks[currentUsername]) {
         delete sheet.agentBreaks[currentUsername];
         saveCSSheet(sheet);
-        CHANNEL.postMessage({ 
-          type: "app:sync", 
-          breakUpdate: { 
-            agent: currentUsername, 
-            status: 'ended', 
+        CHANNEL.postMessage({
+          type: "app:sync",
+          breakUpdate: {
+            agent: currentUsername,
+            status: 'ended',
             type: null,
             timestamp: Date.now()
-          } 
+          }
         });
       }
     }
-    
+
     state.session = { role: null, username: null };
     saveState(state);
     setSession({ role: null, username: null });
@@ -4949,8 +4959,8 @@ export default function DHLSheet() {
           <RefreshCw className="w-6 h-6 animate-spin text-yellow-500" />
           <span className="font-bold text-lg">Loading...</span>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (!session.role) {
