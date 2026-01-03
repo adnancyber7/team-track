@@ -221,7 +221,7 @@ const saveAgentSheets = (data) => {
 };
 
 // --- Cross-device sync helpers ---
-let lastRemoteUpdates = { cs: 0, agents: 0 };
+let lastRemoteUpdates = { cs: 0, agents: 0, users: 0 };
 const pushAppState = async (stateKey, payload) => {
   try {
     const rows = await base44.entities.AppState.filter({ state_key: stateKey });
@@ -2383,28 +2383,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       }
     })();
 
-    // Realtime sync: poll server every 1.5s to reflect changes across devices
-    useEffect(() => {
-      let stopped = false;
-      const fetchLists = async () => {
-        try {
-          const [serverAgents, serverCS] = await Promise.all([
-            base44.entities.AgentUser.list(),
-            base44.entities.CSUser.list()
-          ]);
-          if (!stopped) {
-            setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
-            setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
-          }
-        } catch {}
-      };
-      const id = setInterval(fetchLists, 1500);
-      fetchLists();
-      return () => {
-        stopped = true;
-        clearInterval(id);
-      };
-    }, []);
+    // Realtime list polling moved to users_sync watcher effect below
 
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
@@ -2415,6 +2394,32 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }, 1000);
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Users realtime sync across devices: watch 'users_sync' AppState and refresh lists
+  useEffect(() => {
+    let stopped = false;
+    let lastUsersTs = 0;
+    const refreshLists = async () => {
+      try {
+        const rec = await pullAppState('users_sync');
+        const t = Date.parse(rec?.updated_date || rec?.updatedAt || rec?.updated_at || '');
+        if (t && t > lastUsersTs) {
+          lastUsersTs = t;
+          const [serverAgents, serverCS] = await Promise.all([
+            base44.entities.AgentUser.list(),
+            base44.entities.CSUser.list()
+          ]);
+          if (!stopped) {
+            setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
+            setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
+          }
+        }
+      } catch {}
+    };
+    const id = setInterval(refreshLists, 1000);
+    refreshLists();
+    return () => { stopped = true; clearInterval(id); };
   }, []);
 
   // Cross-device pull loop (admin) - sync cs_sheet and agent_sheets
@@ -2646,6 +2651,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setNewAgentUser("");
     setNewAgentPass("");
     CHANNEL.postMessage({ type: "app:sync" });
+    await pushAppState('users_sync', { ts: Date.now() });
     toast.success(`Agent "${newAgentUser}" created`);
   };
 
@@ -2659,6 +2665,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     saveState(state);
     setAgents(state.agents);
     CHANNEL.postMessage({ type: "app:sync" });
+    await pushAppState('users_sync', { ts: Date.now() });
     toast.success(`Agent "${username}" deleted`);
   };
 
@@ -2701,6 +2708,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setNewCSUser("");
     setNewCSPass("");
     CHANNEL.postMessage({ type: "app:sync" });
+    await pushAppState('users_sync', { ts: Date.now() });
     toast.success(`CS Allocator "${newCSUser}" created`);
   };
 
@@ -2714,6 +2722,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     saveState(state);
     setCSAllocators(state.csAllocators);
     CHANNEL.postMessage({ type: "app:sync" });
+    await pushAppState('users_sync', { ts: Date.now() });
     toast.success(`CS Allocator "${username}" deleted`);
   };
 
