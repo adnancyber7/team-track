@@ -2479,6 +2479,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => CHANNEL.removeEventListener('message', handleSync);
   }, []);
 
+  // Notify on agent status changes (Busy / On Break / Available)
+  useEffect(() => {
+    const current = {};
+    (agents || []).forEach(a => {
+      current[a.username] = getAgentStatus(a.username).label;
+    });
+    Object.keys(current).forEach(name => {
+      const prev = prevAgentStatuses.current[name];
+      const now = current[name];
+      if (prev && now && prev !== now) {
+        toast.info(`${name} is now ${now}`);
+      }
+    });
+    prevAgentStatuses.current = current;
+  }, [csSheet, agents]);
+
   const handleCSCellChange = (r, c, value) => {
     const newSheet = deepCopy(csSheet);
     newSheet.raw[r][c] = value;
@@ -3511,11 +3527,15 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <div className="font-bold">{agent.username}</div>
-                                  {/* Live status badge */}
+                                  {/* Live status badge + dot */}
                                   {(() => {
                                     const status = getAgentStatus(agent.username);
+                                    const dotColor = status.label === 'Available' ? 'bg-green-500' : status.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
                                     return (
-                                      <Badge className={`${status.classes} text-xs`}>{status.label}{status.label==='On Break' && breakActive ? ` • ${breakDuration}m` : ''}</Badge>
+                                      <>
+                                        <div className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
+                                        <Badge className={`${status.classes} text-xs`}>{status.label}{status.label==='On Break' && breakActive ? ` • ${breakDuration}m` : ''}</Badge>
+                                      </>
                                     );
                                   })()}
                                   {/* Detailed break type badge when on break */}
@@ -3598,6 +3618,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Badge className="bg-yellow-400 text-black font-black">AGENT PROFILE</Badge>
+                      {(() => {
+                        const s = getAgentStatus(selectedAgent);
+                        const dc = s.label === 'Available' ? 'bg-green-500' : s.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
+                        return <div className={`w-2 h-2 rounded-full ${dc} animate-pulse`} />;
+                      })()}
                       <span className="font-bold text-lg">{selectedAgent}</span>
                       {/* Live break status on profile header */}
                       {(() => {
@@ -3625,6 +3650,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       })()}
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Live status dot in header is above by the name */}
                       <Select
                       value={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
                       onValueChange={(v) => {
