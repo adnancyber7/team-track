@@ -3011,9 +3011,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             <TabsTrigger value="uploads" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Upload className="w-4 h-4 mr-2" />
               CS Uploads
-              {csUploads.length > 0 &&
-              <Badge className="ml-2 bg-blue-500 text-white">{csUploads.length}</Badge>
-              }
+              {(() => {
+                const pending = (csUploads || []).filter((u) => !u.downloadedBy).length;
+                return pending > 0 ? (
+                  <Badge className="ml-2 bg-blue-500 text-white">{pending}</Badge>
+                ) : null;
+              })()}
             </TabsTrigger>
             <TabsTrigger value="reports" className="font-bold data-[state=active]:bg-yellow-400/60">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
