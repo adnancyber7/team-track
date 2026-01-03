@@ -7,7 +7,6 @@ import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
 import AdvancedReportingModule from '../components/AdvancedReportingModule';
 import FreeAnalytics from '../components/analytics/FreeAnalytics';
-import AutoAssignControls from '../components/AutoAssignControls';
 import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import CellEditorDialog from '../components/CellEditorDialog';
@@ -2388,21 +2387,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [newCSPass, setNewCSPass] = useState("");
   const [priorityNumbers, setPriorityNumbers] = useState("");
   const [csUploads, setCSUploads] = useState([]);
-  const [autoAssignRules, setAutoAssignRules] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('DHL_AUTO_ASSIGN_RULES_V1')) || {
-        enabled: false,
-        maxPendingPerAgent: 30,
-        regionStrict: false,
-        avoidHighRejection: true,
-        maxRejectionRate: 35,
-        preferLowAvgTime: true,
-        weights: { availability: 3, workload: 2, region: 4, performance: 2 }
-      };
-    } catch { return { enabled: false, maxPendingPerAgent: 30, regionStrict: false, avoidHighRejection: true, maxRejectionRate: 35, preferLowAvgTime: true, weights: { availability: 3, workload: 2, region: 4, performance: 2 } }; }
-  });
-  const [assignRunning, setAssignRunning] = useState(false);
-  const [lastAssignResult, setLastAssignResult] = useState(null);
   const fileInputRef = useRef(null);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
   const prevAgentStatuses = useRef({});
@@ -2912,8 +2896,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const downloadAllCSData = () => {
     const headers = CS_COLUMNS;
     const rows = [headers, ...csSheet.raw.filter((row) => row.some((cell) => cell.trim()))];
-    downloadCSV(rows, 'master_sheet_data.csv');
-    toast.success("Downloaded Master Sheet data");
+    downloadCSV(rows, 'cs_sheet_data.csv');
+    toast.success("Downloaded CS Sheet data");
   };
 
   const handleFileUpload = async (e) => {
@@ -3227,98 +3211,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const displayData = getDisplayData();
 
-  // Persist auto-assign rules when changed
-  useEffect(() => {
-    try { localStorage.setItem('DHL_AUTO_ASSIGN_RULES_V1', JSON.stringify(autoAssignRules)); } catch {}
-  }, [autoAssignRules]);
-
-  const handleRunAutoAssign = async () => {
-    if (!autoAssignRules.enabled) return;
-    setAssignRunning(true);
-    try {
-      const newSheet = deepCopy(csSheet);
-
-      // Build agent state snapshot
-      const agentList = (agents || []).map(a => a.username);
-      const pendingCounts = {};
-      const rejRates = {};
-      const statusMap = {};
-      agentList.forEach(name => {
-        const key = name.toLowerCase();
-        const m = allAgentMetrics[key] || { awb: 0, done: 0, rej: 0 };
-        pendingCounts[key] = m.awb || 0;
-        const denom = (m.done || 0) + (m.rej || 0);
-        rejRates[key] = denom > 0 ? (m.rej / denom) * 100 : 0;
-        const s = getAgentStatus(name).label;
-        statusMap[key] = s; // 'Available' | 'Busy' | 'On Break'
-      });
-
-      // Precompute max pending for normalization
-      const maxPending = Math.max(1, ...Object.values(pendingCounts));
-
-      const rules = autoAssignRules;
-      let assigned = 0;
-      const touchedAgentsSet = new Set();
-
-      const scoreAgent = (agentName, rowRegion) => {
-        const key = agentName.toLowerCase();
-        // Exclusions
-        if (statusMap[key] === 'On Break') return -1e9;
-        if (rules.regionStrict && rowRegion) {
-          const agentRegion = (loadAgentSheets().agentFilters?.[agentName]?.region || '').toUpperCase();
-          if (agentRegion && !(String(rowRegion).toUpperCase() === agentRegion || String(rowRegion).toUpperCase().includes(agentRegion))) return -1e9;
-        }
-        if (rules.avoidHighRejection && rejRates[key] > rules.maxRejectionRate) return -1e6;
-        if (pendingCounts[key] >= rules.maxPendingPerAgent) return -1e6;
-
-        let s = 0;
-        // Availability
-        s += rules.weights.availability * (statusMap[key] === 'Available' ? 1 : statusMap[key] === 'Busy' ? 0 : -1);
-        // Workload (lower is better)
-        const wl = 1 - (pendingCounts[key] / Math.max(1, maxPending));
-        s += rules.weights.workload * wl;
-        // Region match boost
-        if (rowRegion) {
-          const ar = (loadAgentSheets().agentFilters?.[agentName]?.region || '').toUpperCase();
-          const rr = String(rowRegion).toUpperCase();
-          const match = ar && (rr === ar || rr.includes(ar));
-          s += rules.weights.region * (match ? 1 : 0);
-        }
-        // Performance (lower rejection better)
-        const perf = 1 - Math.min(1, rejRates[key] / 100);
-        s += rules.weights.performance * perf;
-        return s;
-      };
-
-      for (let r = 0; r < ROWS_COUNT; r++) {
-        const awb = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
-        if (!awb) continue;
-        const agentCell = String(newSheet.raw[r]?.[COL_AGENTS] || '').trim();
-        const rowState = newSheet.timers[r]?.state?.toUpperCase() || '';
-        if (agentCell || rowState === 'DONE' || rowState === 'REJECTED') continue; // only unassigned, active rows
-
-        const rowRegion = newSheet.raw[r]?.[COL_REGION] || '';
-        let best = null;
-        let bestScore = -Infinity;
-        for (const a of agentList) {
-          const sc = scoreAgent(a, rowRegion);
-          if (sc > bestScore) { bestScore = sc; best = a; }
-        }
-        if (best && bestScore > -1e5) {
-          newSheet.raw[r][COL_AGENTS] = best;
-          pendingCounts[best.toLowerCase()] = (pendingCounts[best.toLowerCase()] || 0) + 1;
-          assigned++;
-          touchedAgentsSet.add(best);
-        }
-      }
-
-      setCSSheet(newSheet);
-      saveCSSheet(newSheet);
-      CHANNEL.postMessage({ type: 'app:sync' });
-      setLastAssignResult({ assigned, touchedAgents: touchedAgentsSet.size });
-    } finally { setAssignRunning(false); }
-  };
-
   const handleSetPriority = () => {
     const numbers = priorityNumbers.split(/[\s,;\n]+/).map((n) => n.trim()).filter((n) => /^\d{10}$/.test(n));
     if (numbers.length === 0) {
@@ -3453,8 +3345,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-white/80 border border-black/10 p-1">
             <TabsTrigger value="cs-sheet" className="font-bold data-[state=active]:bg-yellow-400/60">
-             <FileSpreadsheet className="w-4 h-4 mr-2" />
-             Master Sheet
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              CS Sheet
             </TabsTrigger>
             <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Users className="w-4 h-4 mr-2" />
@@ -3503,7 +3395,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
+                  <Badge className="bg-yellow-400 text-black font-black px-3 py-1">CS SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                     <span className="text-sm font-medium">AWB:</span>
                     <span className="font-mono font-bold">{csMetrics.awb}</span>
@@ -3551,26 +3443,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 </div>
                 
                 <div className="text-xs text-black/50 bg-blue-50 border border-blue-200 rounded-lg p-2">
-                <b>Upload Format:</b> AGENT, AWB'S, REASON, REGION, CONFIRMATION, AGENT2, 2ND REJECTION, 2ND CONFIRMATION, etc.
-                Unassigned rows can be auto-assigned via Automated Assignment.
+                  <b>Upload Format:</b> AGENT, AWB'S, REASON, REGION, CONFIRMATION, AGENT2, 2ND REJECTION, 2ND CONFIRMATION, etc. 
+                  Data will auto-assign to agent profiles.
                 </div>
               </CardContent>
             </Card>
 
-            {/* Automated Assignment */}
-            <AutoAssignControls
-              rules={autoAssignRules}
-              onChange={setAutoAssignRules}
-              onRun={handleRunAutoAssign}
-              running={assignRunning}
-              lastResult={lastAssignResult}
-            />
+
 
             {/* Bulk Actions */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Badge className="bg-blue-100 text-blue-800 font-black">MASTER SHEET - BULK ACTIONS</Badge>
+                  <Badge className="bg-blue-100 text-blue-800 font-black">BULK ACTIONS</Badge>
                   <Button onClick={handleSelectAll} size="sm" variant="outline" className="font-bold">
                     <CheckSquare className="w-4 h-4 mr-2" />
                     Select All
