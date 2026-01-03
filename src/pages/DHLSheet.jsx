@@ -3274,12 +3274,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <div className="font-bold">{agent.username}</div>
+                                  {/* Live status badge */}
+                                  {(() => {
+                                    const status = getAgentStatus(agent.username);
+                                    return (
+                                      <Badge className={`${status.classes} text-xs`}>{status.label}{status.label==='On Break' && breakActive ? ` • ${breakDuration}m` : ''}</Badge>
+                                    );
+                                  })()}
+                                  {/* Detailed break type badge when on break */}
                                   {breakActive && breakType &&
-                                <Badge className={`${breakType.color} text-xs animate-pulse`}>
-                                      {breakType.icon && <breakType.icon className="w-3 h-3 mr-1" />}
-                                      {breakType.label} • {breakDuration}m
-                                    </Badge>
-                                }
+                                    <Badge className={`${breakType.color} text-[10px]`}>{breakType.label}</Badge>
+                                  }
                                 </div>
                                 <div className="text-xs text-black/50">
                                   Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
@@ -3287,27 +3292,24 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedAgent(agent.username)}
-                                className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
-
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedAgent(agent.username)}
+                                  className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
                                   <Eye className="w-4 h-4" />
                                 </Button>
                                 <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadAgentData(agent.username)}
-                                className="font-bold">
-
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadAgentData(agent.username)}
+                                  className="font-bold">
                                   <Download className="w-4 h-4" />
                                 </Button>
                                 <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => deleteAgent(agent.username)}
-                                className="font-bold text-red-600 hover:bg-red-50">
-
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => deleteAgent(agent.username)}
+                                  className="font-bold text-red-600 hover:bg-red-50">
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
