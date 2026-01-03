@@ -199,7 +199,7 @@ const saveCSSheet = (data) => {
     localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
     // Cross-device sync
     pushAppState('cs_sheet', optimizedData);
-  }, 500);
+  }, 250);
 };
 
 const loadAgentSheets = () => {
@@ -1457,6 +1457,11 @@ const ExcelSheet = ({
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const typingTimerRef = useRef(null);
+const [, setTick] = useState(0);
+useEffect(() => {
+  const id = setInterval(() => setTick(t => t + 1), 1000);
+  return () => clearInterval(id);
+}, []);
 
   // Compact view for agents - removes gaps from done/rejected rows - MEMOIZED
   const getCompactedView = useMemo(() => {
@@ -2416,7 +2421,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -4223,18 +4228,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     const sheets = loadAgentSheets();
     const uploads = (sheets.csUploads || []).filter((u) => u.csUser === username);
     setMyUploads(uploads);
-
-    const interval = setInterval(() => {
-      setRefreshKey((k) => k + 1);
-      const updated = loadCSSheet();
-      setCSSheet(updated);
-
-      const updatedSheets = loadAgentSheets();
-      const updatedUploads = (updatedSheets.csUploads || []).filter((u) => u.csUser === username);
-      setMyUploads(updatedUploads);
-    }, 1000);
-
-    return () => clearInterval(interval);
+    // removed periodic local refresh; relying on pull loop for cross-device and ExcelSheet local tick
   }, [username]);
 
   // Cross-device pull loop (CS Allocator) - sync cs_sheet
@@ -4252,7 +4246,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -4553,11 +4547,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     const sheets = loadAgentSheets();
     const filter = sheets.agentFilters?.[username]?.region || "";
     setRegionFilter(filter);
-    
-    // Store entire sheets object for priority checking
     setPriorityList(sheets);
 
-    // Initialize break status on mount
     const currentSheet = loadCSSheet();
     const agentBreak = currentSheet.agentBreaks?.[username];
     if (agentBreak?.active && agentBreak?.start) {
@@ -4569,50 +4560,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       setBreakType(null);
       setBreakStart(null);
     }
-
-    const interval = setInterval(() => {
-      setRefreshKey((k) => k + 1);
-      
-      // Batch state updates to reduce re-renders
-      const updated = loadCSSheet();
-      const updatedSheets = loadAgentSheets();
-      const updatedFilter = updatedSheets.agentFilters?.[username]?.region || "";
-      const agentBreak = updated.agentBreaks?.[username];
-      
-      // Only update state if something actually changed
-      setCSSheet(prevSheet => {
-        if (JSON.stringify(prevSheet) !== JSON.stringify(updated)) {
-          return updated;
-        }
-        return prevSheet;
-      });
-      
-      setRegionFilter(prevFilter => updatedFilter !== prevFilter ? updatedFilter : prevFilter);
-      setPriorityList(prevList => {
-        if (JSON.stringify(prevList) !== JSON.stringify(updatedSheets)) {
-          return updatedSheets;
-        }
-        return prevList;
-      });
-
-      // Sync break status in real-time
-      if (agentBreak?.active && agentBreak?.start) {
-        if (!onBreak || breakType !== agentBreak.type || breakStart !== agentBreak.start) {
-          setOnBreak(true);
-          setBreakType(agentBreak.type);
-          setBreakStart(agentBreak.start);
-        }
-      } else {
-        if (onBreak) {
-          setOnBreak(false);
-          setBreakType(null);
-          setBreakStart(null);
-        }
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [username, onBreak, breakType, breakStart]);
+    // removed periodic local refresh; relying on pull loop for cross-device and ExcelSheet local tick
+  }, [username]);
 
   // Cross-device pull loop (agent) - sync cs_sheet and agent_sheets
   useEffect(() => {
@@ -4639,7 +4588,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
