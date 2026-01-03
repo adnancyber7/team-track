@@ -2383,6 +2383,29 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       }
     })();
 
+    // Realtime sync: poll server every 1.5s to reflect changes across devices
+    useEffect(() => {
+      let stopped = false;
+      const fetchLists = async () => {
+        try {
+          const [serverAgents, serverCS] = await Promise.all([
+            base44.entities.AgentUser.list(),
+            base44.entities.CSUser.list()
+          ]);
+          if (!stopped) {
+            setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
+            setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
+          }
+        } catch {}
+      };
+      const id = setInterval(fetchLists, 1500);
+      fetchLists();
+      return () => {
+        stopped = true;
+        clearInterval(id);
+      };
+    }, []);
+
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
     setPriorityNumbers(sheets.priorityNumbers || "");
