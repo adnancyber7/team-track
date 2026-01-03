@@ -1857,42 +1857,20 @@ const ExcelSheet = ({
       const rej4 = displayData[displayRow]?.[COL_REJ4] || '';
       const rej5 = displayData[displayRow]?.[COL_REJ5] || '';
 
-      const rejCount = timer.rejClicks || 0;
+      // Sequential validation: require the next missing rejection reason (admin may have prefilled earlier ones)
+      const needRej2 = !String(rej2).trim();
+      const needRej3 = !String(rej3).trim();
+      const needRej4 = !String(rej4).trim();
+      const needRej5 = !String(rej5).trim();
 
-      // Check if data already exists in rejection columns (from admin)
-      const hasRej2 = rej2.trim();
-      const hasRej3 = rej3.trim();
-      const hasRej4 = rej4.trim();
-      const hasRej5 = rej5.trim();
+      if (needRej2) { toast.error("Please fill 2ND REJECTION reason first"); return; }
+      if (needRej3) { toast.error("Please fill 3RD REJECTION reason first"); return; }
+      if (needRej4) { toast.error("Please fill 4TH REJECTION reason first"); return; }
+      if (needRej5) { toast.error("Please fill 5TH REJECTION reason first"); return; }
 
-      if (rejCount === 0 && !hasRej2) {
-        toast.error("Please fill 2ND REJECTION reason first");
-        return;
-      }
-      if (rejCount === 1 && hasRej3 && !rej4.trim()) {
-        toast.error("Please fill 4TH REJECTION reason first (3rd already filled)");
-        return;
-      }
-      if (rejCount === 1 && !hasRej3) {
-        toast.error("Please fill 3RD REJECTION reason first");
-        return;
-      }
-      if (rejCount === 2 && hasRej4 && !rej5.trim()) {
-        toast.error("Please fill 5TH REJECTION reason first (4th already filled)");
-        return;
-      }
-      if (rejCount === 2 && !hasRej4) {
-        toast.error("Please fill 4TH REJECTION reason first");
-        return;
-      }
-      if (rejCount === 3 && !hasRej5) {
-        toast.error("Please fill 5TH REJECTION reason first");
-        return;
-      }
-      if (rejCount >= 4) {
-        toast.error("Maximum rejections reached");
-        return;
-      }
+      // All rejection reason fields are already filled
+      toast.error("Maximum rejections reached");
+      return;
 
       if (actualRow !== -1) {
         onStatusClick(actualRow, 'reject');
@@ -4917,29 +4895,20 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       }
     } else if (action === 'reject') {
       // Validate rejection reason is filled
-      const rejCount = timer.rejClicks || 0;
       const rej2 = String(newSheet.raw[r]?.[COL_REJ2] || '').trim();
       const rej3 = String(newSheet.raw[r]?.[COL_REJ3] || '').trim();
       const rej4 = String(newSheet.raw[r]?.[COL_REJ4] || '').trim();
       const rej5 = String(newSheet.raw[r]?.[COL_REJ5] || '').trim();
 
-      // Only check if data doesn't exist from admin upload
-      if (rejCount === 0 && !rej2) {
-        toast.error("Please fill 2ND REJECTION reason first");
-        return;
-      }
-      if (rejCount === 1 && !rej3) {
-        toast.error("Please fill 3RD REJECTION reason first");
-        return;
-      }
-      if (rejCount === 2 && !rej4) {
-        toast.error("Please fill 4TH REJECTION reason first");
-        return;
-      }
-      if (rejCount === 3 && !rej5) {
-        toast.error("Please fill 5TH REJECTION reason first");
-        return;
-      }
+      // Sequential validation: require the next missing rejection reason (admin may have prefilled earlier ones)
+      if (!rej2) { toast.error("Please fill 2ND REJECTION reason first"); return; }
+      if (!rej3) { toast.error("Please fill 3RD REJECTION reason first"); return; }
+      if (!rej4) { toast.error("Please fill 4TH REJECTION reason first"); return; }
+      if (!rej5) { toast.error("Please fill 5TH REJECTION reason first"); return; }
+
+      // All rejection reason fields are already filled
+      toast.error("Maximum rejections reached");
+      return;
 
       // Show reject confirmation dialog
       setPendingRejectRow(r);
