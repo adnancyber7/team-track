@@ -3596,7 +3596,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               blinkRows={csSheet.blinkRows}
               selectedRows={selectedRows}
               onRowSelect={handleRowSelect}
-              fastEditMode={fastEditMode} />
+              fastEditMode={fastEditMode}
+              highAssignedAt={(agentSheets && agentSheets.manualHighAssignedAt) || {}} />
 
           </TabsContent>
 
