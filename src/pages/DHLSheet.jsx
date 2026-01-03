@@ -4951,22 +4951,12 @@ export default function DHLSheet() {
     const currentUsername = state.session.username;
     const currentRole = state.session.role;
 
-    // Clear agent break status when logging out
+    // Preserve break status on logout so admin can still see it
     if (currentRole === 'agent' && currentUsername) {
-      const sheet = loadCSSheet();
-      if (sheet.agentBreaks && sheet.agentBreaks[currentUsername]) {
-        delete sheet.agentBreaks[currentUsername];
-        saveCSSheet(sheet);
-        CHANNEL.postMessage({
-          type: "app:sync",
-          breakUpdate: {
-            agent: currentUsername,
-            status: 'ended',
-            type: null,
-            timestamp: Date.now()
-          }
-        });
-      }
+      CHANNEL.postMessage({
+        type: "app:sync",
+        agentLogout: { agent: currentUsername, timestamp: Date.now() }
+      });
     }
 
     state.session = { role: null, username: null };
