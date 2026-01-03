@@ -136,6 +136,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
 
   const updateUserAccess = (patch) => {
     setSettings(prev => ({ ...prev, userAccess: { ...prev.userAccess, ...patch } }));
+    toast.success('Access controls updated');
   };
 
   const updateUserProfile = (username, patch) => {

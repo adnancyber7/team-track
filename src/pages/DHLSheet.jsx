@@ -2316,6 +2316,39 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Sync local users with backend for cross-device logins
+  useEffect(() => {
+    (async () => {
+      try {
+        const [serverAgents, serverCS] = await Promise.all([
+          base44.entities.AgentUser.list(),
+          base44.entities.CSUser.list()
+        ]);
+        const local = loadState();
+        const serverAgentSet = new Set((serverAgents || []).map(a => (a.username || '').toLowerCase()));
+        const serverCSSet = new Set((serverCS || []).map(a => (a.username || '').toLowerCase()));
+
+        // Upsert local -> server
+        for (const a of (local.agents || [])) {
+          const u = String(a.username || '').toLowerCase();
+          if (u && !serverAgentSet.has(u)) {
+            try { await base44.entities.AgentUser.create({ username: a.username, password: a.password }); } catch {}
+          }
+        }
+        for (const c of (local.csAllocators || [])) {
+          const u = String(c.username || '').toLowerCase();
+          if (u && !serverCSSet.has(u)) {
+            try { await base44.entities.CSUser.create({ username: c.username, password: c.password }); } catch {}
+          }
+        }
+
+        // Prefer server lists going forward
+        if (serverAgents && serverAgents.length) setAgents(serverAgents.map(a => ({ username: a.username, password: a.password })));
+        if (serverCS && serverCS.length) setCSAllocators(serverCS.map(a => ({ username: a.username, password: a.password })));
+      } catch {}
+    })();
+  }, []);
+
   useEffect(() => {
     const handleSync = (ev) => {
       if (ev?.data?.uploadNotification) {
@@ -2412,7 +2445,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
 
     // Admin doesn't use status buttons in CS sheet
-  };const createAgent = () => {
+  };const createAgent = async () => {
     if (!newAgentUser.trim() || !newAgentPass.trim()) {
       toast.error("Please enter agent username and password");
       return;
@@ -2432,6 +2465,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
 
+    // Persist to backend for cross-device login
+    try {
+      const exists = await base44.entities.AgentUser.filter({ username: newAgentUser });
+      if (!exists || !exists.length) {
+        await base44.entities.AgentUser.create({ username: newAgentUser, password: newAgentPass });
+      } else {
+        toast.error("Agent already exists in server");
+        return;
+      }
+    } catch (e) {
+      // if server fails, still save locally as fallback
+    }
+
     state.agents = [...(state.agents || []), { username: newAgentUser, password: newAgentPass }];
     saveState(state);
     setAgents(state.agents);
@@ -2441,7 +2487,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     toast.success(`Agent "${newAgentUser}" created`);
   };
 
-  const deleteAgent = (username) => {
+  const deleteAgent = async (username) => {
+    try {
+      const matches = await base44.entities.AgentUser.filter({ username });
+      if (matches && matches[0]) await base44.entities.AgentUser.delete(matches[0].id);
+    } catch {}
     const state = loadState();
     state.agents = (state.agents || []).filter((a) => a.username !== username);
     saveState(state);
@@ -2450,7 +2500,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     toast.success(`Agent "${username}" deleted`);
   };
 
-  const createCSAllocator = () => {
+  const createCSAllocator = async () => {
     if (!newCSUser.trim() || !newCSPass.trim()) {
       toast.error("Please enter CS Allocator username and password");
       return;
@@ -2466,6 +2516,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
 
+    try {
+      const exists = await base44.entities.CSUser.filter({ username: newCSUser });
+      if (!exists || !exists.length) {
+        await base44.entities.CSUser.create({ username: newCSUser, password: newCSPass });
+      } else {
+        toast.error("CS Allocator already exists in server");
+        return;
+      }
+    } catch {}
+
     state.csAllocators = [...(state.csAllocators || []), { username: newCSUser, password: newCSPass }];
     saveState(state);
     setCSAllocators(state.csAllocators);
@@ -2475,7 +2535,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     toast.success(`CS Allocator "${newCSUser}" created`);
   };
 
-  const deleteCSAllocator = (username) => {
+  const deleteCSAllocator = async (username) => {
+    try {
+      const matches = await base44.entities.CSUser.filter({ username });
+      if (matches && matches[0]) await base44.entities.CSUser.delete(matches[0].id);
+    } catch {}
     const state = loadState();
     state.csAllocators = (state.csAllocators || []).filter((a) => a.username !== username);
     saveState(state);
