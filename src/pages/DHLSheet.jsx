@@ -216,6 +216,29 @@ const saveAgentSheets = (data) => {
   localStorage.setItem(APP_STORE_KEY, JSON.stringify(data));
 };
 
+// --- Cross-device sync helpers ---
+let lastRemoteUpdates = { cs: 0, agents: 0 };
+const pushAppState = async (stateKey, payload) => {
+  try {
+    const rows = await base44.entities.AppState.filter({ state_key: stateKey });
+    if (rows && rows[0]) {
+      await base44.entities.AppState.update(rows[0].id, { data: payload });
+    } else {
+      await base44.entities.AppState.create({ state_key: stateKey, data: payload });
+    }
+  } catch (e) {
+    // ignore network/backend issues silently
+  }
+};
+const pullAppState = async (stateKey) => {
+  try {
+    const rows = await base44.entities.AppState.filter({ state_key: stateKey });
+    return (rows && rows[0]) || null;
+  } catch {
+    return null;
+  }
+};
+
 const downloadCSV = (data, filename) => {
   const csvContent = data.map((row) =>
   row.map((cell) => {
@@ -2316,6 +2339,37 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Cross-device pull loop (admin) - sync cs_sheet and agent_sheets
+  useEffect(() => {
+    const interval = setInterval(() => {
+      (async () => {
+        // cs_sheet
+        const csRec = await pullAppState('cs_sheet');
+        if (csRec) {
+          const t = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '');
+          if (t && t > lastRemoteUpdates.cs) {
+            localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+            setCSSheet(loadCSSheet());
+            lastRemoteUpdates.cs = t;
+            CHANNEL.postMessage({ type: 'app:sync' });
+          }
+        }
+        // agent_sheets
+        const aRec = await pullAppState('agent_sheets');
+        if (aRec) {
+          const t2 = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '');
+          if (t2 && t2 > lastRemoteUpdates.agents) {
+            localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
+            setAgentSheets(loadAgentSheets());
+            lastRemoteUpdates.agents = t2;
+            CHANNEL.postMessage({ type: 'app:sync' });
+          }
+        }
+      })();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Sync local users with backend for cross-device logins
   useEffect(() => {
     (async () => {
@@ -4024,6 +4078,25 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     return () => clearInterval(interval);
   }, [username]);
 
+  // Cross-device pull loop (CS Allocator) - sync cs_sheet
+  useEffect(() => {
+    const interval = setInterval(() => {
+      (async () => {
+        const csRec = await pullAppState('cs_sheet');
+        if (csRec) {
+          const t = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '');
+          if (t && t > lastRemoteUpdates.cs) {
+            localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+            setCSSheet(loadCSSheet());
+            lastRemoteUpdates.cs = t;
+            CHANNEL.postMessage({ type: 'app:sync' });
+          }
+        }
+      })();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const handleSync = (ev) => {
       if (ev?.data?.type === "app:sync") {
@@ -4380,6 +4453,35 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
     return () => clearInterval(interval);
   }, [username, onBreak, breakType, breakStart]);
+
+  // Cross-device pull loop (agent) - sync cs_sheet and agent_sheets
+  useEffect(() => {
+    const interval = setInterval(() => {
+      (async () => {
+        const csRec = await pullAppState('cs_sheet');
+        if (csRec) {
+          const t = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '');
+          if (t && t > lastRemoteUpdates.cs) {
+            localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+            setCSSheet(loadCSSheet());
+            lastRemoteUpdates.cs = t;
+            CHANNEL.postMessage({ type: 'app:sync' });
+          }
+        }
+        const aRec = await pullAppState('agent_sheets');
+        if (aRec) {
+          const t2 = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '');
+          if (t2 && t2 > lastRemoteUpdates.agents) {
+            localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
+            setAgentSheets(loadAgentSheets());
+            lastRemoteUpdates.agents = t2;
+            CHANNEL.postMessage({ type: 'app:sync' });
+          }
+        }
+      })();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleBreakToggle = useCallback((type) => {
     const newSheet = deepCopy(csSheet);
