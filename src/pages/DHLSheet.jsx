@@ -5326,7 +5326,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
               <Button
                 onClick={() => {
                   setShowRejectConfirm(false);
-                  if (pendingRejectRow !== null) {
+                  if (!missingRejectLabel && pendingRejectRow !== null) {
                     handleStatusClick(pendingRejectRow, 'confirmReject');
                   }
                   setPendingRejectRow(null);
