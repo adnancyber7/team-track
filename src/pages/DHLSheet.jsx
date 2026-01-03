@@ -2998,9 +2998,15 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             <TabsTrigger value="priority" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Zap className="w-4 h-4 mr-2" />
               Priority
-              {agentSheets.priorityList?.length > 0 &&
-              <Badge className="ml-2 bg-red-500 text-white">{agentSheets.priorityList.length}</Badge>
-              }
+              {(() => {
+                // Compute pending priority count: numbers not completed or downloaded state irrelevant
+                const sheets = agentSheets || {};
+                const statusMap = sheets.priorityStatus || {};
+                const pendingCount = Object.values(statusMap).filter((s) => s !== 'completed').length;
+                return pendingCount > 0 ? (
+                  <Badge className="ml-2 bg-red-500 text-white">{pendingCount}</Badge>
+                ) : null;
+              })()}
             </TabsTrigger>
             <TabsTrigger value="uploads" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Upload className="w-4 h-4 mr-2" />
