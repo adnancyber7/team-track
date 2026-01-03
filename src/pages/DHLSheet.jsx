@@ -383,89 +383,50 @@ const LoginScreen = ({ onLogin }) => {
   const [showAgentPass, setShowAgentPass] = useState(false);
   const [showCSPass, setShowCSPass] = useState(false);
 
-  const handleAdminLogin = async () => {
+  const handleAdminLogin = () => {
     const state = loadState();
     if (!adminUser.trim() || !adminPass) {
       setError("Please enter admin username and password.");
       return;
     }
-    try {
-      const configs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
-      const cfg = (configs || [])[0];
-      if (cfg && cfg.admin_username === adminUser && cfg.admin_password === adminPass) {
-        state.session = { role: "admin", username: adminUser };
-        saveState(state);
-        onLogin("admin", adminUser);
-        return;
-      }
-      // Fallback to local admin
-      if (adminUser === state.admin.username && adminPass === state.admin.password) {
-        state.session = { role: "admin", username: adminUser };
-        saveState(state);
-        onLogin("admin", adminUser);
-      } else {
-        setError("Invalid admin credentials.");
-      }
-    } catch (e) {
-      setError("Login failed. Please try again.");
+    if (adminUser === state.admin.username && adminPass === state.admin.password) {
+      state.session = { role: "admin", username: adminUser };
+      saveState(state);
+      onLogin("admin", adminUser);
+    } else {
+      setError("Invalid admin credentials.");
     }
   };
 
-  const handleAgentLogin = async () => {
+  const handleAgentLogin = () => {
     const state = loadState();
     if (!agentUser.trim() || !agentPass) {
       setError("Please enter agent username and password.");
       return;
     }
-    try {
-      // Try backend first
-      const res = await base44.entities.AgentUser.filter({ username: agentUser, password: agentPass });
-      const found = (res || [])[0];
-      if (found) {
-        state.session = { role: "agent", username: agentUser };
-        saveState(state);
-        onLogin("agent", agentUser);
-        return;
-      }
-      // Fallback to local data
-      const localFound = state.agents.find((a) => a.username === agentUser && a.password === agentPass);
-      if (localFound) {
-        state.session = { role: "agent", username: agentUser };
-        saveState(state);
-        onLogin("agent", agentUser);
-      } else {
-        setError("Invalid agent credentials.");
-      }
-    } catch (e) {
-      setError("Login failed. Please try again.");
+    const found = state.agents.find((a) => a.username === agentUser && a.password === agentPass);
+    if (found) {
+      state.session = { role: "agent", username: agentUser };
+      saveState(state);
+      onLogin("agent", agentUser);
+    } else {
+      setError("Invalid agent credentials.");
     }
   };
 
-  const handleCSLogin = async () => {
+  const handleCSLogin = () => {
     const state = loadState();
     if (!csUser.trim() || !csPass) {
       setError("Please enter CS Allocator username and password.");
       return;
     }
-    try {
-      const res = await base44.entities.CSUser.filter({ username: csUser, password: csPass });
-      const found = (res || [])[0];
-      if (found) {
-        state.session = { role: "cs_allocator", username: csUser };
-        saveState(state);
-        onLogin("cs_allocator", csUser);
-        return;
-      }
-      const localFound = state.csAllocators.find((a) => a.username === csUser && a.password === csPass);
-      if (localFound) {
-        state.session = { role: "cs_allocator", username: csUser };
-        saveState(state);
-        onLogin("cs_allocator", csUser);
-      } else {
-        setError("Invalid CS Allocator credentials.");
-      }
-    } catch (e) {
-      setError("Login failed. Please try again.");
+    const found = state.csAllocators.find((a) => a.username === csUser && a.password === csPass);
+    if (found) {
+      state.session = { role: "cs_allocator", username: csUser };
+      saveState(state);
+      onLogin("cs_allocator", csUser);
+    } else {
+      setError("Invalid CS Allocator credentials.");
     }
   };
 
@@ -2270,55 +2231,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
     setPriorityNumbers(sheets.priorityNumbers || "");
-    // Also refresh agents/cs from backend to reflect remote changes and migrate local -> backend once
-    (async () => {
-      try {
-        let [agentList, csList, adminCfg] = await Promise.all([
-          base44.entities.AgentUser.list(),
-          base44.entities.CSUser.list(),
-          base44.entities.AdminConfig.filter({ config_key: 'main' })
-        ]);
-
-        // One-time migration of locally stored users to backend
-        const localState = loadState();
-        const existingAgents = new Set((agentList || []).map(a => (a.username || '').toLowerCase()));
-        const existingCS = new Set((csList || []).map(a => (a.username || '').toLowerCase()));
-
-        // Migrate Agents
-        for (const a of (localState.agents || [])) {
-          const uname = String(a.username || '').toLowerCase();
-          if (uname && !existingAgents.has(uname)) {
-            try { await base44.entities.AgentUser.create({ username: a.username, password: a.password }); } catch {}
-          }
-        }
-        // Migrate CS Users
-        for (const c of (localState.csAllocators || [])) {
-          const uname = String(c.username || '').toLowerCase();
-          if (uname && !existingCS.has(uname)) {
-            try { await base44.entities.CSUser.create({ username: c.username, password: c.password }); } catch {}
-          }
-        }
-        // Ensure AdminConfig main exists
-        if (!adminCfg || !adminCfg[0]) {
-          try {
-            await base44.entities.AdminConfig.create({
-              config_key: 'main',
-              admin_username: localState?.admin?.username || 'admin',
-              admin_password: localState?.admin?.password || 'admin123',
-              admin_email: localState?.admin?.email || ''
-            });
-          } catch {}
-        }
-
-        // Reload after migration
-        [agentList, csList] = await Promise.all([
-          base44.entities.AgentUser.list(),
-          base44.entities.CSUser.list()
-        ]);
-        if (agentList) setAgents(agentList);
-        if (csList) setCSAllocators(csList);
-      } catch {}
-    })();
 
     const interval = setInterval(() => {
       setRefreshKey((k) => k + 1);
@@ -2513,29 +2425,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }
   };
 
-  const saveAdminCreds = async () => {
+  const saveAdminCreds = () => {
     if (!newAdminUser.trim()) {
       toast.error("Admin username cannot be empty");
       return;
     }
-    try {
-      const configs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
-      if (configs && configs[0]) {
-        await base44.entities.AdminConfig.update(configs[0].id, {
-          admin_username: newAdminUser,
-          ...(newAdminPass.trim() && newAdminPass.length >= 4 ? { admin_password: newAdminPass } : {})
-        });
-      } else {
-        await base44.entities.AdminConfig.create({ config_key: 'main', admin_username: newAdminUser, admin_password: newAdminPass || 'admin123' });
-      }
-      setNewAdminPass("");
-      toast.success("Admin credentials updated");
-    } catch (e) {
-      toast.error("Failed to save admin credentials");
+    const state = loadState();
+    state.admin.username = newAdminUser;
+    if (newAdminPass.trim() && newAdminPass.length >= 4) {
+      state.admin.password = newAdminPass;
     }
+    saveState(state);
+    setNewAdminPass("");
+    toast.success("Admin credentials updated");
   };
 
-  const saveAdminEmail = async () => {
+  const saveAdminEmail = () => {
     if (!adminEmail.trim()) {
       toast.error("Please enter an email address");
       return;
@@ -2547,17 +2452,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
 
-    try {
-      const configs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
-      if (configs && configs[0]) {
-        await base44.entities.AdminConfig.update(configs[0].id, { admin_email: adminEmail });
-      } else {
-        await base44.entities.AdminConfig.create({ config_key: 'main', admin_username: 'admin', admin_password: 'admin123', admin_email: adminEmail });
-      }
-      toast.success("Recovery email saved successfully");
-    } catch (e) {
-      toast.error("Failed to save email");
-    }
+    const state = loadState();
+    state.admin.email = adminEmail;
+    saveState(state);
+    toast.success("Recovery email saved successfully");
   };
 
   const getAgentMetrics = (agentUser) => {
