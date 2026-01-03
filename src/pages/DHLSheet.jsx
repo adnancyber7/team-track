@@ -197,6 +197,8 @@ const saveCSSheet = (data) => {
       timers: data.timers
     };
     localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
+    // Cross-device sync
+    pushAppState('cs_sheet', optimizedData);
   }, 500);
 };
 
@@ -214,6 +216,8 @@ const loadAgentSheets = () => {
 
 const saveAgentSheets = (data) => {
   localStorage.setItem(APP_STORE_KEY, JSON.stringify(data));
+  // Cross-device sync
+  pushAppState('agent_sheets', data);
 };
 
 // --- Cross-device sync helpers ---
