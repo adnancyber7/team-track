@@ -2932,14 +2932,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       let rowsAdded = 0;
       let duplicatesSkipped = 0;
 
-      // Build existing AWB -> states map
+      // Build existing AWB -> state markers map (treat empty/available as blocker)
       const existingByAwb = {};
       for (let r = 0; r < ROWS_COUNT; r++) {
         const awb = normalizeAwb(csSheet.raw[r]?.[COL_AWB]);
         if (awb) {
           const st = String(csSheet.timers[r]?.state || '').toUpperCase();
+          const statusCell = String(csSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
+          // Consider a row rejected if either timer state is REJECTED or STATUS cell says REJECT
+          const marker = (st === 'REJECTED' || statusCell === 'REJECT') ? 'REJECTED' : (st || statusCell || '');
           if (!existingByAwb[awb]) existingByAwb[awb] = [];
-          existingByAwb[awb].push(st);
+          existingByAwb[awb].push(marker);
         }
       }
 
@@ -2967,8 +2970,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           awbNorm = normalizeAwb(rawAwb);
           if (awbNorm) {
             const states = existingByAwb[awbNorm] || [];
-            const hasNonRejected = states.some((s) => s && s !== 'REJECTED');
-            importAllowed = !hasNonRejected; // allow only if all existing are REJECTED
+            const hasBlocked = states.some((s) => s !== 'REJECTED');
+            importAllowed = !hasBlocked; // allow only if ALL existing entries are explicitly REJECTED
           }
         }
 
