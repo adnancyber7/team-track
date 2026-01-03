@@ -4916,28 +4916,16 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         }
       }
     } else if (action === 'reject') {
-      // Validate rejection reason is filled
-      const rejCount = timer.rejClicks || 0;
-      const rej2 = String(newSheet.raw[r]?.[COL_REJ2] || '').trim();
-      const rej3 = String(newSheet.raw[r]?.[COL_REJ3] || '').trim();
-      const rej4 = String(newSheet.raw[r]?.[COL_REJ4] || '').trim();
-      const rej5 = String(newSheet.raw[r]?.[COL_REJ5] || '').trim();
-
-      // Only check if data doesn't exist from admin upload
-      if (rejCount === 0 && !rej2) {
-        toast.error("Please fill 2ND REJECTION reason first");
-        return;
-      }
-      if (rejCount === 1 && !rej3) {
-        toast.error("Please fill 3RD REJECTION reason first");
-        return;
-      }
-      if (rejCount === 2 && !rej4) {
-        toast.error("Please fill 4TH REJECTION reason first");
-        return;
-      }
-      if (rejCount === 3 && !rej5) {
-        toast.error("Please fill 5TH REJECTION reason first");
+      // Require the first missing rejection reason among 2nd -> 5th (respects admin-prefilled values)
+      const checks = [
+        { label: '2ND REJECTION', val: String(newSheet.raw[r]?.[COL_REJ2] || '').trim() },
+        { label: '3RD REJECTION', val: String(newSheet.raw[r]?.[COL_REJ3] || '').trim() },
+        { label: '4TH REJECTION', val: String(newSheet.raw[r]?.[COL_REJ4] || '').trim() },
+        { label: '5TH REJECTION', val: String(newSheet.raw[r]?.[COL_REJ5] || '').trim() }
+      ];
+      const missing = checks.find(item => !item.val);
+      if (missing) {
+        toast.error(`Please fill ${missing.label} reason first`);
         return;
       }
 
