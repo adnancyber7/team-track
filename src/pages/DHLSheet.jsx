@@ -512,7 +512,7 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Backend auth first (cross-device)
+    // Backend auth only (cross-device/global)
     try {
       const res = await base44.entities.AgentUser.filter({ username: agentUser, password: agentPass });
       const found = (res || [])[0];
@@ -522,22 +522,9 @@ const LoginScreen = ({ onLogin }) => {
         onLogin("agent", agentUser);
         return;
       }
-    } catch {}
-
-    // Fallback to localStorage with auto-migration to backend
-    const localFound = (state.agents || []).find((a) => a.username === agentUser && a.password === agentPass);
-    if (localFound) {
-      try {
-        const exists = await base44.entities.AgentUser.filter({ username: agentUser });
-        if (!exists || !exists.length) {
-          await base44.entities.AgentUser.create({ username: agentUser, password: agentPass });
-        }
-      } catch {}
-      state.session = { role: "agent", username: agentUser };
-      saveState(state);
-      onLogin("agent", agentUser);
-    } else {
       setError("Invalid agent credentials.");
+    } catch (e) {
+      setError("Unable to reach server. Please try again.");
     }
   };
 
@@ -561,7 +548,7 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Backend auth first
+    // Backend auth only (cross-device/global)
     try {
       const res = await base44.entities.CSUser.filter({ username: csUser, password: csPass });
       const found = (res || [])[0];
@@ -571,22 +558,9 @@ const LoginScreen = ({ onLogin }) => {
         onLogin("cs_allocator", csUser);
         return;
       }
-    } catch {}
-
-    // Fallback to localStorage with auto-migration to backend
-    const localFound = (state.csAllocators || []).find((a) => a.username === csUser && a.password === csPass);
-    if (localFound) {
-      try {
-        const exists = await base44.entities.CSUser.filter({ username: csUser });
-        if (!exists || !exists.length) {
-          await base44.entities.CSUser.create({ username: csUser, password: csPass });
-        }
-      } catch {}
-      state.session = { role: "cs_allocator", username: csUser };
-      saveState(state);
-      onLogin("cs_allocator", csUser);
-    } else {
       setError("Invalid CS Allocator credentials.");
+    } catch (e) {
+      setError("Unable to reach server. Please try again.");
     }
   };
 
@@ -2391,10 +2365,21 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   useEffect(() => {
     const state = loadState();
-    setAgents(state.agents || []);
-    setCSAllocators(state.csAllocators || []);
     setNewAdminUser(state.admin.username);
     setAdminEmail(state.admin.email || "");
+
+    // Always load agents/CS from backend for cross-device management
+    try {
+      const [serverAgents, serverCS] = await Promise.all([
+        base44.entities.AgentUser.list(),
+        base44.entities.CSUser.list()
+      ]);
+      setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
+      setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
+    } catch {
+      setAgents(state.agents || []);
+      setCSAllocators(state.csAllocators || []);
+    }
 
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
@@ -2612,7 +2597,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
 
-    // Persist to backend for cross-device login
+    // Persist to backend for cross-device login (mandatory)
     try {
       const exists = await base44.entities.AgentUser.filter({ username: newAgentUser });
       if (!exists || !exists.length) {
@@ -2622,12 +2607,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         return;
       }
     } catch (e) {
-      // if server fails, still save locally as fallback
+      toast.error("Server unavailable. Could not create agent.");
+      return;
     }
 
-    state.agents = [...(state.agents || []), { username: newAgentUser, password: newAgentPass }];
-    saveState(state);
-    setAgents(state.agents);
+    try {
+      const serverAgents = await base44.entities.AgentUser.list();
+      setAgents(serverAgents.map(a => ({ username: a.username, password: a.password })));
+    } catch {
+      setAgents(prev => [...prev, { username: newAgentUser, password: newAgentPass }]);
+    }
+
     setNewAgentUser("");
     setNewAgentPass("");
     CHANNEL.postMessage({ type: "app:sync" });
@@ -2671,11 +2661,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         toast.error("CS Allocator already exists in server");
         return;
       }
-    } catch {}
+    } catch (e) {
+      toast.error("Server unavailable. Could not create CS Allocator.");
+      return;
+    }
 
-    state.csAllocators = [...(state.csAllocators || []), { username: newCSUser, password: newCSPass }];
-    saveState(state);
-    setCSAllocators(state.csAllocators);
+    try {
+      const serverCS = await base44.entities.CSUser.list();
+      setCSAllocators(serverCS.map(a => ({ username: a.username, password: a.password })));
+    } catch {
+      setCSAllocators(prev => [...prev, { username: newCSUser, password: newCSPass }]);
+    }
+
     setNewCSUser("");
     setNewCSPass("");
     CHANNEL.postMessage({ type: "app:sync" });
