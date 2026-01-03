@@ -3834,6 +3834,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <div className="text-xs text-blue-600 mb-2 font-bold">
                     Showing only rows assigned to {selectedAgent} {regionFilter && `with region: ${regionFilter}`}
                   </div>
+                  {/* Zoom controls should affect only the grid inside ExcelSheet; parent panels remain at default scale */}
                   <ExcelSheet
                   columns={AGENT_COLUMNS}
                   data={csSheet.raw}
