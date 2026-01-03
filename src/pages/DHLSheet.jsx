@@ -2270,10 +2270,48 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
     setPriorityNumbers(sheets.priorityNumbers || "");
-    // Also refresh agents/cs from backend to reflect remote changes
+    // Also refresh agents/cs from backend to reflect remote changes and migrate local -> backend once
     (async () => {
       try {
-        const [agentList, csList] = await Promise.all([
+        let [agentList, csList, adminCfg] = await Promise.all([
+          base44.entities.AgentUser.list(),
+          base44.entities.CSUser.list(),
+          base44.entities.AdminConfig.filter({ config_key: 'main' })
+        ]);
+
+        // One-time migration of locally stored users to backend
+        const localState = loadState();
+        const existingAgents = new Set((agentList || []).map(a => (a.username || '').toLowerCase()));
+        const existingCS = new Set((csList || []).map(a => (a.username || '').toLowerCase()));
+
+        // Migrate Agents
+        for (const a of (localState.agents || [])) {
+          const uname = String(a.username || '').toLowerCase();
+          if (uname && !existingAgents.has(uname)) {
+            try { await base44.entities.AgentUser.create({ username: a.username, password: a.password }); } catch {}
+          }
+        }
+        // Migrate CS Users
+        for (const c of (localState.csAllocators || [])) {
+          const uname = String(c.username || '').toLowerCase();
+          if (uname && !existingCS.has(uname)) {
+            try { await base44.entities.CSUser.create({ username: c.username, password: c.password }); } catch {}
+          }
+        }
+        // Ensure AdminConfig main exists
+        if (!adminCfg || !adminCfg[0]) {
+          try {
+            await base44.entities.AdminConfig.create({
+              config_key: 'main',
+              admin_username: localState?.admin?.username || 'admin',
+              admin_password: localState?.admin?.password || 'admin123',
+              admin_email: localState?.admin?.email || ''
+            });
+          } catch {}
+        }
+
+        // Reload after migration
+        [agentList, csList] = await Promise.all([
           base44.entities.AgentUser.list(),
           base44.entities.CSUser.list()
         ]);
