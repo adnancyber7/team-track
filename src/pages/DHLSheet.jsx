@@ -2345,6 +2345,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [csUploads, setCSUploads] = useState([]);
   const fileInputRef = useRef(null);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
+  const prevAgentStatuses = useRef({});
 
   useEffect(() => {
     const state = loadState();
