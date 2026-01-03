@@ -281,9 +281,53 @@ const excelSerialToTime = (serial) => {
   hours = hours % 12 || 12;
 
   return `${hours}:${String(minutes).padStart(2, '0')} ${period}`;
-};
+  };
 
-const parseUploadedFile = async (file) => {
+  // Validation helpers
+  const normalizeAwb = (v) => {
+    const digits = String(v || '').replace(/\D/g, '');
+    return digits.length === 10 ? digits : null;
+  };
+
+  const isValidLineExpr = (v) => {
+    const s = String(v || '').trim();
+    if (!s) return true; // allow empty
+    return /^\d+(\s*\+\s*\d+)*$/.test(s);
+  };
+
+  const isValidTimeStr = (s) => {
+    if (s == null) return false;
+    const str = String(s).trim();
+    if (!str) return false;
+    // 12h or 24h formats like 9:05, 09:05:10, 14:30, 2:15 PM
+    const re = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i;
+    const m = re.exec(str);
+    if (!m) return false;
+    const h = parseInt(m[1], 10); const mins = parseInt(m[2], 10);
+    if (mins > 59) return false;
+    if (m[4]) { return h >= 1 && h <= 12; }
+    return h >= 0 && h <= 23;
+  };
+
+  const formatTimeEntry = (val) => {
+    if (val == null) return null;
+    if (typeof val === 'number' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 1)) {
+      return excelSerialToTime(val);
+    }
+    const s = String(val).trim();
+    if (!isValidTimeStr(s)) return null;
+    const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i.exec(s);
+    let h = parseInt(m[1], 10); const mins = parseInt(m[2], 10);
+    let period = (m[4] || '').toUpperCase();
+    if (!period) {
+      // assume 24h -> convert
+      period = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+    }
+    return `${h}:${String(mins).padStart(2,'0')} ${period}`;
+  };
+
+  const parseUploadedFile = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -2520,7 +2564,32 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const handleCSCellChange = (r, c, value) => {
     const newSheet = deepCopy(csSheet);
-    newSheet.raw[r][c] = value;
+
+    // Column-specific validation/formatting
+    let newValue = value;
+    if (c === COL_AWB) {
+      const awb = normalizeAwb(value);
+      if (!awb) { toast.error('AWB must be exactly 10 digits'); return; }
+      newValue = awb;
+    } else if (c === COL_LINE) {
+      if (!isValidLineExpr(value)) { toast.error('LINE must be numbers separated by + (e.g., 2+3+5)'); return; }
+    } else if (c === COL_TIME) {
+      const formatted = formatTimeEntry(value);
+      if (!formatted) { toast.error('TIME must be a valid time (e.g., 2:30 PM or 14:30)'); return; }
+      newValue = formatted;
+    } else if (c === COL_STATUS) {
+      if (typeof newValue === 'string' && /reject/i.test(newValue)) newValue = 'REJECT';
+    }
+
+    newSheet.raw[r][c] = newValue;
+
+    // Cross-field checks
+    const awbNow = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
+    const agentNow = String(newSheet.raw[r]?.[COL_AGENTS] || '').trim();
+    const reasonNow = String(newSheet.raw[r]?.[COL_REASON] || '').trim();
+    const statusNow = String(newSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
+    if (awbNow && !agentNow) { toast.warning('AGENTS is required when AWB is set'); }
+    if (statusNow === 'REJECT' && !reasonNow) { toast.warning('REASON is required for REJECT status'); }
 
     // If admin enters AWB, start timer
     if (c === COL_AWB && isValidAwb(value)) {
@@ -2882,8 +2951,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             let cellValue = String(cell || '').trim();
 
             // Convert Excel serial time to readable format for TIME column
+            if (targetCol === COL_AWB) {
+              const awb = normalizeAwb(cellValue);
+              cellValue = awb || '';
+            }
+            if (targetCol === COL_LINE) {
+              if (!isValidLineExpr(cellValue)) cellValue = '';
+            }
             if (targetCol === COL_TIME && cellValue) {
-              cellValue = excelSerialToTime(cellValue);
+              const formatted = formatTimeEntry(cellValue);
+              cellValue = formatted || '';
             }
 
             newSheet.raw[targetRow][targetCol] = cellValue;
