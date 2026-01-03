@@ -2469,6 +2469,25 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     };
   };
 
+  // Presence status helper: On Break, Busy, Available
+  const getAgentStatus = (agentUser) => {
+    const agentBreak = csSheet.agentBreaks?.[agentUser];
+    if (agentBreak?.active && agentBreak?.start) {
+      return { label: 'On Break', variant: 'break', classes: 'bg-orange-100 text-orange-800 border-orange-300' };
+    }
+    // Busy: any running timer for this agent on a visible (not done/rejected) row
+    for (let r = 0; r < ROWS_COUNT; r++) {
+      const rowAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+      if (rowAgent !== agentUser.toLowerCase()) continue;
+      const t = csSheet.timers[r];
+      const st = t?.state?.toUpperCase() || '';
+      if (t?.start && st !== 'DONE' && st !== 'REJECTED') {
+        return { label: 'Busy', variant: 'busy', classes: 'bg-blue-100 text-blue-800 border-blue-300' };
+      }
+    }
+    return { label: 'Available', variant: 'available', classes: 'bg-green-100 text-green-800 border-green-300' };
+  };
+
   const getUniqueRegions = (agentUser = null) => {
     const regions = new Set();
     for (let r = 0; r < ROWS_COUNT; r++) {
