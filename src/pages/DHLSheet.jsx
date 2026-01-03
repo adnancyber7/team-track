@@ -4875,25 +4875,23 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         }
       }
     } else if (action === 'reject') {
-      // Validate rejection reason is filled
       const rej2 = String(newSheet.raw[r]?.[COL_REJ2] || '').trim();
       const rej3 = String(newSheet.raw[r]?.[COL_REJ3] || '').trim();
       const rej4 = String(newSheet.raw[r]?.[COL_REJ4] || '').trim();
       const rej5 = String(newSheet.raw[r]?.[COL_REJ5] || '').trim();
 
-      // Sequential validation: require the next missing rejection reason (admin may have prefilled earlier ones)
-      if (!rej2) { toast.error("Please fill 2ND REJECTION reason first"); return; }
-      if (!rej3) { toast.error("Please fill 3RD REJECTION reason first"); return; }
-      if (!rej4) { toast.error("Please fill 4TH REJECTION reason first"); return; }
-      if (!rej5) { toast.error("Please fill 5TH REJECTION reason first"); return; }
+      // Determine first missing rejection reason (admin may have prefilled earlier ones)
+      const needLabel = !rej2 ? '2ND REJECTION' : !rej3 ? '3RD REJECTION' : !rej4 ? '4TH REJECTION' : !rej5 ? '5TH REJECTION' : null;
 
-      // All rejection reason fields are already filled
-      toast.error("Maximum rejections reached");
-      return;
+      if (needLabel) {
+        setMissingRejectLabel(needLabel);
+        setPendingRejectRow(r);
+        setShowRejectConfirm(true);
+        return;
+      }
 
-      // Show reject confirmation dialog
-      setPendingRejectRow(r);
-      setShowRejectConfirm(true);
+      // All required reasons present → proceed to reject
+      handleStatusClick(r, 'confirmReject');
       return;
     }
 
