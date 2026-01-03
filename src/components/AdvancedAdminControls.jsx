@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Clock, Users, Zap, Shield, Megaphone } from 'lucide-react';
+import { Settings, Clock, Users, Zap, Shield, Megaphone, Download } from 'lucide-react';
 import { toast } from "sonner";
 import { base44 } from '@/api/base44Client';
 
@@ -259,6 +259,58 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
   const getTimeSinceBreak = (username) => {
     if (!breakTimers[username]) return 0;
     return Math.floor((Date.now() - breakTimers[username].lastBreak) / 60000);
+  };
+
+  const handleExportXML = async () => {
+    // Fetch latest data from backend to ensure cross-device accuracy
+    try {
+      const [agentUsers, csUsers] = await Promise.all([
+        base44.entities.AgentUser.list(),
+        base44.entities.CSUser.list()
+      ]);
+
+      const esc = (s) => String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+
+      const agentsXML = (agentUsers || []).map(a => `    <agent>\n      <username>${esc(a.username)}</username>\n      <password>${esc(a.password)}</password>\n    </agent>`).join('\n');
+      const csXML = (csUsers || []).map(u => `    <csUser>\n      <username>${esc(u.username)}</username>\n      <password>${esc(u.password)}</password>\n    </csUser>`).join('\n');
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<credentials>\n  <agents>\n${agentsXML}\n  </agents>\n  <csUsers>\n${csXML}\n  </csUsers>\n</credentials>`;
+
+      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'credentials.xml';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      // Fallback to exporting current in-memory lists if server fetch fails
+      const esc = (s) => String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+      const agentsXML = (agents || []).map(a => `    <agent>\n      <username>${esc(a.username)}</username>\n      <password>${esc(a.password)}</password>\n    </agent>`).join('\n');
+      const csXML = (csAllocators || []).map(u => `    <csUser>\n      <username>${esc(u.username)}</username>\n      <password>${esc(u.password)}</password>\n    </csUser>`).join('\n');
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<credentials>\n  <agents>\n${agentsXML}\n  </agents>\n  <csUsers>\n${csXML}\n  </csUsers>\n</credentials>`;
+      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'credentials.xml';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -525,6 +577,12 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
               <CardContent className="p-4 space-y-4">
                 <div className="text-sm text-gray-600">
                   Manage per-user data for agents. Stored locally in admin's browser (localStorage).
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={handleExportXML} variant="outline" className="font-bold">
+                    <Download className="w-4 h-4 mr-2" /> Export Agents/CS as XML
+                  </Button>
                 </div>
 
                 {agents.length === 0 ? (

@@ -1,4 +1,5 @@
 import DHLSheet from './pages/DHLSheet';
+import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
@@ -8,4 +9,5 @@ export const PAGES = {
 export const pagesConfig = {
     mainPage: "DHLSheet",
     Pages: PAGES,
+    Layout: __Layout,
 };
