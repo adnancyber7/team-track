@@ -3371,16 +3371,30 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <div className="flex items-center gap-3">
                       <Badge className="bg-yellow-400 text-black font-black">AGENT PROFILE</Badge>
                       <span className="font-bold text-lg">{selectedAgent}</span>
+                      {/* Live break status on profile header */}
                       {(() => {
-                      const m = getAgentMetrics(selectedAgent);
-                      const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
-                      return (
-                        <span className="text-sm text-black/50">
+                        const b = csSheet.agentBreaks?.[selectedAgent];
+                        if (b?.active && b?.start) {
+                          const bt = BREAK_TYPES.find((t) => t.id === b.type);
+                          const mins = Math.floor((Date.now() - b.start) / 60000);
+                          return (
+                            <Badge className={`${bt ? bt.color : 'bg-orange-100 text-orange-800 border-orange-300'} text-xs animate-pulse`}>
+                              {bt?.label || 'On Break'} • {mins}m
+                            </Badge>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {(() => {
+                        const m = getAgentMetrics(selectedAgent);
+                        const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
+                        return (
+                          <span className="text-sm text-black/50">
                             Pending: {m.awb} ({m.lineSum} lines) | Done: {m.done} ({m.totalDoneLines} lines) | Rej: {m.rej} ({m.totalRejectedLines} lines)
                             {currentFilter && ` | Region: ${currentFilter}`}
-                          </span>);
-
-                    })()}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <Select
