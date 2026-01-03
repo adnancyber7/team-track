@@ -4566,6 +4566,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
   const [pendingDoneRow, setPendingDoneRow] = useState(null);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [pendingRejectRow, setPendingRejectRow] = useState(null);
+  const [missingRejectLabel, setMissingRejectLabel] = useState(null);
   const [forceRefresh, setForceRefresh] = useState(0);
 
   useEffect(() => {
@@ -5327,7 +5328,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
             </DialogHeader>
             <div className="py-4">
               <p className="text-center text-lg font-medium text-gray-700">
-                Please put the reason in the rejection row before marking as REJECT
+                Please put the reason in the {missingRejectLabel || 'rejection row'} before marking as REJECT
               </p>
             </div>
             <DialogFooter className="flex gap-2">
@@ -5335,6 +5336,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 onClick={() => {
                   setShowRejectConfirm(false);
                   setPendingRejectRow(null);
+                  setMissingRejectLabel(null);
                 }}
                 variant="outline"
                 className="flex-1 font-bold">
@@ -5348,6 +5350,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                     handleStatusClick(pendingRejectRow, 'confirmReject');
                   }
                   setPendingRejectRow(null);
+                  setMissingRejectLabel(null);
                 }}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold">
 
