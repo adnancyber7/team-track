@@ -2347,6 +2347,28 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
   const prevAgentStatuses = useRef({});
 
+  // Precompute metrics for all agents in one pass for performance
+  const allAgentMetrics = useMemo(() => {
+    const map = {};
+    (agents || []).forEach(a => {
+      map[a.username.toLowerCase()] = { username: a.username, awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
+    });
+    for (let r = 0; r < ROWS_COUNT; r++) {
+      const agentName = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim();
+      if (!agentName) continue;
+      const key = agentName.toLowerCase();
+      if (!map[key]) {
+        map[key] = { username: agentName, awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
+      }
+      const state = csSheet.timers[r]?.state?.toUpperCase() || '';
+      const lineSum = parseLineSum(csSheet.raw[r]?.[COL_LINE]);
+      if (state === 'DONE') { map[key].done++; map[key].totalDoneLines += lineSum; }
+      else if (state === 'REJECTED') { map[key].rej++; map[key].totalRejectedLines += lineSum; }
+      else { if (csSheet.raw[r]?.[COL_AWB]?.trim()) map[key].awb++; map[key].lineSum += lineSum; }
+    }
+    return map;
+  }, [csSheet, agents]);
+
   useEffect(() => {
     const state = loadState();
     setAgents(state.agents || []);
@@ -3516,8 +3538,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
                     <div className="space-y-2">
                         {agents.map((agent) => {
-                        const metrics = getAgentMetrics(agent.username);
-                        const agentBreak = csSheet.agentBreaks?.[agent.username];
+                          const metrics = allAgentMetrics[agent.username.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
+                          const agentBreak = csSheet.agentBreaks?.[agent.username];
                         const breakActive = agentBreak?.active && agentBreak?.start;
                         const breakType = breakActive ? BREAK_TYPES.find((b) => b.id === agentBreak.type) : null;
                         const breakDuration = breakActive && agentBreak.start ?
@@ -3640,7 +3662,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                         return null;
                       })()}
                       {(() => {
-                        const m = getAgentMetrics(selectedAgent);
+                        const m = allAgentMetrics[selectedAgent.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
                         const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
                         return (
                           <span className="text-sm text-black/50">

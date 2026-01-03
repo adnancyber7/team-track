@@ -83,6 +83,25 @@ Flag agents with:
 
     const prompt = analysisPrompts[analysisType] || analysisPrompts.full;
 
+    // --- Simple persistent cache using AppState (state_key: 'analysis_cache') ---
+    const encoder = new TextEncoder();
+    const cacheInput = JSON.stringify({ analysisType: analysisType || 'full', performanceData });
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(cacheInput));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    let cacheRec = null;
+    try {
+      const rows = await base44.entities.AppState.filter({ state_key: 'analysis_cache' });
+      cacheRec = rows && rows[0] ? rows[0] : null;
+    } catch {}
+
+    const nowIso = new Date().toISOString();
+    if (cacheRec && cacheRec.data && cacheRec.data[hash]) {
+      const cached = cacheRec.data[hash];
+      return Response.json({ success: true, analysis: cached.analysis, analyzedAt: cached.analyzedAt, cached: true });
+    }
+
     const response = await base44.integrations.Core.InvokeLLM({
       prompt,
       add_context_from_internet: false,
@@ -170,11 +189,34 @@ Flag agents with:
       }
     });
 
-    return Response.json({
+    const resultPayload = {
       success: true,
       analysis: response,
       analyzedAt: new Date().toISOString()
-    });
+    };
+
+    // Upsert cache (keep max 20 entries)
+    try {
+      if (cacheRec) {
+        const data = cacheRec.data || {};
+        data[hash] = { analysis: response, analyzedAt: resultPayload.analyzedAt, createdAt: nowIso };
+        // prune oldest if > 20
+        const keys = Object.keys(data);
+        if (keys.length > 20) {
+          keys
+            .sort((a, b) => new Date(data[a].createdAt) - new Date(data[b].createdAt))
+            .slice(0, keys.length - 20)
+            .forEach(k => delete data[k]);
+        }
+        await base44.entities.AppState.update(cacheRec.id, { data });
+      } else {
+        const data = {};
+        data[hash] = { analysis: response, analyzedAt: resultPayload.analyzedAt, createdAt: nowIso };
+        await base44.entities.AppState.create({ state_key: 'analysis_cache', data });
+      }
+    } catch {}
+
+    return Response.json(resultPayload);
   } catch (error) {
     console.error('Performance analysis error:', error);
     return Response.json({ error: error.message }, { status: 500 });
