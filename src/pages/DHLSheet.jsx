@@ -1438,9 +1438,7 @@ const ExcelSheet = ({
   fastEditMode,
   priorityList,
   zoomLevel = 100,
-  filterAgentUsername = "",
-  highOnly = false,
-  highAssignedAt = {}
+  filterAgentUsername = ""
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -1490,47 +1488,41 @@ const ExcelSheet = ({
     const compactedTimers = [];
     const rowMapping = [];
 
+    // Check if this agent has priority numbers assigned
     const myPriorityNumbers = priorityList && priorityList.agentPriorityMap?.[agentUsername] || [];
     const priorityModeActive = priorityList && priorityList.priorityModeActive && myPriorityNumbers.length > 0;
 
-    const tempRows = [];
     for (let r = 0; r < data.length; r++) {
       const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
-      if (agentCell !== agentUsername.toLowerCase()) continue;
+      const agentMatch = agentCell === agentUsername.toLowerCase();
+
+      if (!agentMatch) continue;
 
       const state = timers[r]?.state?.toUpperCase() || '';
       if (state === 'DONE' || state === 'REJECTED') continue;
 
+      // Apply priority mode filter: only show rows where AWB matches agent's priority numbers
       if (priorityModeActive) {
-        const rowAwbPm = String(data[r]?.[COL_AWB] || '').trim();
-        if (!myPriorityNumbers.includes(rowAwbPm)) continue;
+        const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
+        if (!myPriorityNumbers.includes(rowAwb)) continue;
       }
 
+      // Apply region filter
       if (regionFilter) {
         const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
         const filterUpper = regionFilter.toUpperCase();
         if (!(regionCell === filterUpper || regionCell.includes(filterUpper))) continue;
       }
 
-      const isHigh = String(data[r]?.[COL_PRIORITY] || '').toUpperCase() === 'HIGH';
-      if (highOnly && !isHigh) continue;
-
-      const rowAwb = String(data[r]?.[COL_AWB] || '').trim();
-      const ts = (highAssignedAt && rowAwb) ? (highAssignedAt[rowAwb] || 0) : 0;
-
-      tempRows.push({ row: data[r], timer: timers[r], idx: r, ts });
+      compactedData.push(data[r]);
+      compactedTimers.push(timers[r]);
+      rowMapping.push(r);
     }
 
-    const finalRows = highOnly ? tempRows.sort((a, b) => (b.ts || 0) - (a.ts || 0)) : tempRows;
-
-    finalRows.forEach((item) => {
-      compactedData.push(item.row);
-      compactedTimers.push(item.timer);
-      rowMapping.push(item.idx);
-    });
-
+    // For agents, limit to default rows or actual data count, whichever is higher
     const targetRows = isAdmin ? ROWS_COUNT : Math.max(AGENT_DEFAULT_ROWS, compactedData.length);
 
+    // Fill remaining with empty rows
     while (compactedData.length < targetRows) {
       compactedData.push(Array(columns.length).fill(''));
       compactedTimers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
@@ -1789,7 +1781,6 @@ const ExcelSheet = ({
     const state = displayTimers[r]?.state?.toUpperCase() || '';
     if (state === 'DONE') classes.push('row-done');
     if (state === 'REJECTED') classes.push('row-rejected');
-    if (String(displayData[r]?.[COL_PRIORITY] || '').toUpperCase() === 'HIGH') classes.push('high-priority');
 
     if (actualRow !== -1 && blinkRows && blinkRows[actualRow]) classes.push('blink-row');
 
@@ -2155,10 +2146,6 @@ const ExcelSheet = ({
 
         .cell.row-done { background: rgba(22,163,74,0.12) !important; }
         .cell.row-rejected { background: rgba(220,38,38,0.12) !important; }
-        .cell.high-priority { 
-          background: rgba(239,68,68,0.18) !important;
-          border-left: 3px solid #ef4444 !important;
-        }
         .cell.hidden-row { 
           background: rgba(240,240,240,0.5) !important;
           color: transparent !important;
@@ -3112,59 +3099,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     });
   };
 
-  const markSelectedHighPriority = () => {
-    if (selectedRows.size === 0) { toast.error('No rows selected'); return; }
-    const newSheet = deepCopy(csSheet);
-    const sheets = loadAgentSheets();
-    if (!sheets.manualHighPriority) sheets.manualHighPriority = {};
-    if (!sheets.manualHighAssignedAt) sheets.manualHighAssignedAt = {};
-    const notifyMap = {};
-    selectedRows.forEach((r) => {
-      newSheet.raw[r][COL_PRIORITY] = 'HIGH';
-      const awb = normalizeAwb(newSheet.raw[r][COL_AWB]);
-      const agent = String(newSheet.raw[r][COL_AGENTS] || '').trim();
-      if (awb && agent) {
-        if (!sheets.manualHighPriority[agent]) sheets.manualHighPriority[agent] = [];
-        if (!sheets.manualHighPriority[agent].includes(awb)) {
-          sheets.manualHighPriority[agent].push(awb);
-        }
-        sheets.manualHighAssignedAt[awb] = Date.now();
-        if (!notifyMap[agent]) notifyMap[agent] = [];
-        notifyMap[agent].push(awb);
-      }
-    });
-    setCSSheet(newSheet);
-    saveCSSheet(newSheet);
-    saveAgentSheets(sheets);
-    setAgentSheets(sheets);
-    CHANNEL.postMessage({ type: 'app:sync' });
-    Object.entries(notifyMap).forEach(([agent, awbs]) => {
-      CHANNEL.postMessage({ type: 'highPriorityAssigned', agent, awbs });
-    });
-    toast.success(`Flagged ${selectedRows.size} row(s) as HIGH PRIORITY`);
-  };
-
-  const clearSelectedHighPriority = () => {
-    if (selectedRows.size === 0) { toast.error('No rows selected'); return; }
-    const newSheet = deepCopy(csSheet);
-    const sheets = loadAgentSheets();
-    selectedRows.forEach((r) => {
-      const awb = normalizeAwb(newSheet.raw[r][COL_AWB]);
-      const agent = String(newSheet.raw[r][COL_AGENTS] || '').trim();
-      newSheet.raw[r][COL_PRIORITY] = '';
-      if (awb && agent && sheets.manualHighPriority?.[agent]) {
-        sheets.manualHighPriority[agent] = sheets.manualHighPriority[agent].filter((x) => x !== awb);
-      }
-      if (awb && sheets.manualHighAssignedAt) delete sheets.manualHighAssignedAt[awb];
-    });
-    setCSSheet(newSheet);
-    saveCSSheet(newSheet);
-    saveAgentSheets(sheets);
-    setAgentSheets(sheets);
-    CHANNEL.postMessage({ type: 'app:sync' });
-    toast.success('Cleared HIGH PRIORITY on selected rows');
-  };
-
   const applyFilters = (filters) => {
     setActiveFilters(filters);
 
@@ -3550,24 +3484,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <X className="w-4 h-4 mr-2" />
                     Delete Selected ({selectedRows.size})
                   </Button>
-                  <Button
-                    onClick={markSelectedHighPriority}
-                    size="sm"
-                    variant="outline"
-                    className="font-bold text-white bg-red-600 hover:bg-red-700 border-red-600 disabled:opacity-50"
-                    disabled={selectedRows.size === 0}>
-                    <Zap className="w-4 h-4 mr-2" />
-                    Mark High Priority
-                  </Button>
-                  <Button
-                    onClick={clearSelectedHighPriority}
-                    size="sm"
-                    variant="outline"
-                    className="font-bold"
-                    disabled={selectedRows.size === 0}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Clear High Priority
-                  </Button>
                   <div className="ml-auto flex items-center gap-2">
                     <Button
                       onClick={() => setFastEditMode(!fastEditMode)}
@@ -3596,8 +3512,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               blinkRows={csSheet.blinkRows}
               selectedRows={selectedRows}
               onRowSelect={handleRowSelect}
-              fastEditMode={fastEditMode}
-              highAssignedAt={(agentSheets && agentSheets.manualHighAssignedAt) || {}} />
+              fastEditMode={fastEditMode} />
 
           </TabsContent>
 
@@ -4634,7 +4549,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
   const [priorityMode, setPriorityMode] = useState(false);
   const [priorityList, setPriorityList] = useState([]);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [showHighOnly, setShowHighOnly] = useState(false);
   const [showStartReminder, setShowStartReminder] = useState(false);
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
   const [pendingDoneRow, setPendingDoneRow] = useState(null);
@@ -4776,13 +4690,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
   useEffect(() => {
     const handleSync = (ev) => {
-      if (ev?.data?.type === 'highPriorityAssigned') {
-        const agent = String(ev.data.agent || '').toLowerCase();
-        if (agent === username.toLowerCase()) {
-          const list = ev.data.awbs || [];
-          if (list.length) toast.info(`🔥 New High Priority assigned: ${list.join(', ')}`, { duration: 6000 });
-        }
-      }
       if (ev?.data?.type === "app:sync") {
         const updated = loadCSSheet();
         setCSSheet(updated);
@@ -5186,16 +5093,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                   PRIORITY MODE
                 </Badge>
               }
-              {(agentSheets.manualHighPriority?.[username]?.length > 0) && (
-                <Button
-                  onClick={() => setShowHighOnly(!showHighOnly)}
-                  size="sm"
-                  variant={showHighOnly ? 'default' : 'outline'}
-                  className={`font-bold ${showHighOnly ? 'bg-red-600 text-white hover:bg-red-700' : ''}`}>
-                  <Zap className="w-4 h-4 mr-2" />
-                  High Priority Only ({agentSheets.manualHighPriority[username].length})
-                </Button>
-              )}
               {regionFilter &&
               <Badge className="bg-blue-100 text-blue-800 font-bold">Region: {regionFilter}</Badge>
               }
@@ -5342,9 +5239,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         blinkRows={csSheet.blinkRows}
         regionFilter={regionFilter}
         priorityList={priorityList}
-        zoomLevel={zoomLevel}
-        highOnly={showHighOnly}
-        highAssignedAt={agentSheets.manualHighAssignedAt || {}} />
+        zoomLevel={zoomLevel} />
 
 
         {/* Start Reminder Dialog */}
