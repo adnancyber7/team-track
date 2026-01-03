@@ -2258,6 +2258,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         // Update break status in real-time
         setCSSheet(loadCSSheet());
       }
+      if (ev?.data?.agentLogout) {
+        // Keep displaying last known break; no action needed other than refresh
+        setCSSheet(loadCSSheet());
+      }
       if (ev?.data?.priorityUnlocked) {
         toast.info(`${ev.data.priorityUnlocked.agent} unlocked all content`, { duration: 3000 });
         setAgentSheets(loadAgentSheets());
