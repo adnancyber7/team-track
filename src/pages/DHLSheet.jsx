@@ -383,12 +383,35 @@ const LoginScreen = ({ onLogin }) => {
   const [showAgentPass, setShowAgentPass] = useState(false);
   const [showCSPass, setShowCSPass] = useState(false);
 
-  const handleAdminLogin = () => {
+  const handleAdminLogin = async () => {
     const state = loadState();
     if (!adminUser.trim() || !adminPass) {
       setError("Please enter admin username and password.");
       return;
     }
+    // Check global access controls and admin creds in backend
+    try {
+      const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+      const cfg = (cfgs || [])[0];
+      if (cfg?.maintenance_mode) {
+        setError("Maintenance mode is enabled. Please try again later.");
+        return;
+      }
+      if (cfg && cfg.allow_admin_login === false) {
+        setError("Admin logins are disabled.");
+        return;
+      }
+      if (cfg && cfg.admin_username && cfg.admin_password) {
+        if (adminUser === cfg.admin_username && adminPass === cfg.admin_password) {
+          state.session = { role: "admin", username: adminUser };
+          saveState(state);
+          onLogin("admin", adminUser);
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to localStorage admin
     if (adminUser === state.admin.username && adminPass === state.admin.password) {
       state.session = { role: "admin", username: adminUser };
       saveState(state);
@@ -398,14 +421,41 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  const handleAgentLogin = () => {
+  const handleAgentLogin = async () => {
     const state = loadState();
     if (!agentUser.trim() || !agentPass) {
       setError("Please enter agent username and password.");
       return;
     }
-    const found = state.agents.find((a) => a.username === agentUser && a.password === agentPass);
-    if (found) {
+    // Check global access controls
+    try {
+      const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+      const cfg = (cfgs || [])[0];
+      if (cfg?.maintenance_mode) {
+        setError("Maintenance mode is enabled. Please try again later.");
+        return;
+      }
+      if (cfg && cfg.allow_agent_login === false) {
+        setError("Agent logins are disabled by admin.");
+        return;
+      }
+    } catch {}
+
+    // Backend auth first (cross-device)
+    try {
+      const res = await base44.entities.AgentUser.filter({ username: agentUser, password: agentPass });
+      const found = (res || [])[0];
+      if (found) {
+        state.session = { role: "agent", username: agentUser };
+        saveState(state);
+        onLogin("agent", agentUser);
+        return;
+      }
+    } catch {}
+
+    // Fallback to localStorage
+    const localFound = (state.agents || []).find((a) => a.username === agentUser && a.password === agentPass);
+    if (localFound) {
       state.session = { role: "agent", username: agentUser };
       saveState(state);
       onLogin("agent", agentUser);
@@ -414,14 +464,41 @@ const LoginScreen = ({ onLogin }) => {
     }
   };
 
-  const handleCSLogin = () => {
+  const handleCSLogin = async () => {
     const state = loadState();
     if (!csUser.trim() || !csPass) {
       setError("Please enter CS Allocator username and password.");
       return;
     }
-    const found = state.csAllocators.find((a) => a.username === csUser && a.password === csPass);
-    if (found) {
+    // Check global access controls
+    try {
+      const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+      const cfg = (cfgs || [])[0];
+      if (cfg?.maintenance_mode) {
+        setError("Maintenance mode is enabled. Please try again later.");
+        return;
+      }
+      if (cfg && cfg.allow_cs_login === false) {
+        setError("CS Team logins are disabled by admin.");
+        return;
+      }
+    } catch {}
+
+    // Backend auth first
+    try {
+      const res = await base44.entities.CSUser.filter({ username: csUser, password: csPass });
+      const found = (res || [])[0];
+      if (found) {
+        state.session = { role: "cs_allocator", username: csUser };
+        saveState(state);
+        onLogin("cs_allocator", csUser);
+        return;
+      }
+    } catch {}
+
+    // Fallback to localStorage
+    const localFound = (state.csAllocators || []).find((a) => a.username === csUser && a.password === csPass);
+    if (localFound) {
       state.session = { role: "cs_allocator", username: csUser };
       saveState(state);
       onLogin("cs_allocator", csUser);

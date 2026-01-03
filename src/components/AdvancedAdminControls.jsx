@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Settings, Clock, Users, Zap, Shield, Megaphone } from 'lucide-react';
 import { toast } from "sonner";
+import { base44 } from '@/api/base44Client';
 
-const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGENTS, COL_AWB }) => {
+const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGENTS, COL_AWB }) => { // Access Controls synced to backend
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('dhl-admin-settings');
     const defaults = {
@@ -55,6 +56,35 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
   useEffect(() => {
     localStorage.setItem('dhl-admin-settings', JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    const syncAccess = async () => {
+      try {
+        const ua = settings.userAccess || {};
+        const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+        const payload = {
+          allow_admin_login: ua.allowAdminLogin ?? true,
+          allow_agent_login: ua.allowAgentLogin ?? true,
+          allow_cs_login: ua.allowCSLogin ?? true,
+          maintenance_mode: ua.maintenanceMode ?? false,
+          banner_message: ua.bannerMessage ?? ''
+        };
+        if (cfgs && cfgs[0]) {
+          await base44.entities.AdminConfig.update(cfgs[0].id, payload);
+        } else {
+          await base44.entities.AdminConfig.create({
+            config_key: 'main',
+            admin_username: 'admin',
+            admin_password: 'admin123',
+            ...payload
+          });
+        }
+      } catch (e) {
+        // ignore sync errors
+      }
+    };
+    syncAccess();
+  }, [settings.userAccess]);
 
   useEffect(() => {
     localStorage.setItem('dhl-break-timers', JSON.stringify(breakTimers));
