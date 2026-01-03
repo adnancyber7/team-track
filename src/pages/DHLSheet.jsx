@@ -1852,26 +1852,6 @@ const ExcelSheet = ({
 
     const handleReject = (e) => {
       e.stopPropagation();
-      const rej2 = displayData[displayRow]?.[COL_REJ2] || '';
-      const rej3 = displayData[displayRow]?.[COL_REJ3] || '';
-      const rej4 = displayData[displayRow]?.[COL_REJ4] || '';
-      const rej5 = displayData[displayRow]?.[COL_REJ5] || '';
-
-      // Sequential validation: require the next missing rejection reason (admin may have prefilled earlier ones)
-      const needRej2 = !String(rej2).trim();
-      const needRej3 = !String(rej3).trim();
-      const needRej4 = !String(rej4).trim();
-      const needRej5 = !String(rej5).trim();
-
-      if (needRej2) { toast.error("Please fill 2ND REJECTION reason first"); return; }
-      if (needRej3) { toast.error("Please fill 3RD REJECTION reason first"); return; }
-      if (needRej4) { toast.error("Please fill 4TH REJECTION reason first"); return; }
-      if (needRej5) { toast.error("Please fill 5TH REJECTION reason first"); return; }
-
-      // All rejection reason fields are already filled
-      toast.error("Maximum rejections reached");
-      return;
-
       if (actualRow !== -1) {
         onStatusClick(actualRow, 'reject');
       }
