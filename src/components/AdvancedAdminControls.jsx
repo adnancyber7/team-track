@@ -2,23 +2,43 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Settings, Clock, Users, Zap } from 'lucide-react';
+import { Settings, Clock, Users, Zap, Shield, Megaphone } from 'lucide-react';
 import { toast } from "sonner";
 
 const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGENTS, COL_AWB }) => {
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('dhl-admin-settings');
-    return saved ? JSON.parse(saved) : {
+    const defaults = {
       priorityUnlockCount: 0,
       breakReminderEnabled: false,
       breakReminderInterval: 60,
-      autoAssignEnabled: false
+      autoAssignEnabled: false,
+      userAccess: {
+        allowAdminLogin: true,
+        allowAgentLogin: true,
+        allowCSLogin: true,
+        maintenanceMode: false,
+        bannerMessage: ""
+      },
+      userProfiles: {}
     };
+    try {
+      const data = saved ? JSON.parse(saved) : {};
+      return {
+        ...defaults,
+        ...data,
+        userAccess: { ...defaults.userAccess, ...(data.userAccess || {}) },
+        userProfiles: { ...defaults.userProfiles, ...(data.userProfiles || {}) }
+      };
+    } catch {
+      return defaults;
+    }
   });
 
   const [breakTimers, setBreakTimers] = useState(() => {
@@ -82,6 +102,20 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
   const handleSettingChange = (key, value) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     toast.success('Settings updated');
+  };
+
+  const updateUserAccess = (patch) => {
+    setSettings(prev => ({ ...prev, userAccess: { ...prev.userAccess, ...patch } }));
+  };
+
+  const updateUserProfile = (username, patch) => {
+    setSettings(prev => ({
+      ...prev,
+      userProfiles: {
+        ...(prev.userProfiles || {}),
+        [username]: { role: 'agent', isActive: true, ...(prev.userProfiles?.[username] || {}), ...patch }
+      }
+    }));
   };
 
   const handleMassAssignment = () => {
@@ -206,10 +240,12 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="priority" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="priority">Priority Settings</TabsTrigger>
             <TabsTrigger value="breaks">Break Reminders</TabsTrigger>
             <TabsTrigger value="mass">Mass Assignment</TabsTrigger>
+            <TabsTrigger value="access">Access Controls</TabsTrigger>
+            <TabsTrigger value="users">User Data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="priority" className="space-y-4">
@@ -395,9 +431,119 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+
+          <TabsContent value="access" className="space-y-4">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div>
+                    <Label className="font-bold flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      Maintenance Mode
+                    </Label>
+                    <p className="text-xs text-gray-600">Disable logins and display a global banner</p>
+                  </div>
+                  <Switch checked={settings.userAccess?.maintenanceMode} onCheckedChange={(v) => updateUserAccess({ maintenanceMode: v })} />
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div>
+                      <Label className="font-bold">Admin Login</Label>
+                      <p className="text-xs text-gray-600">Allow admin to login</p>
+                    </div>
+                    <Switch checked={settings.userAccess?.allowAdminLogin} onCheckedChange={(v) => updateUserAccess({ allowAdminLogin: v })} />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div>
+                      <Label className="font-bold">Agent Login</Label>
+                      <p className="text-xs text-gray-600">Allow agents to login</p>
+                    </div>
+                    <Switch checked={settings.userAccess?.allowAgentLogin} onCheckedChange={(v) => updateUserAccess({ allowAgentLogin: v })} />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div>
+                      <Label className="font-bold">CS Team Login</Label>
+                      <p className="text-xs text-gray-600">Allow CS team to login</p>
+                    </div>
+                    <Switch checked={settings.userAccess?.allowCSLogin} onCheckedChange={(v) => updateUserAccess({ allowCSLogin: v })} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <Megaphone className="w-4 h-4" />
+                    Banner Message
+                  </Label>
+                  <Input
+                    value={settings.userAccess?.bannerMessage || ''}
+                    onChange={(e) => updateUserAccess({ bannerMessage: e.target.value })}
+                    placeholder="e.g., Scheduled maintenance at 6pm UAE time" className="mt-1" />
+                  {settings.userAccess?.bannerMessage && (
+                    <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm font-medium">
+                      Preview: {settings.userAccess.bannerMessage}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-4">
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <div className="text-sm text-gray-600">
+                  Manage per-user data for agents. Stored locally in admin's browser (localStorage).
+                </div>
+
+                {agents.length === 0 ? (
+                  <p className="text-sm text-black/50">No agents created yet.</p>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {agents.map(agent => {
+                      const p = settings.userProfiles?.[agent.username] || { fullName: '', email: '', region: '', notes: '', isActive: true, role: 'agent' };
+                      return (
+                        <div key={agent.username} className="p-3 rounded-lg border bg-white space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-yellow-400 text-black font-bold">{agent.username}</Badge>
+                              <Badge variant="outline" className="text-xs">{p.role || 'agent'}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs">Active</Label>
+                              <Switch checked={p.isActive !== false} onCheckedChange={(v) => updateUserProfile(agent.username, { isActive: v })} />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs text-black/60">Full Name</Label>
+                              <Input value={p.fullName} onChange={(e) => updateUserProfile(agent.username, { fullName: e.target.value })} placeholder="e.g. John Doe" />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-black/60">Email</Label>
+                              <Input value={p.email} onChange={(e) => updateUserProfile(agent.username, { email: e.target.value })} placeholder="name@company.com" />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-black/60">Region</Label>
+                              <Input value={p.region} onChange={(e) => updateUserProfile(agent.username, { region: e.target.value })} placeholder="e.g. DXB" />
+                            </div>
+                            <div className="col-span-2">
+                              <Label className="text-xs text-black/60">Notes</Label>
+                              <Textarea value={p.notes} onChange={(e) => updateUserProfile(agent.username, { notes: e.target.value })} placeholder="Optional notes..." />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          </Tabs>
+          </CardContent>
+          </Card>
   );
 };
 
