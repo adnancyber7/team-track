@@ -4724,7 +4724,17 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     if (!AGENT_EDITABLE.has(c)) return;
 
     const newSheet = deepCopy(csSheet);
-    newSheet.raw[r][c] = value;
+
+    // Agent-side validations for rejection columns
+    let newValue = value;
+    if (c === COL_REJ2 || c === COL_REJ3 || c === COL_REJ4 || c === COL_REJ5) {
+      if (!String(newValue || '').trim()) {
+        toast.error('Rejection reason cannot be empty');
+        return;
+      }
+    }
+
+    newSheet.raw[r][c] = newValue;
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
