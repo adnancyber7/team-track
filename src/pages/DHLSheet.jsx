@@ -4775,6 +4775,13 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
   useEffect(() => {
     const handleSync = (ev) => {
+      if (ev?.data?.type === 'highPriorityAssigned') {
+        const agent = String(ev.data.agent || '').toLowerCase();
+        if (agent === username.toLowerCase()) {
+          const list = ev.data.awbs || [];
+          if (list.length) toast.info(`🔥 New High Priority assigned: ${list.join(', ')}`, { duration: 6000 });
+        }
+      }
       if (ev?.data?.type === "app:sync") {
         const updated = loadCSSheet();
         setCSSheet(updated);
