@@ -2335,7 +2335,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
 
     // Admin doesn't use status buttons in CS sheet
-  };const createAgent = async () => {
+  };const createAgent = () => {
     if (!newAgentUser.trim() || !newAgentPass.trim()) {
       toast.error("Please enter agent username and password");
       return;
@@ -2344,44 +2344,36 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       toast.error("Password must be at least 4 characters");
       return;
     }
-    try {
-      // Prevent duplicates
-      const exists = await base44.entities.AgentUser.filter({ username: newAgentUser });
-      if (exists && exists.length) {
-        toast.error("Agent already exists");
-        return;
-      }
-      const created = await base44.entities.AgentUser.create({ username: newAgentUser, password: newAgentPass });
-      setAgents((prev) => [...prev, created]);
-      // Keep local copy for backward compatibility
-      const state = loadState();
-      state.agents = [...(state.agents || []), { username: newAgentUser, password: newAgentPass }];
-      saveState(state);
-      setNewAgentUser("");
-      setNewAgentPass("");
-      toast.success(`Agent "${newAgentUser}" created`);
-    } catch (e) {
-      toast.error("Failed to create agent");
+
+    const state = loadState();
+    if (newAgentUser === state.admin.username) {
+      toast.error("Agent username cannot be same as admin");
+      return;
     }
+    if ((state.agents || []).some((a) => a.username === newAgentUser)) {
+      toast.error("Agent already exists");
+      return;
+    }
+
+    state.agents = [...(state.agents || []), { username: newAgentUser, password: newAgentPass }];
+    saveState(state);
+    setAgents(state.agents);
+    setNewAgentUser("");
+    setNewAgentPass("");
+    CHANNEL.postMessage({ type: "app:sync" });
+    toast.success(`Agent "${newAgentUser}" created`);
   };
 
-  const deleteAgent = async (username) => {
-    try {
-      const matches = await base44.entities.AgentUser.filter({ username });
-      if (matches && matches[0]) {
-        await base44.entities.AgentUser.delete(matches[0].id);
-      }
-      setAgents((prev) => prev.filter((a) => a.username !== username));
-      const state = loadState();
-      state.agents = (state.agents || []).filter((a) => a.username !== username);
-      saveState(state);
-      toast.success(`Agent "${username}" deleted`);
-    } catch (e) {
-      toast.error("Failed to delete agent");
-    }
+  const deleteAgent = (username) => {
+    const state = loadState();
+    state.agents = (state.agents || []).filter((a) => a.username !== username);
+    saveState(state);
+    setAgents(state.agents);
+    CHANNEL.postMessage({ type: "app:sync" });
+    toast.success(`Agent "${username}" deleted`);
   };
 
-  const createCSAllocator = async () => {
+  const createCSAllocator = () => {
     if (!newCSUser.trim() || !newCSPass.trim()) {
       toast.error("Please enter CS Allocator username and password");
       return;
@@ -2390,39 +2382,29 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       toast.error("Password must be at least 4 characters");
       return;
     }
-    try {
-      const exists = await base44.entities.CSUser.filter({ username: newCSUser });
-      if (exists && exists.length) {
-        toast.error("CS Allocator already exists");
-        return;
-      }
-      const created = await base44.entities.CSUser.create({ username: newCSUser, password: newCSPass });
-      setCSAllocators((prev) => [...prev, created]);
-      const state = loadState();
-      state.csAllocators = [...(state.csAllocators || []), { username: newCSUser, password: newCSPass }];
-      saveState(state);
-      setNewCSUser("");
-      setNewCSPass("");
-      toast.success(`CS Allocator "${newCSUser}" created`);
-    } catch (e) {
-      toast.error("Failed to create CS Allocator");
+
+    const state = loadState();
+    if ((state.csAllocators || []).some((a) => a.username === newCSUser)) {
+      toast.error("CS Allocator already exists");
+      return;
     }
+
+    state.csAllocators = [...(state.csAllocators || []), { username: newCSUser, password: newCSPass }];
+    saveState(state);
+    setCSAllocators(state.csAllocators);
+    setNewCSUser("");
+    setNewCSPass("");
+    CHANNEL.postMessage({ type: "app:sync" });
+    toast.success(`CS Allocator "${newCSUser}" created`);
   };
 
-  const deleteCSAllocator = async (username) => {
-    try {
-      const matches = await base44.entities.CSUser.filter({ username });
-      if (matches && matches[0]) {
-        await base44.entities.CSUser.delete(matches[0].id);
-      }
-      setCSAllocators((prev) => prev.filter((a) => a.username !== username));
-      const state = loadState();
-      state.csAllocators = (state.csAllocators || []).filter((a) => a.username !== username);
-      saveState(state);
-      toast.success(`CS Allocator "${username}" deleted`);
-    } catch (e) {
-      toast.error("Failed to delete CS Allocator");
-    }
+  const deleteCSAllocator = (username) => {
+    const state = loadState();
+    state.csAllocators = (state.csAllocators || []).filter((a) => a.username !== username);
+    saveState(state);
+    setCSAllocators(state.csAllocators);
+    CHANNEL.postMessage({ type: "app:sync" });
+    toast.success(`CS Allocator "${username}" deleted`);
   };
 
   const saveAdminCreds = () => {
