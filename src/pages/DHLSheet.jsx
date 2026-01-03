@@ -6,7 +6,7 @@ import DailyReportDialog from '../components/DailyReportDialog';
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
 import AdvancedReportingModule from '../components/AdvancedReportingModule';
-import AIPerformanceInsights from '../components/AIPerformanceInsights';
+import FreeAnalytics from '../components/analytics/FreeAnalytics';
 import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import CellEditorDialog from '../components/CellEditorDialog';
@@ -3518,7 +3518,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
-            <AIPerformanceInsights
+            <FreeAnalytics
               agents={agents}
               csSheet={csSheet}
               ROWS_COUNT={ROWS_COUNT}
@@ -3528,7 +3528,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               COL_REJ2={COL_REJ2}
               COL_REJ3={COL_REJ3}
               COL_REJ4={COL_REJ4}
-              COL_REJ5={COL_REJ5} />
+              COL_REJ5={COL_REJ5}
+              COL_REGION={COL_REGION}
+            />
 
             
             <AgentPerformanceDashboard
