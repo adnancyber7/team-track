@@ -4880,17 +4880,16 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       const rej4 = String(newSheet.raw[r]?.[COL_REJ4] || '').trim();
       const rej5 = String(newSheet.raw[r]?.[COL_REJ5] || '').trim();
 
-      // Determine first missing rejection reason (admin may have prefilled earlier ones)
-      const needLabel = !rej2 ? '2ND REJECTION' : !rej3 ? '3RD REJECTION' : !rej4 ? '4TH REJECTION' : !rej5 ? '5TH REJECTION' : null;
-
-      if (needLabel) {
-        setMissingRejectLabel(needLabel);
+      // New rule: require at least ONE rejection reason; if none, prompt to fill 2nd
+      const anyReason = !!rej2 || !!rej3 || !!rej4 || !!rej5;
+      if (!anyReason) {
+        setMissingRejectLabel('2ND REJECTION');
         setPendingRejectRow(r);
         setShowRejectConfirm(true);
         return;
       }
 
-      // All required reasons present → proceed to reject
+      // A reason exists → proceed to reject immediately
       handleStatusClick(r, 'confirmReject');
       return;
     }
