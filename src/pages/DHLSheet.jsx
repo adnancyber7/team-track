@@ -85,7 +85,7 @@ COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
 const AGENT_EDITABLE = new Set([
-COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
+  COL_LINE, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
 );
 
 const CS_ALLOCATOR_EDITABLE = new Set([
@@ -2896,8 +2896,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const downloadAllCSData = () => {
     const headers = CS_COLUMNS;
     const rows = [headers, ...csSheet.raw.filter((row) => row.some((cell) => cell.trim()))];
-    downloadCSV(rows, 'cs_sheet_data.csv');
-    toast.success("Downloaded CS Sheet data");
+    downloadCSV(rows, 'master_sheet_data.csv');
+    toast.success("Downloaded Master Sheet data");
   };
 
   const handleFileUpload = async (e) => {
@@ -2930,50 +2930,74 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
       const newSheet = deepCopy(csSheet);
       let rowsAdded = 0;
+      let duplicatesSkipped = 0;
 
-      // Find first empty row in CS sheet (append at end)
-      let startRow = 0;
+      // Build existing AWB -> states map
+      const existingByAwb = {};
+      for (let r = 0; r < ROWS_COUNT; r++) {
+        const awb = normalizeAwb(csSheet.raw[r]?.[COL_AWB]);
+        if (awb) {
+          const st = String(csSheet.timers[r]?.state || '').toUpperCase();
+          if (!existingByAwb[awb]) existingByAwb[awb] = [];
+          existingByAwb[awb].push(st);
+        }
+      }
+
+      // Find first empty row in Master sheet (append at end)
+      let writeRow = 0;
       for (let r = 0; r < ROWS_COUNT; r++) {
         if (csSheet.raw[r].every((cell) => !cell.trim())) {
-          startRow = r;
+          writeRow = r;
           break;
         }
       }
 
-      // Add data rows
-      dataRows.forEach((row, idx) => {
-        const targetRow = startRow + idx;
-        if (targetRow >= ROWS_COUNT) return;
+      // Source index for AWB in uploaded file
+      const srcAwbIdx = Object.keys(colMapping).find((k) => colMapping[k] === COL_AWB);
 
-        row.forEach((cell, colIdx) => {
-          const targetCol = colMapping[colIdx];
-          if (targetCol !== undefined) {
-            let cellValue = String(cell || '').trim();
+      // Add data rows with duplicate rules
+      dataRows.forEach((row) => {
+        if (writeRow >= ROWS_COUNT) return;
 
-            // Convert Excel serial time to readable format for TIME column
-            if (targetCol === COL_AWB) {
-              const awb = normalizeAwb(cellValue);
-              cellValue = awb || '';
-            }
-            if (targetCol === COL_LINE) {
-              if (!isValidLineExpr(cellValue)) cellValue = '';
-            }
-            if (targetCol === COL_TIME && cellValue) {
-              const formatted = formatTimeEntry(cellValue);
-              cellValue = formatted || '';
-            }
-
-            newSheet.raw[targetRow][targetCol] = cellValue;
+        // Duplicate check by AWB
+        let importAllowed = true;
+        let awbNorm = null;
+        if (srcAwbIdx !== undefined) {
+          const rawAwb = String(row[srcAwbIdx] || '').trim();
+          awbNorm = normalizeAwb(rawAwb);
+          if (awbNorm) {
+            const states = existingByAwb[awbNorm] || [];
+            const hasNonRejected = states.some((s) => s && s !== 'REJECTED');
+            importAllowed = !hasNonRejected; // allow only if all existing are REJECTED
           }
+        }
+
+        if (!importAllowed) {
+          duplicatesSkipped++;
+          return;
+        }
+
+        // Map and write cells
+        Object.entries(colMapping).forEach(([srcIdx, targetCol]) => {
+          let cellValue = String(row[srcIdx] || '').trim();
+          if (targetCol === COL_AWB) {
+            const awb = normalizeAwb(cellValue);
+            cellValue = awb || '';
+          }
+          if (targetCol === COL_LINE) {
+            if (!isValidLineExpr(cellValue)) cellValue = '';
+          }
+          if (targetCol === COL_TIME && cellValue) {
+            const formatted = formatTimeEntry(cellValue);
+            cellValue = formatted || '';
+          }
+          newSheet.raw[writeRow][targetCol] = cellValue;
         });
 
-        // Check if this row has agent assigned and AWB
-        const agentName = String(newSheet.raw[targetRow][COL_AGENTS] || '').trim().toLowerCase();
-        const awb = newSheet.raw[targetRow][COL_AWB];
-
         // Initialize timer but don't start it (agent will start it)
-        if (isValidAwb(awb)) {
-          newSheet.timers[targetRow] = {
+        const awbVal = newSheet.raw[writeRow][COL_AWB];
+        if (isValidAwb(awbVal)) {
+          newSheet.timers[writeRow] = {
             elapsed: 0,
             start: null,
             doneClicks: 0,
@@ -2982,13 +3006,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           };
         }
 
+        // Update map to avoid multiple imports of same AWB in this upload
+        if (awbNorm) {
+          if (!existingByAwb[awbNorm]) existingByAwb[awbNorm] = [];
+          existingByAwb[awbNorm].push('');
+        }
+
         rowsAdded++;
+        writeRow++;
       });
 
       setCSSheet(newSheet);
       saveCSSheet(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
-      toast.success(`Uploaded ${rowsAdded} rows successfully`);
+      toast.success(`Uploaded ${rowsAdded} rows successfully${duplicatesSkipped ? ", skipped " + duplicatesSkipped + " duplicates" : ''}`);
     } catch (error) {
       console.error(error);
       toast.error("Failed to upload file. Please check the format.");
@@ -3346,7 +3377,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           <TabsList className="bg-white/80 border border-black/10 p-1">
             <TabsTrigger value="cs-sheet" className="font-bold data-[state=active]:bg-yellow-400/60">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              CS Sheet
+              Master Sheet
             </TabsTrigger>
             <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Users className="w-4 h-4 mr-2" />
@@ -3395,7 +3426,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <Badge className="bg-yellow-400 text-black font-black px-3 py-1">CS SHEET VIEW</Badge>
+                  <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                     <span className="text-sm font-medium">AWB:</span>
                     <span className="font-mono font-bold">{csMetrics.awb}</span>
@@ -4740,7 +4771,15 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
     const newSheet = deepCopy(csSheet);
 
-    // Agent-side validations for rejection columns
+    // Agent-side validations
+    if (c === COL_LINE) {
+      if (!isValidLineExpr(value)) {
+        toast.error('LINE must be numbers separated by + (e.g., 2+3+5)');
+        return;
+      }
+    }
+
+    // Rejection reasons
     let newValue = value;
     if (c === COL_REJ2 || c === COL_REJ3 || c === COL_REJ4 || c === COL_REJ5) {
       if (!String(newValue || '').trim()) {
