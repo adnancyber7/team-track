@@ -1393,7 +1393,8 @@ const ExcelSheet = ({
   onRowSelect,
   fastEditMode,
   priorityList,
-  zoomLevel = 100
+  zoomLevel = 100,
+  filterAgentUsername = ""
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -1415,8 +1416,28 @@ const ExcelSheet = ({
 
   // Compact view for agents - removes gaps from done/rejected rows - MEMOIZED
   const getCompactedView = useMemo(() => {
-    if (isAdmin) {
+    if (isAdmin && !filterAgentUsername) {
       return { data, timers, rowMapping: data.map((_, i) => i) };
+    }
+
+    // Admin viewing a specific agent's profile: show only that agent's rows (including DONE/REJECTED)
+    if (isAdmin && filterAgentUsername) {
+      const filteredData = [];
+      const filteredTimers = [];
+      const map = [];
+      for (let r = 0; r < data.length; r++) {
+        const agentCell = String(data[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+        if (agentCell !== filterAgentUsername.toLowerCase()) continue;
+        if (regionFilter) {
+          const regionCell = String(data[r]?.[COL_REGION] || '').trim().toUpperCase();
+          const filterUpper = regionFilter.toUpperCase();
+          if (!(regionCell === filterUpper || regionCell.includes(filterUpper))) continue;
+        }
+        filteredData.push(data[r]);
+        filteredTimers.push(timers[r]);
+        map.push(r);
+      }
+      return { data: filteredData, timers: filteredTimers, rowMapping: map };
     }
 
     const compactedData = [];
@@ -1906,7 +1927,7 @@ const ExcelSheet = ({
     return displayData[r]?.[c] || '';
   }, [displayData, isRowVisible, isAdmin]);
 
-  const visibleRows = isAdmin ? ROWS_COUNT : getCompactedView.data.length;
+  const visibleRows = (isAdmin && !filterAgentUsername) ? ROWS_COUNT : getCompactedView.data.length;
   const gridStyle = useMemo(() => ({
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
@@ -3618,7 +3639,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                           <SelectItem value={null}>ALL REGIONS</SelectItem>
                           {getUniqueRegions(selectedAgent).map((r) =>
                         <SelectItem key={r} value={r}>{r}</SelectItem>
-                        )}
+                          )}
                         </SelectContent>
                       </Select>
                       <Button onClick={() => downloadAgentData(selectedAgent)} variant="outline" size="sm" className="font-bold">
@@ -3648,7 +3669,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   agentUsername={selectedAgent}
                   editableCols={ADMIN_EDITABLE_IN_CS}
                   blinkRows={csSheet.blinkRows}
-                  regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""} />
+                  regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
+                  filterAgentUsername={selectedAgent} />
 
                 </CardContent>
               </Card>
@@ -4687,7 +4709,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
           if (rowAgent === username.toLowerCase() && (
           rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
-          rowState !== 'DONE') {
+          !(rowState === 'DONE' || rowState === 'REJECTED')) {
             allDone = false;
             break;
           }
