@@ -524,9 +524,15 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Fallback to localStorage
+    // Fallback to localStorage with auto-migration to backend
     const localFound = (state.agents || []).find((a) => a.username === agentUser && a.password === agentPass);
     if (localFound) {
+      try {
+        const exists = await base44.entities.AgentUser.filter({ username: agentUser });
+        if (!exists || !exists.length) {
+          await base44.entities.AgentUser.create({ username: agentUser, password: agentPass });
+        }
+      } catch {}
       state.session = { role: "agent", username: agentUser };
       saveState(state);
       onLogin("agent", agentUser);
@@ -567,9 +573,15 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Fallback to localStorage
+    // Fallback to localStorage with auto-migration to backend
     const localFound = (state.csAllocators || []).find((a) => a.username === csUser && a.password === csPass);
     if (localFound) {
+      try {
+        const exists = await base44.entities.CSUser.filter({ username: csUser });
+        if (!exists || !exists.length) {
+          await base44.entities.CSUser.create({ username: csUser, password: csPass });
+        }
+      } catch {}
       state.session = { role: "cs_allocator", username: csUser };
       saveState(state);
       onLogin("cs_allocator", csUser);
