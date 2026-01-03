@@ -2565,25 +2565,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       };
     }
 
-    // If CS team adds value to confirmation columns, blink for agent and update state
+    // CS confirmations are informational only; do not change rejection state or trigger blinks
     if ([COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c) && value.trim()) {
-      if (!newSheet.blinkRows) newSheet.blinkRows = {};
-      newSheet.blinkRows[r] = true;
-
-      // Clear rejected state if CS team confirms
-      if (newSheet.timers[r]?.state === "REJECTED") {
-        newSheet.timers[r].state = "";
-        newSheet.raw[r][COL_STATUS] = "";
-      }
-
-      setTimeout(() => {
-        const updated = loadCSSheet();
-        if (updated.blinkRows) {
-          updated.blinkRows[r] = false;
-          saveCSSheet(updated);
-          CHANNEL.postMessage({ type: "app:sync" });
-        }
-      }, 5000);
+      // no-op: keep state as-is (REJECTED rows remain for CS view)
     }
 
     setCSSheet(newSheet);
@@ -4275,24 +4259,9 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     const newSheet = deepCopy(csSheet);
     newSheet.raw[r][c] = value;
 
-    // If CS team adds confirmation, blink for agent and clear rejected state
+    // CS confirmations are informational only; do not change rejection state or trigger blinks
     if (value.trim()) {
-      if (!newSheet.blinkRows) newSheet.blinkRows = {};
-      newSheet.blinkRows[r] = true;
-
-      if (newSheet.timers[r]?.state === "REJECTED") {
-        newSheet.timers[r].state = "";
-        newSheet.raw[r][COL_STATUS] = "";
-      }
-
-      setTimeout(() => {
-        const updated = loadCSSheet();
-        if (updated.blinkRows) {
-          updated.blinkRows[r] = false;
-          saveCSSheet(updated);
-          CHANNEL.postMessage({ type: "app:sync" });
-        }
-      }, 5000);
+      // no-op: keep state as-is (REJECTED rows remain for CS view)
     }
 
     setCSSheet(newSheet);
@@ -4488,7 +4457,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
               </div>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-              <b>CS Team View:</b> Shows ONLY rejected rows. Add confirmation values (2ND CONFIRMATION, 3RD CONFIRMATION, etc.) to send back to agents.
+              <b>CS Team View:</b> Shows ONLY rejected rows. You can upload/download and add confirmations for tracking; items stay in CS view until resolved by admin.
             </div>
           </CardContent>
         </Card>
