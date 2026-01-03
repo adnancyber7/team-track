@@ -3134,6 +3134,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       });
     }
 
+    // Enforce data quality in filtered view (skip invalid rows)
+    filtered = filtered.filter((item) => {
+      const row = item.row;
+      // AWB validation if present
+      const awb = normalizeAwb(row[COL_AWB]);
+      if (row[COL_AWB] && !awb) return false;
+      // LINE expression validity
+      if (row[COL_LINE] && !isValidLineExpr(row[COL_LINE])) return false;
+      // TIME format validity
+      if (row[COL_TIME] && !isValidTimeStr(row[COL_TIME])) return false;
+      return true;
+    });
+
     // Multi-column sort
     if (filters.sortColumns && filters.sortColumns.length > 0) {
       filtered.sort((a, b) => {
