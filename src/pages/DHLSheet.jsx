@@ -2276,7 +2276,7 @@ const ExcelSheet = ({
       `}</style>
       
       <div className="sheet-scroll" ref={gridRef}>
-        <div className="sheet-grid" style={gridStyle}>
+        <div className="sheet-grid" style={gridStyle} id="sheet-grid">
           {/* Corner */}
           <div className="corner" style={{ gridRow: 1, gridColumn: 1 }}></div>
           
