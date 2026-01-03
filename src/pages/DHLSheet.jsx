@@ -1939,8 +1939,10 @@ useEffect(() => {
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
     gridTemplateRows: `30px repeat(${visibleRows}, 30px)`,
-    width: 'fit-content'
-  }), [colWidths, visibleRows]);
+    width: 'fit-content',
+    transform: `scale(${zoomLevel / 100})`,
+    transformOrigin: 'top left'
+  }), [colWidths, visibleRows, zoomLevel]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -1955,8 +1957,7 @@ useEffect(() => {
       ref={containerRef}
       className="excel-sheet-container"
       tabIndex={0}
-      onKeyDown={handleKeyDown}
-      style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}>
+      onKeyDown={handleKeyDown}>
 
       <style>{`
         :root {
@@ -5023,10 +5024,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <span className="text-sm font-medium text-red-800">REJECTED:</span>
                 <span className="font-mono font-bold text-red-800">{getAgentMetrics.rej}</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-                <span className="text-sm font-medium text-red-800">:</span>
-                <span className="font-mono font-bold text-red-800">{getAgentMetrics.totalRejectedLines}</span>
-              </div>
+
               <Button
                 onClick={() => {
                   // Get all done AWBs for this agent
