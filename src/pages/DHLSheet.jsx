@@ -2369,17 +2369,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setAdminEmail(state.admin.email || "");
 
     // Always load agents/CS from backend for cross-device management
-    try {
-      const [serverAgents, serverCS] = await Promise.all([
-        base44.entities.AgentUser.list(),
-        base44.entities.CSUser.list()
-      ]);
-      setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
-      setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
-    } catch {
-      setAgents(state.agents || []);
-      setCSAllocators(state.csAllocators || []);
-    }
+    (async () => {
+      try {
+        const [serverAgents, serverCS] = await Promise.all([
+          base44.entities.AgentUser.list(),
+          base44.entities.CSUser.list()
+        ]);
+        setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
+        setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
+      } catch {
+        setAgents(state.agents || []);
+        setCSAllocators(state.csAllocators || []);
+      }
+    })();
 
     const sheets = loadAgentSheets();
     setCSUploads(sheets.csUploads || []);
