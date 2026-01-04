@@ -2371,16 +2371,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setAdminEmail(state.admin.email || "");
 
     // Load env overview for Settings tab
-    try {
-      const res = await base44.functions.invoke('adminSettingsApi', { action: 'getEnvOverview' });
-      const saved = res.data?.saved || {};
-      setEnvTemplate({
-        ADMIN_DEFAULT_USERNAME: saved.ADMIN_DEFAULT_USERNAME ?? '',
-        ADMIN_DEFAULT_PASSWORD: saved.ADMIN_DEFAULT_PASSWORD ?? '',
-        OTP_EXPIRY_MINUTES: String(saved.OTP_EXPIRY_MINUTES ?? '10'),
-        EMAIL_SENDER_NAME: saved.EMAIL_SENDER_NAME ?? ''
-      });
-    } catch {}
+    (async () => {
+      try {
+        const res = await base44.functions.invoke('adminSettingsApi', { action: 'getEnvOverview' });
+        const saved = res.data?.saved || {};
+        setEnvTemplate({
+          ADMIN_DEFAULT_USERNAME: saved.ADMIN_DEFAULT_USERNAME ?? '',
+          ADMIN_DEFAULT_PASSWORD: saved.ADMIN_DEFAULT_PASSWORD ?? '',
+          OTP_EXPIRY_MINUTES: String(saved.OTP_EXPIRY_MINUTES ?? '10'),
+          EMAIL_SENDER_NAME: saved.EMAIL_SENDER_NAME ?? ''
+        });
+      } catch {}
+    })();
 
     // Load env overview for Settings tab
     (async () => {
