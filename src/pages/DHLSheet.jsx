@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import DailyReportDialog from '../components/DailyReportDialog';
+const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
-import AgentPerformanceDashboard from '../components/AgentPerformanceDashboard';
-import AdvancedReportingModule from '../components/AdvancedReportingModule';
-import FreeAnalytics from '../components/analytics/FreeAnalytics';
+const AgentPerformanceDashboard = lazy(() => import('../components/AgentPerformanceDashboard'));
+const AdvancedReportingModule = lazy(() => import('../components/AdvancedReportingModule'));
+const FreeAnalytics = lazy(() => import('../components/analytics/FreeAnalytics'));
 import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import CellEditorDialog from '../components/CellEditorDialog';
@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import * as XLSX from 'xlsx';
+
 
 // ============================================================================
 // CONSTANTS & CONFIGURATION
@@ -1401,7 +1401,7 @@ const LoginScreen = ({ onLogin }) => {
 // EXCEL-LIKE SHEET COMPONENT (Virtualized for Performance)
 // ============================================================================
 
-const ExcelSheet = ({
+const ExcelSheet = memo(({ 
   columns,
   data,
   timers,
@@ -2402,9 +2402,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setCSUploads(sheets.csUploads || []);
     setPriorityNumbers(sheets.priorityNumbers || "");
 
-    const interval = setInterval(() => {
-      setRefreshKey((k) => k + 1);
-    }, 1000);
+    const interval = setInterval(() => { setRefreshKey((k) => k + 1); }, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -2430,7 +2428,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         }
       } catch {}
     };
-    const id = setInterval(refreshLists, 1000);
+    const id = setInterval(refreshLists, 3000);
     refreshLists();
     return () => { stopped = true; clearInterval(id); };
   }, []);
@@ -3463,7 +3461,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       <Download className="w-4 h-4 mr-2" />
                       Download
                     </Button>
-                    <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
+                    <Suspense fallback={<div className="text-xs text-black/50">Loading report…</div>}>
+                      <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
+                    </Suspense>
                   </div>
                 </div>
                 
@@ -3543,32 +3543,37 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
-            <FreeAnalytics
-              agents={agents}
-              csSheet={csSheet}
-              ROWS_COUNT={ROWS_COUNT}
-              COL_AGENTS={COL_AGENTS}
-              COL_AWB={COL_AWB}
-              COL_LINE={COL_LINE}
-              COL_REJ2={COL_REJ2}
-              COL_REJ3={COL_REJ3}
-              COL_REJ4={COL_REJ4}
-              COL_REJ5={COL_REJ5}
-              COL_REGION={COL_REGION}
-            />
+            <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
+              <FreeAnalytics
+                agents={agents}
+                csSheet={csSheet}
+                ROWS_COUNT={ROWS_COUNT}
+                COL_AGENTS={COL_AGENTS}
+                COL_AWB={COL_AWB}
+                COL_LINE={COL_LINE}
+                COL_REJ2={COL_REJ2}
+                COL_REJ3={COL_REJ3}
+                COL_REJ4={COL_REJ4}
+                COL_REJ5={COL_REJ5}
+                COL_REGION={COL_REGION}
+              />
+            </Suspense>
 
             
-            <AgentPerformanceDashboard
-              csSheet={csSheet}
-              agents={agents}
-              ROWS_COUNT={ROWS_COUNT}
-              COL_AGENTS={COL_AGENTS}
-              COL_AWB={COL_AWB}
-              COL_LINE={COL_LINE}
-              COL_REJ2={COL_REJ2}
-              COL_REJ3={COL_REJ3}
-              COL_REJ4={COL_REJ4}
-              COL_REJ5={COL_REJ5} />
+            <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
+              <AgentPerformanceDashboard
+                csSheet={csSheet}
+                agents={agents}
+                ROWS_COUNT={ROWS_COUNT}
+                COL_AGENTS={COL_AGENTS}
+                COL_AWB={COL_AWB}
+                COL_LINE={COL_LINE}
+                COL_REJ2={COL_REJ2}
+                COL_REJ3={COL_REJ3}
+                COL_REJ4={COL_REJ4}
+                COL_REJ5={COL_REJ5}
+              />
+            </Suspense>
 
             
             <div className="grid md:grid-cols-3 gap-4">
@@ -4120,19 +4125,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Reports Tab */}
           <TabsContent value="reports" className="mt-4">
-            <AdvancedReportingModule
-              csSheet={csSheet}
-              agents={agents}
-              ROWS_COUNT={ROWS_COUNT}
-              COL_AGENTS={COL_AGENTS}
-              COL_AWB={COL_AWB}
-              COL_LINE={COL_LINE}
-              COL_REJ2={COL_REJ2}
-              COL_REJ3={COL_REJ3}
-              COL_REJ4={COL_REJ4}
-              COL_REJ5={COL_REJ5}
-              COL_REGION={COL_REGION}
-              COL_REASON={COL_REASON} />
+            <Suspense fallback={<div className="text-sm text-black/50">Loading reports…</div>}>
+              <AdvancedReportingModule
+                csSheet={csSheet}
+                agents={agents}
+                ROWS_COUNT={ROWS_COUNT}
+                COL_AGENTS={COL_AGENTS}
+                COL_AWB={COL_AWB}
+                COL_LINE={COL_LINE}
+                COL_REJ2={COL_REJ2}
+                COL_REJ3={COL_REJ3}
+                COL_REJ4={COL_REJ4}
+                COL_REJ5={COL_REJ5}
+                COL_REGION={COL_REGION}
+                COL_REASON={COL_REASON}
+              />
+            </Suspense>
 
           </TabsContent>
 
@@ -4416,7 +4424,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     }).length;
   };
 
-  const downloadCSData = () => {
+  const downloadCSData = async () => {
     const headers = CS_COLUMNS;
     const rejectedRows = csSheet.raw.filter((row) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
@@ -5232,9 +5240,10 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 </Button>
               </div>
               <Button
-                onClick={() => {
+                onClick={async () => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
+                  const XLSX = await import('xlsx');
                   const wb = XLSX.utils.book_new();
 
                   // Done sheet
