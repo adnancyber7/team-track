@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, TrendingDown, AlertTriangle, Users, Target, Brain, Loader2, RefreshCw, CheckCircle2, XCircle, Lightbulb, TrendingUp } from 'lucide-react';
 import { toast } from "sonner";
-import { base44 } from '@/api/base44Client';
+import { base44 as adn7 } from '@/api/base44Client';
 
 export default function AIPerformanceInsights({ agents, csSheet, ROWS_COUNT, COL_AGENTS, COL_AWB, COL_LINE, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5 }) {
   const [analysis, setAnalysis] = useState(null);
@@ -97,7 +97,7 @@ export default function AIPerformanceInsights({ agents, csSheet, ROWS_COUNT, COL
           : 0
       };
 
-      const response = await base44.functions.invoke('analyzePerformance', {
+      const response = await adn7.functions.invoke('analyzePerformance', {
         agents: agentMetrics,
         csSheetData: { overallStats },
         analysisType: type

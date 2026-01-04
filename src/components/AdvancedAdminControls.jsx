@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Settings, Clock, Users, Zap, Shield, Megaphone, Download } from 'lucide-react';
 import { toast } from "sonner";
-import { base44 } from '@/api/base44Client';
+import { base44 as adn7 } from '@/api/base44Client';
 
 const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGENTS, COL_AWB }) => { // Access Controls synced to backend
   const [settings, setSettings] = useState(() => {
@@ -61,7 +61,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
             const syncAccess = async () => {
               try {
                 const ua = settings.userAccess || {};
-                await base44.functions.invoke('adminSettingsApi', {
+                await adn7.functions.invoke('adminSettingsApi', {
                   action: 'updateSettings',
                   payload: {
                     allow_admin_login: ua.allowAdminLogin ?? true,
@@ -255,7 +255,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
 
   const handleExportXML = async () => {
             try {
-              const res = await base44.functions.invoke('adminSettingsApi', { action: 'exportCredentialsXml' });
+              const res = await adn7.functions.invoke('adminSettingsApi', { action: 'exportCredentialsXml' });
               const blob = new Blob([res.data], { type: 'application/xml;charset=utf-8' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');

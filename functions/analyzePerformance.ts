@@ -2,8 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const adn7 = createClientFromRequest(req);
+    const user = await adn7.auth.me();
 
     if (!user || user.role !== 'admin') {
       return Response.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
@@ -92,7 +92,7 @@ Flag agents with:
 
     let cacheRec = null;
     try {
-      const rows = await base44.entities.AppState.filter({ state_key: 'analysis_cache' });
+      const rows = await adn7.entities.AppState.filter({ state_key: 'analysis_cache' });
       cacheRec = rows && rows[0] ? rows[0] : null;
     } catch {}
 
@@ -102,7 +102,7 @@ Flag agents with:
       return Response.json({ success: true, analysis: cached.analysis, analyzedAt: cached.analyzedAt, cached: true });
     }
 
-    const response = await base44.integrations.Core.InvokeLLM({
+    const response = await adn7.integrations.Core.InvokeLLM({
       prompt,
       add_context_from_internet: false,
       response_json_schema: {
@@ -208,11 +208,11 @@ Flag agents with:
             .slice(0, keys.length - 20)
             .forEach(k => delete data[k]);
         }
-        await base44.entities.AppState.update(cacheRec.id, { data });
+        await adn7.entities.AppState.update(cacheRec.id, { data });
       } else {
         const data = {};
         data[hash] = { analysis: response, analyzedAt: resultPayload.analyzedAt, createdAt: nowIso };
-        await base44.entities.AppState.create({ state_key: 'analysis_cache', data });
+        await adn7.entities.AppState.create({ state_key: 'analysis_cache', data });
       }
     } catch {}
 

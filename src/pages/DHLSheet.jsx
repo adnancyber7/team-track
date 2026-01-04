@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { base44 as adn7 } from '@/api/base44Client';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 const AgentPerformanceDashboard = lazy(() => import('../components/AgentPerformanceDashboard'));
@@ -224,11 +224,11 @@ const saveAgentSheets = (data) => {
 let lastRemoteUpdates = { cs: 0, agents: 0, users: 0 };
 const pushAppState = async (stateKey, payload) => {
   try {
-    const rows = await base44.entities.AppState.filter({ state_key: stateKey });
+    const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
     if (rows && rows[0]) {
-      await base44.entities.AppState.update(rows[0].id, { data: payload });
+      await adn7.entities.AppState.update(rows[0].id, { data: payload });
     } else {
-      await base44.entities.AppState.create({ state_key: stateKey, data: payload });
+      await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
     }
   } catch (e) {
     // ignore network/backend issues silently
@@ -236,7 +236,7 @@ const pushAppState = async (stateKey, payload) => {
 };
 const pullAppState = async (stateKey) => {
   try {
-    const rows = await base44.entities.AppState.filter({ state_key: stateKey });
+    const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
     return (rows && rows[0]) || null;
   } catch {
     return null;
@@ -463,7 +463,7 @@ const LoginScreen = ({ onLogin }) => {
     }
     // Check global access controls and admin creds in backend
     try {
-      const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+      const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
       const cfg = (cfgs || [])[0];
       if (cfg?.maintenance_mode) {
         setError("Maintenance mode is enabled. Please try again later.");
@@ -501,7 +501,7 @@ const LoginScreen = ({ onLogin }) => {
     }
     // Check global access controls
     try {
-      const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+      const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
       const cfg = (cfgs || [])[0];
       if (cfg?.maintenance_mode) {
         setError("Maintenance mode is enabled. Please try again later.");
@@ -515,7 +515,7 @@ const LoginScreen = ({ onLogin }) => {
 
     // Try backend auth first
     try {
-      const res = await base44.entities.AgentUser.filter({ username: agentUser, password: agentPass });
+      const res = await adn7.entities.AgentUser.filter({ username: agentUser, password: agentPass });
       const found = (res || [])[0];
       if (found) {
         if (found.is_active === false) {
@@ -551,7 +551,7 @@ const LoginScreen = ({ onLogin }) => {
     }
     // Check global access controls
     try {
-      const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+      const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
       const cfg = (cfgs || [])[0];
       if (cfg?.maintenance_mode) {
         setError("Maintenance mode is enabled. Please try again later.");
@@ -565,7 +565,7 @@ const LoginScreen = ({ onLogin }) => {
 
     // Try backend auth first
     try {
-      const res = await base44.entities.CSUser.filter({ username: csUser, password: csPass });
+      const res = await adn7.entities.CSUser.filter({ username: csUser, password: csPass });
       const found = (res || [])[0];
       if (found) {
         state.session = { role: "cs_allocator", username: csUser };
@@ -631,7 +631,7 @@ const LoginScreen = ({ onLogin }) => {
         return;
       }
 
-      const response = await base44.functions.invoke('adminSettingsApi', { action: 'sendOtp', payload: { email: forgotEmail } });
+      const response = await adn7.functions.invoke('adminSettingsApi', { action: 'sendOtp', payload: { email: forgotEmail } });
 
       if (response.data.error) {
         setError(response.data.error);
@@ -673,7 +673,7 @@ const LoginScreen = ({ onLogin }) => {
     setError("");
 
     try {
-      const response = await base44.functions.invoke('adminSettingsApi', { action: 'verifyOtp', payload: { email: forgotEmail, otp: otpCode, newPassword } });
+      const response = await adn7.functions.invoke('adminSettingsApi', { action: 'verifyOtp', payload: { email: forgotEmail, otp: otpCode, newPassword } });
 
       const data = response.data;
 
@@ -2395,7 +2395,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     // Load env overview for Settings tab
     (async () => {
       try {
-        const res = await base44.functions.invoke('adminSettingsApi', { action: 'getEnvOverview' });
+        const res = await adn7.functions.invoke('adminSettingsApi', { action: 'getEnvOverview' });
         const saved = res.data?.saved || {};
         setEnvTemplate({
           ADMIN_DEFAULT_USERNAME: saved.ADMIN_DEFAULT_USERNAME ?? '',
@@ -2410,8 +2410,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     (async () => {
       try {
         const [serverAgents, serverCS] = await Promise.all([
-          base44.entities.AgentUser.list(),
-          base44.entities.CSUser.list()
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()
         ]);
         setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
         setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
@@ -2443,8 +2443,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         if (t && t > lastUsersTs) {
           lastUsersTs = t;
           const [serverAgents, serverCS] = await Promise.all([
-            base44.entities.AgentUser.list(),
-            base44.entities.CSUser.list()
+            adn7.entities.AgentUser.list(),
+            adn7.entities.CSUser.list()
           ]);
           if (!stopped) {
             setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
@@ -2494,8 +2494,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     (async () => {
       try {
         const [serverAgents, serverCS] = await Promise.all([
-          base44.entities.AgentUser.list(),
-          base44.entities.CSUser.list()
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()
         ]);
         const local = loadState();
         const serverAgentSet = new Set((serverAgents || []).map(a => (a.username || '').toLowerCase()));
@@ -2505,13 +2505,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         for (const a of (local.agents || [])) {
           const u = String(a.username || '').toLowerCase();
           if (u && !serverAgentSet.has(u)) {
-            try { await base44.entities.AgentUser.create({ username: a.username, password: a.password }); } catch {}
+            try { await adn7.entities.AgentUser.create({ username: a.username, password: a.password }); } catch {}
           }
         }
         for (const c of (local.csAllocators || [])) {
           const u = String(c.username || '').toLowerCase();
           if (u && !serverCSSet.has(u)) {
-            try { await base44.entities.CSUser.create({ username: c.username, password: c.password }); } catch {}
+            try { await adn7.entities.CSUser.create({ username: c.username, password: c.password }); } catch {}
           }
         }
 
@@ -2658,12 +2658,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
     try {
-      const res = await base44.functions.invoke('adminSettingsApi', { action: 'createAgent', payload: { username: newAgentUser, password: newAgentPass } });
+      const res = await adn7.functions.invoke('adminSettingsApi', { action: 'createAgent', payload: { username: newAgentUser, password: newAgentPass } });
       if (res.data?.error) {
         toast.error(res.data.error);
         return;
       }
-      const list = await base44.entities.AgentUser.list();
+      const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
       setNewAgentUser("");
       setNewAgentPass("");
@@ -2676,8 +2676,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteAgent = async (username) => {
     try {
-      await base44.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
-      const list = await base44.entities.AgentUser.list();
+      await adn7.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
+      const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch {}
     CHANNEL.postMessage({ type: "app:sync" });
@@ -2694,12 +2694,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
     try {
-      const res = await base44.functions.invoke('adminSettingsApi', { action: 'createCS', payload: { username: newCSUser, password: newCSPass } });
+      const res = await adn7.functions.invoke('adminSettingsApi', { action: 'createCS', payload: { username: newCSUser, password: newCSPass } });
       if (res.data?.error) {
         toast.error(res.data.error);
         return;
       }
-      const list = await base44.entities.CSUser.list();
+      const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch (e) {
       // still add locally as a fallback
@@ -2718,8 +2718,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteCSAllocator = async (username) => {
     try {
-      await base44.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
-      const list = await base44.entities.CSUser.list();
+      await adn7.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
+      const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch {}
     CHANNEL.postMessage({ type: "app:sync" });
@@ -2742,7 +2742,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       if (newAdminPass.trim() && newAdminPass.length >= 4) {
         payload.admin_password = newAdminPass;
       }
-      await base44.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload });
+      await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload });
     } catch {}
     setNewAdminPass("");
     toast.success("Admin credentials updated");
@@ -2764,7 +2764,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     state.admin.email = adminEmail;
     saveState(state);
     try {
-      await base44.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { admin_email: adminEmail } });
+      await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { admin_email: adminEmail } });
     } catch {}
     toast.success("Recovery email saved successfully");
   };
@@ -4274,13 +4274,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={async ()=>{ await base44.functions.invoke('adminSettingsApi', { action: 'updateEnvTemplate', payload: envTemplate }); toast.success('Env template saved'); }}
+                      onClick={async ()=>{ await adn7.functions.invoke('adminSettingsApi', { action: 'updateEnvTemplate', payload: envTemplate }); toast.success('Env template saved'); }}
                       className="font-bold bg-yellow-400 hover:bg-yellow-500 text-black">
                       <Save className="w-4 h-4 mr-2" /> Save Template
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadDotEnv' }); const blob = new Blob([res.data], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='.env'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadDotEnv' }); const blob = new Blob([res.data], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='.env'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Download .env
                     </Button>
@@ -4352,13 +4352,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'exportBackup' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'exportBackup' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Export Backup
                     </Button>
                     <input ref={backupFileInputRef} type="file" accept="application/json" className="hidden" onChange={async (e)=>{
                       const file = e.target.files?.[0]; if (!file) return; setImportingBackup(true);
-                      try { const text = await file.text(); const backup = JSON.parse(text); await base44.functions.invoke('adminSettingsApi', { action: 'importBackup', payload: { backup } }); toast.success('Backup imported'); CHANNEL.postMessage({ type: 'app:sync' }); }
+                      try { const text = await file.text(); const backup = JSON.parse(text); await adn7.functions.invoke('adminSettingsApi', { action: 'importBackup', payload: { backup } }); toast.success('Backup imported'); CHANNEL.postMessage({ type: 'app:sync' }); }
                       catch { toast.error('Invalid backup file'); }
                       finally { setImportingBackup(false); e.target.value=''; }
                     }}/>
@@ -4381,13 +4381,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='developer_bundle.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='developer_bundle.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Download Developer Bundle (JSON)
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadBackendZip' }); const blob = new Blob([res.data], { type: 'application/zip' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backend_bundle.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadBackendZip' }); const blob = new Blob([res.data], { type: 'application/zip' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backend_bundle.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Download Backend ZIP
                     </Button>

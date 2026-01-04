@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { base44 } from '@/api/base44Client';
+import { base44 as adn7 } from '@/api/base44Client';
 
 export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveState }) {
   const [username, setUsername] = useState("");
@@ -97,7 +97,7 @@ export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveStat
         return;
       }
 
-      const response = await base44.functions.invoke('sendOTP', { email: forgotEmail });
+      const response = await adn7.functions.invoke('sendOTP', { email: forgotEmail });
 
       if (response.data.error) {
         setError(response.data.error);
@@ -136,7 +136,7 @@ export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveStat
     setError("");
 
     try {
-      const response = await base44.functions.invoke('verifyOTP', {
+      const response = await adn7.functions.invoke('verifyOTP', {
         email: forgotEmail,
         otp: otpCode,
         newPassword: newPassword
