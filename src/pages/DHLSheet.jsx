@@ -607,7 +607,7 @@ const LoginScreen = ({ onLogin }) => {
         return;
       }
 
-      const response = await base44.functions.invoke('sendOTP', { email: forgotEmail });
+      const response = await sdk.functions.invoke('adminSettingsApi', { action: 'sendOtp', payload: { email: forgotEmail } });
 
       if (response.data.error) {
         setError(response.data.error);
@@ -649,11 +649,7 @@ const LoginScreen = ({ onLogin }) => {
     setError("");
 
     try {
-      const response = await base44.functions.invoke('verifyOTP', {
-        email: forgotEmail,
-        otp: otpCode,
-        newPassword: newPassword
-      });
+      const response = await sdk.functions.invoke('adminSettingsApi', { action: 'verifyOtp', payload: { email: forgotEmail, otp: otpCode, newPassword } });
 
       const data = response.data;
 
@@ -2617,43 +2613,26 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       toast.error("Password must be at least 4 characters");
       return;
     }
-
     const state = loadState();
     if (newAgentUser === state.admin.username) {
       toast.error("Agent username cannot be same as admin");
       return;
     }
-    if ((state.agents || []).some((a) => a.username === newAgentUser)) {
-      toast.error("Agent already exists");
-      return;
-    }
-
-    // Persist to backend for cross-device login (mandatory)
     try {
-      const exists = await base44.entities.AgentUser.filter({ username: newAgentUser });
-      if (!exists || !exists.length) {
-        await base44.entities.AgentUser.create({ username: newAgentUser, password: newAgentPass });
-      } else {
-        toast.error("Agent already exists in server");
+      const res = await sdk.functions.invoke('adminSettingsApi', { action: 'createAgent', payload: { username: newAgentUser, password: newAgentPass } });
+      if (res.data?.error) {
+        toast.error(res.data.error);
         return;
       }
+      const list = await base44.entities.AgentUser.list();
+      setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
+      setNewAgentUser("");
+      setNewAgentPass("");
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success(`Agent "${newAgentUser}" created`);
     } catch (e) {
-      toast.error("Server unavailable. Could not create agent.");
-      return;
+      toast.error("Failed to create agent");
     }
-
-    try {
-      const serverAgents = await base44.entities.AgentUser.list();
-      setAgents(serverAgents.map(a => ({ username: a.username, password: a.password })));
-    } catch {
-      setAgents(prev => [...prev, { username: newAgentUser, password: newAgentPass }]);
-    }
-
-    setNewAgentUser("");
-    setNewAgentPass("");
-    CHANNEL.postMessage({ type: "app:sync" });
-    await pushAppState('users_sync', { ts: Date.now() });
-    toast.success(`Agent "${newAgentUser}" created`);
   };
 
   const deleteAgent = async (username) => {
@@ -2679,38 +2658,21 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       toast.error("Password must be at least 4 characters");
       return;
     }
-
-    const state = loadState();
-    if ((state.csAllocators || []).some((a) => a.username === newCSUser)) {
-      toast.error("CS Allocator already exists");
-      return;
-    }
-
     try {
-      const exists = await base44.entities.CSUser.filter({ username: newCSUser });
-      if (!exists || !exists.length) {
-        await base44.entities.CSUser.create({ username: newCSUser, password: newCSPass });
-      } else {
-        toast.error("CS Allocator already exists in server");
+      const res = await sdk.functions.invoke('adminSettingsApi', { action: 'createCS', payload: { username: newCSUser, password: newCSPass } });
+      if (res.data?.error) {
+        toast.error(res.data.error);
         return;
       }
+      const list = await base44.entities.CSUser.list();
+      setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
+      setNewCSUser("");
+      setNewCSPass("");
+      CHANNEL.postMessage({ type: "app:sync" });
+      toast.success(`CS Allocator "${newCSUser}" created`);
     } catch (e) {
-      toast.error("Server unavailable. Could not create CS Allocator.");
-      return;
+      toast.error("Failed to create CS Allocator");
     }
-
-    try {
-      const serverCS = await base44.entities.CSUser.list();
-      setCSAllocators(serverCS.map(a => ({ username: a.username, password: a.password })));
-    } catch {
-      setCSAllocators(prev => [...prev, { username: newCSUser, password: newCSPass }]);
-    }
-
-    setNewCSUser("");
-    setNewCSPass("");
-    CHANNEL.postMessage({ type: "app:sync" });
-    await pushAppState('users_sync', { ts: Date.now() });
-    toast.success(`CS Allocator "${newCSUser}" created`);
   };
 
   const deleteCSAllocator = async (username) => {
