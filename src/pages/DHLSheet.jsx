@@ -4304,12 +4304,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-xs text-black/60">Download entities schemas, function docs, and base44Client helper (admin-only).</p>
-                  <Button
-                    variant="outline"
-                    onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='developer_bundle.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
-                    className="font-bold">
-                    <Download className="w-4 h-4 mr-2" /> Download Developer Bundle
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='developer_bundle.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      className="font-bold">
+                      <Download className="w-4 h-4 mr-2" /> Download Developer Bundle (JSON)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadBackendZip' }); const blob = new Blob([res.data], { type: 'application/zip' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backend_bundle.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      className="font-bold">
+                      <Download className="w-4 h-4 mr-2" /> Download Backend ZIP
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

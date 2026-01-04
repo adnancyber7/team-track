@@ -413,6 +413,58 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Download backend ZIP (admin)
+      case 'downloadBackendZip': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+
+        const zip = new JSZip();
+
+        // Entities schemas
+        const entityNames = ['SheetData','SheetRow','AgentUser','CSUser','AdminConfig','PriorityConfig','AgentBreak','AppState'];
+        for (const name of entityNames) {
+          try {
+            const schema = await base44.asServiceRole.entities[name].schema();
+            zip.file(`entities/${name}.json`, JSON.stringify(schema, null, 2));
+          } catch (_e) {
+            zip.file(`entities/${name}.json`, JSON.stringify({ error: 'schema_unavailable' }, null, 2));
+          }
+        }
+
+        // Functions (placeholders to avoid embedding source here)
+        zip.file('functions/adminSettingsApi.js', '// Source available in dashboard -> Code -> functions -> adminSettingsApi');
+        zip.file('functions/analyzePerformance.js', '// Source available in dashboard -> Code -> functions -> analyzePerformance');
+
+        // Docs and helper
+        const readme = [
+          '# Backend Bundle',
+          '',
+          'Includes entity schemas and function placeholders for this app.',
+          '',
+          'Functions available:',
+          '- adminSettingsApi (admin config, users, OTP, env, backups)',
+          '- analyzePerformance (AI analytics)',
+          '',
+          'Use base44Client.js as a minimal example to create clients inside backend functions.'
+        ].join('\n');
+        zip.file('functions/README_adminSettingsApi.md', readme);
+        const clientJs = [
+          "// Minimal client helper for backend functions (Deno)",
+          "import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';",
+          "export { createClientFromRequest };"
+        ].join('\n');
+        zip.file('base44Client.js', clientJs);
+
+        const content = await zip.generateAsync({ type: 'uint8array' });
+        return new Response(content, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': 'attachment; filename=backend_bundle.zip'
+          }
+        });
+      }
+
       default:
         return json({ error: 'Unknown action' }, { status: 400 });
     }
