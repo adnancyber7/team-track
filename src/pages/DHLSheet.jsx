@@ -4286,6 +4286,60 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     </Button>
                   </div>
                   <p className="text-xs text-black/50">Tip: Download and place this .env on your target platform.</p>
+
+                  <div className="mt-4 pt-4 border-t">
+                    <Label className="text-sm font-bold">Custom Variables</Label>
+                    <p className="text-xs text-black/50 mb-2">Add any extra variables you need (they will be included in the downloaded .env).</p>
+
+                    {Object.entries(envTemplate).filter(([k]) => !['ADMIN_DEFAULT_USERNAME','ADMIN_DEFAULT_PASSWORD','OTP_EXPIRY_MINUTES','EMAIL_SENDER_NAME'].includes(k)).length === 0 && (
+                      <p className="text-xs text-black/40">No custom variables yet.</p>
+                    )}
+
+                    {Object.entries(envTemplate)
+                      .filter(([k]) => !['ADMIN_DEFAULT_USERNAME','ADMIN_DEFAULT_PASSWORD','OTP_EXPIRY_MINUTES','EMAIL_SENDER_NAME'].includes(k))
+                      .map(([k, v]) => (
+                        <div key={k} className="grid md:grid-cols-5 gap-2 items-center mb-2">
+                          <Input
+                            value={k}
+                            onChange={(e) => {
+                              const newKey = e.target.value.trim();
+                              setEnvTemplate(prev => {
+                                const next = { ...prev };
+                                const val = next[k];
+                                delete next[k];
+                                next[newKey || k] = val;
+                                return next;
+                              });
+                            }}
+                            placeholder="KEY"
+                          />
+                          <div className="md:col-span-3">
+                            <Input
+                              value={v}
+                              onChange={(e) => setEnvTemplate(prev => ({ ...prev, [k]: e.target.value }))}
+                              placeholder="value"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEnvTemplate(prev => { const next = { ...prev }; delete next[k]; return next; })}
+                            className="text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" /> Remove
+                          </Button>
+                        </div>
+                      ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEnvTemplate(prev => ({ ...prev, ["CUSTOM_VAR_" + Date.now()]: '' }))}
+                      className="mt-2"
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add Variable
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
