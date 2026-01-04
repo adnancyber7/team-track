@@ -40,11 +40,7 @@ export default function CellEditorDialog({
   };
 
   const handleOpenChange = (newOpen) => {
-    // Only allow closing via explicit user actions (buttons, Escape key)
-    // Block automatic closing from outside clicks
-    if (!newOpen) {
-      return;
-    }
+    // Allow Radix/Close button and Escape to close; outside clicks are already blocked via handlers below
     onOpenChange(newOpen);
   };
 
