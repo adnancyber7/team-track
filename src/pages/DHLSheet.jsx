@@ -3359,6 +3359,25 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               <span className="font-bold">Welcome, {username}</span>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={async () => {
+                  try {
+                    const res = await sdk.functions.invoke('adminSettingsApi', { action: 'exportCredentialsXml' });
+                    const blob = new Blob([res.data], { type: 'application/xml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'credentials.xml';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  } catch (e) {}
+                }}
+                variant="outline"
+                className="font-bold">
+                <Download className="w-4 h-4 mr-2" /> Export XML
+              </Button>
               <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
