@@ -1587,7 +1587,7 @@ useEffect(() => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       typingTimerRef.current = setTimeout(() => {
         setTypingCell(null);
-      }, 1000);
+      }, 3000);
     }
   };
 
@@ -2460,7 +2460,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 1000);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -4378,7 +4378,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 1000);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -4430,6 +4430,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
       return status === 'REJECT' || status === 'REJECTED';
     });
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rejectedRows]);
     XLSX.utils.book_append_sheet(wb, ws, 'CS Team Rejected');
@@ -4705,7 +4706,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 1000);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -5244,7 +5245,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
                   const XLSX = await import('xlsx');
-                  const wb = XLSX.utils.book_new();
+                  const XLSX = await import('xlsx');
+    const wb = XLSX.utils.book_new();
 
                   // Done sheet
                   const doneData = [['AWB', 'LINE', 'LOT', 'REGION', 'TIMESTAMP']];
