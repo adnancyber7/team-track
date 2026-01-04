@@ -58,33 +58,25 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
   }, [settings]);
 
   useEffect(() => {
-    const syncAccess = async () => {
-      try {
-        const ua = settings.userAccess || {};
-        const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
-        const payload = {
-          allow_admin_login: ua.allowAdminLogin ?? true,
-          allow_agent_login: ua.allowAgentLogin ?? true,
-          allow_cs_login: ua.allowCSLogin ?? true,
-          maintenance_mode: ua.maintenanceMode ?? false,
-          banner_message: ua.bannerMessage ?? ''
-        };
-        if (cfgs && cfgs[0]) {
-          await base44.entities.AdminConfig.update(cfgs[0].id, payload);
-        } else {
-          await base44.entities.AdminConfig.create({
-            config_key: 'main',
-            admin_username: 'admin',
-            admin_password: 'admin123',
-            ...payload
-          });
-        }
-      } catch (e) {
-        // ignore sync errors
-      }
-    };
-    syncAccess();
-  }, [settings.userAccess]);
+            const syncAccess = async () => {
+              try {
+                const ua = settings.userAccess || {};
+                await base44.functions.invoke('adminSettingsApi', {
+                  action: 'updateSettings',
+                  payload: {
+                    allow_admin_login: ua.allowAdminLogin ?? true,
+                    allow_agent_login: ua.allowAgentLogin ?? true,
+                    allow_cs_login: ua.allowCSLogin ?? true,
+                    maintenance_mode: ua.maintenanceMode ?? false,
+                    banner_message: ua.bannerMessage ?? ''
+                  }
+                });
+              } catch (e) {
+                // ignore sync errors
+              }
+            };
+            syncAccess();
+          }, [settings.userAccess]);
 
   useEffect(() => {
     localStorage.setItem('dhl-break-timers', JSON.stringify(breakTimers));
@@ -262,56 +254,21 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
   };
 
   const handleExportXML = async () => {
-    // Fetch latest data from backend to ensure cross-device accuracy
-    try {
-      const [agentUsers, csUsers] = await Promise.all([
-        base44.entities.AgentUser.list(),
-        base44.entities.CSUser.list()
-      ]);
-
-      const esc = (s) => String(s ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-
-      const agentsXML = (agentUsers || []).map(a => `    <agent>\n      <username>${esc(a.username)}</username>\n      <password>${esc(a.password)}</password>\n    </agent>`).join('\n');
-      const csXML = (csUsers || []).map(u => `    <csUser>\n      <username>${esc(u.username)}</username>\n      <password>${esc(u.password)}</password>\n    </csUser>`).join('\n');
-
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<credentials>\n  <agents>\n${agentsXML}\n  </agents>\n  <csUsers>\n${csXML}\n  </csUsers>\n</credentials>`;
-
-      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'credentials.xml';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      // Fallback to exporting current in-memory lists if server fetch fails
-      const esc = (s) => String(s ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-      const agentsXML = (agents || []).map(a => `    <agent>\n      <username>${esc(a.username)}</username>\n      <password>${esc(a.password)}</password>\n    </agent>`).join('\n');
-      const csXML = ([]).map(u => `    <csUser>\n      <username>${esc(u.username)}</username>\n      <password>${esc(u.password)}</password>\n    </csUser>`).join('\n');
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<credentials>\n  <agents>\n${agentsXML}\n  </agents>\n  <csUsers>\n${csXML}\n  </csUsers>\n</credentials>`;
-      const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'credentials.xml';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-  };
+            try {
+              const res = await base44.functions.invoke('adminSettingsApi', { action: 'exportCredentialsXml' });
+              const blob = new Blob([res.data], { type: 'application/xml;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'credentials.xml';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch (e) {
+              // ignore errors
+            }
+          };
 
   return (
     <Card className="w-full border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white shadow-xl">
