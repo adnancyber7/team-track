@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2 } from 'lucide-react';
-import { base44 as sdk } from '@/api/base44Client';
 import { base44 } from '@/api/base44Client';
 import { base44 as sdk } from '@/api/base44Client';
 import DailyReportDialog from '../components/DailyReportDialog';
@@ -2638,15 +2637,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteAgent = async (username) => {
     try {
-      const matches = await base44.entities.AgentUser.filter({ username });
-      if (matches && matches[0]) await base44.entities.AgentUser.delete(matches[0].id);
+      await sdk.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
+      const list = await base44.entities.AgentUser.list();
+      setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch {}
-    const state = loadState();
-    state.agents = (state.agents || []).filter((a) => a.username !== username);
-    saveState(state);
-    setAgents(state.agents);
     CHANNEL.postMessage({ type: "app:sync" });
-    await pushAppState('users_sync', { ts: Date.now() });
     toast.success(`Agent "${username}" deleted`);
   };
 
@@ -2678,15 +2673,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteCSAllocator = async (username) => {
     try {
-      const matches = await base44.entities.CSUser.filter({ username });
-      if (matches && matches[0]) await base44.entities.CSUser.delete(matches[0].id);
+      await sdk.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
+      const list = await base44.entities.CSUser.list();
+      setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch {}
-    const state = loadState();
-    state.csAllocators = (state.csAllocators || []).filter((a) => a.username !== username);
-    saveState(state);
-    setCSAllocators(state.csAllocators);
     CHANNEL.postMessage({ type: "app:sync" });
-    await pushAppState('users_sync', { ts: Date.now() });
     toast.success(`CS Allocator "${username}" deleted`);
   };
 
