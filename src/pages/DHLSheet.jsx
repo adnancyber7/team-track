@@ -606,7 +606,7 @@ const LoginScreen = ({ onLogin }) => {
         return;
       }
 
-      const response = await sdk.functions.invoke('adminSettingsApi', { action: 'sendOtp', payload: { email: forgotEmail } });
+      const response = await base44.functions.invoke('adminSettingsApi', { action: 'sendOtp', payload: { email: forgotEmail } });
 
       if (response.data.error) {
         setError(response.data.error);
@@ -648,7 +648,7 @@ const LoginScreen = ({ onLogin }) => {
     setError("");
 
     try {
-      const response = await sdk.functions.invoke('adminSettingsApi', { action: 'verifyOtp', payload: { email: forgotEmail, otp: otpCode, newPassword } });
+      const response = await base44.functions.invoke('adminSettingsApi', { action: 'verifyOtp', payload: { email: forgotEmail, otp: otpCode, newPassword } });
 
       const data = response.data;
 
@@ -2618,7 +2618,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
     try {
-      const res = await sdk.functions.invoke('adminSettingsApi', { action: 'createAgent', payload: { username: newAgentUser, password: newAgentPass } });
+      const res = await base44.functions.invoke('adminSettingsApi', { action: 'createAgent', payload: { username: newAgentUser, password: newAgentPass } });
       if (res.data?.error) {
         toast.error(res.data.error);
         return;
@@ -2636,7 +2636,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteAgent = async (username) => {
     try {
-      await sdk.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
+      await base44.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
       const list = await base44.entities.AgentUser.list();
       setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch {}
@@ -2654,7 +2654,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
     try {
-      const res = await sdk.functions.invoke('adminSettingsApi', { action: 'createCS', payload: { username: newCSUser, password: newCSPass } });
+      const res = await base44.functions.invoke('adminSettingsApi', { action: 'createCS', payload: { username: newCSUser, password: newCSPass } });
       if (res.data?.error) {
         toast.error(res.data.error);
         return;
@@ -2672,7 +2672,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteCSAllocator = async (username) => {
     try {
-      await sdk.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
+      await base44.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
       const list = await base44.entities.CSUser.list();
       setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
     } catch {}
@@ -2680,7 +2680,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     toast.success(`CS Allocator "${username}" deleted`);
   };
 
-  const saveAdminCreds = () => {
+  const saveAdminCreds = async () => {
     if (!newAdminUser.trim()) {
       toast.error("Admin username cannot be empty");
       return;
@@ -2691,11 +2691,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       state.admin.password = newAdminPass;
     }
     saveState(state);
+    try {
+      const payload = { admin_username: newAdminUser };
+      if (newAdminPass.trim() && newAdminPass.length >= 4) {
+        payload.admin_password = newAdminPass;
+      }
+      await base44.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload });
+    } catch {}
     setNewAdminPass("");
     toast.success("Admin credentials updated");
   };
 
-  const saveAdminEmail = () => {
+  const saveAdminEmail = async () => {
     if (!adminEmail.trim()) {
       toast.error("Please enter an email address");
       return;
@@ -2710,6 +2717,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const state = loadState();
     state.admin.email = adminEmail;
     saveState(state);
+    try {
+      await base44.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { admin_email: adminEmail } });
+    } catch {}
     toast.success("Recovery email saved successfully");
   };
 
@@ -3315,7 +3325,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               <Button
                 onClick={async () => {
                   try {
-                    const res = await sdk.functions.invoke('adminSettingsApi', { action: 'exportCredentialsXml' });
+                    const res = await base44.functions.invoke('adminSettingsApi', { action: 'exportCredentialsXml' });
                     const blob = new Blob([res.data], { type: 'application/xml' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
