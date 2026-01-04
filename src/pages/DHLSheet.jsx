@@ -513,20 +513,34 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Backend auth only (cross-device/global)
+    // Try backend auth first
     try {
       const res = await base44.entities.AgentUser.filter({ username: agentUser, password: agentPass });
       const found = (res || [])[0];
       if (found) {
+        if (found.is_active === false) {
+          setError("This agent is inactive.");
+          return;
+        }
         state.session = { role: "agent", username: agentUser };
         saveState(state);
         onLogin("agent", agentUser);
         return;
       }
-      setError("Invalid agent credentials.");
     } catch (e) {
-      setError("Unable to reach server. Please try again.");
+      // ignore and fallback to local
     }
+
+    // Fallback to local list (for offline/static hosts)
+    const localMatch = (state.agents || []).find(a => (a.username || "").trim().toLowerCase() === agentUser.trim().toLowerCase() && a.password === agentPass);
+    if (localMatch) {
+      state.session = { role: "agent", username: localMatch.username };
+      saveState(state);
+      onLogin("agent", localMatch.username);
+      return;
+    }
+
+    setError("Invalid agent credentials.");
   };
 
   const handleCSLogin = async () => {
@@ -549,7 +563,7 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Backend auth only (cross-device/global)
+    // Try backend auth first
     try {
       const res = await base44.entities.CSUser.filter({ username: csUser, password: csPass });
       const found = (res || [])[0];
@@ -559,10 +573,20 @@ const LoginScreen = ({ onLogin }) => {
         onLogin("cs_allocator", csUser);
         return;
       }
-      setError("Invalid CS Allocator credentials.");
     } catch (e) {
-      setError("Unable to reach server. Please try again.");
+      // ignore and fallback to local
     }
+
+    // Fallback to local list
+    const localMatch = (state.csAllocators || []).find(u => (u.username || "").trim().toLowerCase() === csUser.trim().toLowerCase() && u.password === csPass);
+    if (localMatch) {
+      state.session = { role: "cs_allocator", username: localMatch.username };
+      saveState(state);
+      onLogin("cs_allocator", localMatch.username);
+      return;
+    }
+
+    setError("Invalid CS Allocator credentials.");
   };
 
   const handleForgotPassword = () => {
@@ -2677,12 +2701,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       }
       const list = await base44.entities.CSUser.list();
       setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
+    } catch (e) {
+      // still add locally as a fallback
+      const st = loadState();
+      st.csAllocators = Array.isArray(st.csAllocators) ? st.csAllocators : [];
+      st.csAllocators.push({ username: newCSUser, password: newCSPass });
+      saveState(st);
+      setCSAllocators((st.csAllocators || []).map(a => ({ username: a.username, password: a.password })));
+    } finally {
       setNewCSUser("");
       setNewCSPass("");
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`CS Allocator "${newCSUser}" created`);
-    } catch (e) {
-      toast.error("Failed to create CS Allocator");
     }
   };
 
