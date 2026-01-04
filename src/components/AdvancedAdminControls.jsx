@@ -131,14 +131,18 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
     toast.success('Access controls updated');
   };
 
-  const updateUserProfile = (username, patch) => {
+  const updateUserProfile = async (agentId, patch, username) => {
+    // Update local fallback copy for immediate UI responsiveness
     setSettings(prev => ({
       ...prev,
       userProfiles: {
         ...(prev.userProfiles || {}),
-        [username]: { role: 'agent', isActive: true, ...(prev.userProfiles?.[username] || {}), ...patch }
+        [username || agentId]: { ...(prev.userProfiles?.[username || agentId] || {}), ...patch }
       }
     }));
+    await adn7.entities.AgentUser.update(agentId, patch);
+    toast.success('Profile updated');
+    if (onUpdate) onUpdate();
   };
 
   const handleMassAssignment = () => {
@@ -533,7 +537,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
             <Card>
               <CardContent className="p-4 space-y-4">
                 <div className="text-sm text-gray-600">
-                  Manage per-user data for agents. Stored locally in admin's browser (localStorage).
+                  Manage per-agent profiles. Changes are saved to the backend and available across all computers.
                 </div>
 
                 <div className="flex gap-2">
@@ -547,7 +551,13 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
                 ) : (
                   <div className="grid md:grid-cols-2 gap-3">
                     {agents.map(agent => {
-                      const p = settings.userProfiles?.[agent.username] || { fullName: '', email: '', region: '', notes: '', isActive: true, role: 'agent' };
+                      const p = {
+                        fullName: agent.full_name || (settings.userProfiles?.[agent.username]?.fullName ?? ''),
+                        email: agent.email || (settings.userProfiles?.[agent.username]?.email ?? ''),
+                        region: agent.region || (settings.userProfiles?.[agent.username]?.region ?? ''),
+                        notes: agent.notes || (settings.userProfiles?.[agent.username]?.notes ?? ''),
+                        isActive: agent.is_active !== false
+                      };
                       return (
                         <div key={agent.username} className="p-3 rounded-lg border bg-white space-y-2">
                           <div className="flex items-center justify-between">
@@ -557,26 +567,26 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
                             </div>
                             <div className="flex items-center gap-2">
                               <Label className="text-xs">Active</Label>
-                              <Switch checked={p.isActive !== false} onCheckedChange={(v) => updateUserProfile(agent.username, { isActive: v })} />
+                              <Switch checked={p.isActive !== false} onCheckedChange={(v) => updateUserProfile(agent.id, { is_active: v }, agent.username)} />
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <Label className="text-xs text-black/60">Full Name</Label>
-                              <Input value={p.fullName} onChange={(e) => updateUserProfile(agent.username, { fullName: e.target.value })} placeholder="e.g. John Doe" />
+                              <Input value={p.fullName} onChange={(e) => updateUserProfile(agent.id, { full_name: e.target.value }, agent.username)} placeholder="e.g. John Doe" />
                             </div>
                             <div>
                               <Label className="text-xs text-black/60">Email</Label>
-                              <Input value={p.email} onChange={(e) => updateUserProfile(agent.username, { email: e.target.value })} placeholder="name@company.com" />
+                              <Input value={p.email} onChange={(e) => updateUserProfile(agent.id, { email: e.target.value }, agent.username)} placeholder="name@company.com" />
                             </div>
                             <div>
                               <Label className="text-xs text-black/60">Region</Label>
-                              <Input value={p.region} onChange={(e) => updateUserProfile(agent.username, { region: e.target.value })} placeholder="e.g. DXB" />
+                              <Input value={p.region} onChange={(e) => updateUserProfile(agent.id, { region: e.target.value }, agent.username)} placeholder="e.g. DXB" />
                             </div>
                             <div className="col-span-2">
                               <Label className="text-xs text-black/60">Notes</Label>
-                              <Textarea value={p.notes} onChange={(e) => updateUserProfile(agent.username, { notes: e.target.value })} placeholder="Optional notes..." />
+                              <Textarea value={p.notes} onChange={(e) => updateUserProfile(agent.id, { notes: e.target.value }, agent.username)} placeholder="Optional notes..." />
                             </div>
                           </div>
                         </div>
