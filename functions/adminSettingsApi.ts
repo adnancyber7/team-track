@@ -349,6 +349,70 @@ Deno.serve(async (req) => {
         return json({ success: true });
       }
 
+      // Developer bundle (admin only)
+      case 'downloadDeveloperBundle': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+
+        const entityNames = ['SheetData','SheetRow','AgentUser','CSUser','AdminConfig','PriorityConfig','AgentBreak','AppState'];
+        const schemas = {};
+        for (const name of entityNames) {
+          try {
+            const schema = await base44.asServiceRole.entities[name].schema();
+            schemas[name] = schema;
+          } catch (_e) {
+            schemas[name] = { error: 'schema_unavailable' };
+          }
+        }
+
+        const files = {};
+        for (const [name, schema] of Object.entries(schemas)) {
+          files[`entities/${name}.json`] = JSON.stringify(schema, null, 2);
+        }
+
+        files['functions/README_adminSettingsApi.md'] = [
+          '# adminSettingsApi',
+          '',
+          '- Purpose: Admin configuration, user management (Agent/CS), OTP reset, env template, backups.',
+          '- Auth: Admin only (platform user with role=admin).',
+          '',
+          'Actions:',
+          '- getSettings, updateSettings',
+          '- listAgents, createAgent, deleteAgent',
+          '- listCS, createCS, deleteCS',
+          '- exportCredentialsXml',
+          '- sendOtp, verifyOtp',
+          '- getEnvOverview, updateEnvTemplate, downloadDotEnv',
+          '- exportBackup, importBackup',
+        ].join('\n');
+
+        files['base44Client.js'] = [
+          "// Minimal client helper for backend functions (Deno)",
+          "import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';",
+          "export { createClientFromRequest };",
+        ].join('\n');
+
+        // NOTE: For security and size reasons, function source is not embedded automatically here.
+        // You can copy function code from dashboard -> Code -> functions.
+        files['functions/adminSettingsApi.js'] = '// Copy from dashboard: functions/adminSettingsApi';
+        files['functions/analyzePerformance.js'] = '// Copy from dashboard: functions/analyzePerformance';
+
+        const bundle = {
+          version: 1,
+          generatedAt: new Date().toISOString(),
+          files
+        };
+
+        const blob = JSON.stringify(bundle, null, 2);
+        return new Response(blob, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Disposition': 'attachment; filename=developer_bundle.json'
+          }
+        });
+      }
+
       default:
         return json({ error: 'Unknown action' }, { status: 400 });
     }

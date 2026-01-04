@@ -4296,6 +4296,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <p className="text-xs text-black/50">Export/Import AdminConfig, AgentUser, CSUser, and AppState.</p>
                 </CardContent>
               </Card>
+
+              {/* Developer Bundle */}
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold">Developer Bundle</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-black/60">Download entities schemas, function docs, and base44Client helper (admin-only).</p>
+                  <Button
+                    variant="outline"
+                    onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='developer_bundle.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                    className="font-bold">
+                    <Download className="w-4 h-4 mr-2" /> Download Developer Bundle
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
