@@ -2324,6 +2324,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [envTemplate, setEnvTemplate] = useState({ ADMIN_DEFAULT_USERNAME: '', ADMIN_DEFAULT_PASSWORD: '', OTP_EXPIRY_MINUTES: '10', EMAIL_SENDER_NAME: '' });
   const [importingBackup, setImportingBackup] = useState(false);
   const backupFileInputRef = useRef(null);
+  const [envTemplate, setEnvTemplate] = useState({ ADMIN_DEFAULT_USERNAME: '', ADMIN_DEFAULT_PASSWORD: '', OTP_EXPIRY_MINUTES: '10', EMAIL_SENDER_NAME: '' });
+  const [importingBackup, setImportingBackup] = useState(false);
+  const backupFileInputRef = useRef(null);
   const [regionFilter, setRegionFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -2366,6 +2369,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const state = loadState();
     setNewAdminUser(state.admin.username);
     setAdminEmail(state.admin.email || "");
+
+    // Load env overview for Settings tab
+    try {
+      const res = await base44.functions.invoke('adminSettingsApi', { action: 'getEnvOverview' });
+      const saved = res.data?.saved || {};
+      setEnvTemplate({
+        ADMIN_DEFAULT_USERNAME: saved.ADMIN_DEFAULT_USERNAME ?? '',
+        ADMIN_DEFAULT_PASSWORD: saved.ADMIN_DEFAULT_PASSWORD ?? '',
+        OTP_EXPIRY_MINUTES: String(saved.OTP_EXPIRY_MINUTES ?? '10'),
+        EMAIL_SENDER_NAME: saved.EMAIL_SENDER_NAME ?? ''
+      });
+    } catch {}
 
     // Load env overview for Settings tab
     (async () => {
@@ -4222,6 +4237,78 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       <b>Forgot Password:</b> Uses email OTP verification for secure password reset.
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Backend Manager */}
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              {/* .env Manager */}
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold">Environment (.env) Manager</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs text-black/60">ADMIN_DEFAULT_USERNAME</Label>
+                      <Input value={envTemplate.ADMIN_DEFAULT_USERNAME} onChange={(e)=>setEnvTemplate({...envTemplate, ADMIN_DEFAULT_USERNAME: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-black/60">ADMIN_DEFAULT_PASSWORD</Label>
+                      <Input type="password" value={envTemplate.ADMIN_DEFAULT_PASSWORD} onChange={(e)=>setEnvTemplate({...envTemplate, ADMIN_DEFAULT_PASSWORD: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-black/60">OTP_EXPIRY_MINUTES</Label>
+                      <Input value={envTemplate.OTP_EXPIRY_MINUTES} onChange={(e)=>setEnvTemplate({...envTemplate, OTP_EXPIRY_MINUTES: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-black/60">EMAIL_SENDER_NAME</Label>
+                      <Input value={envTemplate.EMAIL_SENDER_NAME} onChange={(e)=>setEnvTemplate({...envTemplate, EMAIL_SENDER_NAME: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={async ()=>{ await base44.functions.invoke('adminSettingsApi', { action: 'updateEnvTemplate', payload: envTemplate }); toast.success('Env template saved'); }}
+                      className="font-bold bg-yellow-400 hover:bg-yellow-500 text-black">
+                      <Save className="w-4 h-4 mr-2" /> Save Template
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'downloadDotEnv' }); const blob = new Blob([res.data], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='.env'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      className="font-bold">
+                      <Download className="w-4 h-4 mr-2" /> Download .env
+                    </Button>
+                  </div>
+                  <p className="text-xs text-black/50">Tip: Download and place this .env on your target platform.</p>
+                </CardContent>
+              </Card>
+
+              {/* Database Backup */}
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold">Database Backup</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={async ()=>{ const res = await base44.functions.invoke('adminSettingsApi', { action: 'exportBackup' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      className="font-bold">
+                      <Download className="w-4 h-4 mr-2" /> Export Backup
+                    </Button>
+                    <input ref={backupFileInputRef} type="file" accept="application/json" className="hidden" onChange={async (e)=>{
+                      const file = e.target.files?.[0]; if (!file) return; setImportingBackup(true);
+                      try { const text = await file.text(); const backup = JSON.parse(text); await base44.functions.invoke('adminSettingsApi', { action: 'importBackup', payload: { backup } }); toast.success('Backup imported'); CHANNEL.postMessage({ type: 'app:sync' }); }
+                      catch { toast.error('Invalid backup file'); }
+                      finally { setImportingBackup(false); e.target.value=''; }
+                    }}/>
+                    <Button onClick={()=>backupFileInputRef.current?.click()} className="font-bold bg-blue-600 hover:bg-blue-700 text-white" disabled={importingBackup}>
+                      {importingBackup ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                      Import Backup
+                    </Button>
+                  </div>
+                  <p className="text-xs text-black/50">Export/Import AdminConfig, AgentUser, CSUser, and AppState.</p>
                 </CardContent>
               </Card>
             </div>
