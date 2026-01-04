@@ -47,7 +47,7 @@ export default function CellEditorDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} modal={true}>
       <DialogContent 
-        className="max-w-2xl backdrop-blur-3xl bg-gradient-to-br from-black/50 via-yellow-900/40 to-black/50 border border-yellow-500/30 shadow-2xl"
+        className="max-w-2xl backdrop-blur-3xl bg-gradient-to-br from-black/50 via-yellow-900/40 to-black/50 border border-yellow-500/30 shadow-2xl [&_[aria-label=\"Close\"]]:hidden"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => {
