@@ -330,16 +330,17 @@ const excelSerialToTime = (serial) => {
   const parseUploadedFile = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellText: false });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: true });
-        resolve(jsonData);
-      } catch (error) {
-        reject(error);
-      }
+    reader.onload = async (e) => {
+    try {
+    const XLSX = await import('xlsx');
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellText: false });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: true });
+    resolve(jsonData);
+    } catch (error) {
+    reject(error);
+    }
     };
     reader.onerror = (error) => reject(error);
     reader.readAsArrayBuffer(file);
@@ -5244,7 +5245,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 onClick={async () => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
-                  const XLSX = await import('xlsx');
                   const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
 
