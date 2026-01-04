@@ -2321,6 +2321,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [newAdminUser, setNewAdminUser] = useState("");
   const [newAdminPass, setNewAdminPass] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [envTemplate, setEnvTemplate] = useState({ ADMIN_DEFAULT_USERNAME: '', ADMIN_DEFAULT_PASSWORD: '', OTP_EXPIRY_MINUTES: '10', EMAIL_SENDER_NAME: '' });
+  const [importingBackup, setImportingBackup] = useState(false);
+  const backupFileInputRef = useRef(null);
   const [regionFilter, setRegionFilter] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -2363,6 +2366,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const state = loadState();
     setNewAdminUser(state.admin.username);
     setAdminEmail(state.admin.email || "");
+
+    // Load env overview for Settings tab
+    (async () => {
+      try {
+        const res = await base44.functions.invoke('adminSettingsApi', { action: 'getEnvOverview' });
+        const saved = res.data?.saved || {};
+        setEnvTemplate({
+          ADMIN_DEFAULT_USERNAME: saved.ADMIN_DEFAULT_USERNAME ?? '',
+          ADMIN_DEFAULT_PASSWORD: saved.ADMIN_DEFAULT_PASSWORD ?? '',
+          OTP_EXPIRY_MINUTES: String(saved.OTP_EXPIRY_MINUTES ?? '10'),
+          EMAIL_SENDER_NAME: saved.EMAIL_SENDER_NAME ?? ''
+        });
+      } catch {}
+    })();
 
     // Always load agents/CS from backend for cross-device management
     (async () => {

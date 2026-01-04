@@ -17,6 +17,13 @@ function json(data, init = {}) {
   return Response.json(data, init);
 }
 
+function mask(value) {
+  if (value == null) return '';
+  const s = String(value);
+  if (s.length <= 4) return '*'.repeat(s.length);
+  return '*'.repeat(s.length - 2) + s.slice(-2);
+}
+
 async function ensureAdminUser(base44) {
   const user = await base44.auth.me();
   if (!user) {
@@ -223,6 +230,122 @@ Deno.serve(async (req) => {
         const cfg = await getOrCreateAdminConfig(base44);
         await base44.asServiceRole.entities.AdminConfig.update(cfg.id, { admin_password: newPassword });
         delete store[String(email).toLowerCase()];
+        return json({ success: true });
+      }
+
+      // Env overview (admin)
+      case 'getEnvOverview': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+        // Saved template
+        let saved = null;
+        try {
+          const rec = await base44.asServiceRole.entities.AppState.filter({ state_key: 'env_template' });
+          saved = (rec && rec[0]) ? rec[0].data : null;
+        } catch {}
+        // Current runtime
+        const current = {
+          ADMIN_DEFAULT_USERNAME: Deno.env.get('ADMIN_DEFAULT_USERNAME') || '',
+          ADMIN_DEFAULT_PASSWORD: Deno.env.get('ADMIN_DEFAULT_PASSWORD') || '',
+          OTP_EXPIRY_MINUTES: Deno.env.get('OTP_EXPIRY_MINUTES') || String(ENV.OTP_EXPIRY_MINUTES),
+          EMAIL_SENDER_NAME: Deno.env.get('EMAIL_SENDER_NAME') || ''
+        };
+        return json({ saved: saved || {}, current: {
+          ADMIN_DEFAULT_USERNAME: current.ADMIN_DEFAULT_USERNAME,
+          ADMIN_DEFAULT_PASSWORD: current.ADMIN_DEFAULT_PASSWORD ? mask(current.ADMIN_DEFAULT_PASSWORD) : '',
+          OTP_EXPIRY_MINUTES: current.OTP_EXPIRY_MINUTES,
+          EMAIL_SENDER_NAME: current.EMAIL_SENDER_NAME
+        }});
+      }
+
+      // Update env template (admin)
+      case 'updateEnvTemplate': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+        const data = payload || {};
+        const rows = await base44.asServiceRole.entities.AppState.filter({ state_key: 'env_template' });
+        if (rows && rows[0]) {
+          await base44.asServiceRole.entities.AppState.update(rows[0].id, { data });
+        } else {
+          await base44.asServiceRole.entities.AppState.create({ state_key: 'env_template', data });
+        }
+        return json({ success: true });
+      }
+
+      // Download .env template (admin)
+      case 'downloadDotEnv': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+        let data = {};
+        try {
+          const rec = await base44.asServiceRole.entities.AppState.filter({ state_key: 'env_template' });
+          data = (rec && rec[0]) ? (rec[0].data || {}) : {};
+        } catch {}
+        const lines = [
+          `ADMIN_DEFAULT_USERNAME=${data.ADMIN_DEFAULT_USERNAME ?? ENV.ADMIN_DEFAULT_USERNAME}`,
+          `ADMIN_DEFAULT_PASSWORD=${data.ADMIN_DEFAULT_PASSWORD ?? ENV.ADMIN_DEFAULT_PASSWORD}`,
+          `OTP_EXPIRY_MINUTES=${data.OTP_EXPIRY_MINUTES ?? ENV.OTP_EXPIRY_MINUTES}`,
+          `EMAIL_SENDER_NAME=${data.EMAIL_SENDER_NAME ?? ''}`
+        ];
+        const text = lines.join('\n') + '\n';
+        return new Response(text, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Content-Disposition': 'attachment; filename=.env'
+          }
+        });
+      }
+
+      // Export backup (admin)
+      case 'exportBackup': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+        const [adminCfg, agents, csUsers, appStates] = await Promise.all([
+          base44.asServiceRole.entities.AdminConfig.list(),
+          base44.asServiceRole.entities.AgentUser.list(),
+          base44.asServiceRole.entities.CSUser.list(),
+          base44.asServiceRole.entities.AppState.list()
+        ]);
+        const backup = { AdminConfig: adminCfg || [], AgentUser: agents || [], CSUser: csUsers || [], AppState: appStates || [] };
+        const blob = JSON.stringify(backup, null, 2);
+        return new Response(blob, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Disposition': 'attachment; filename=backup.json'
+          }
+        });
+      }
+
+      // Import backup (admin)
+      case 'importBackup': {
+        const check = await ensureAdminUser(base44);
+        if (check.error) return check.res;
+        const backup = payload && payload.backup;
+        if (!backup || typeof backup !== 'object') return json({ error: 'backup object required' }, { status: 400 });
+        // Restore AgentUser
+        if (Array.isArray(backup.AgentUser)) {
+          const existing = await base44.asServiceRole.entities.AgentUser.list();
+          for (const r of existing) { try { await base44.asServiceRole.entities.AgentUser.delete(r.id); } catch {} }
+          if (backup.AgentUser.length) { try { await base44.asServiceRole.entities.AgentUser.bulkCreate(backup.AgentUser.map(({username,password})=>({username,password}))); } catch {} }
+        }
+        // Restore CSUser
+        if (Array.isArray(backup.CSUser)) {
+          const existing = await base44.asServiceRole.entities.CSUser.list();
+          for (const r of existing) { try { await base44.asServiceRole.entities.CSUser.delete(r.id); } catch {} }
+          if (backup.CSUser.length) { try { await base44.asServiceRole.entities.CSUser.bulkCreate(backup.CSUser.map(({username,password})=>({username,password}))); } catch {} }
+        }
+        // Restore AdminConfig (keep one main record)
+        if (Array.isArray(backup.AdminConfig) && backup.AdminConfig[0]) {
+          const cfg = await getOrCreateAdminConfig(base44);
+          const b = backup.AdminConfig[0];
+          const allowed = ['admin_username','admin_password','admin_email','allow_admin_login','allow_agent_login','allow_cs_login','maintenance_mode','banner_message'];
+          const patch = {};
+          for (const k of allowed) if (b[k] !== undefined) patch[k] = b[k];
+          await base44.asServiceRole.entities.AdminConfig.update(cfg.id, patch);
+        }
+        await upsertUsersSync(base44);
         return json({ success: true });
       }
 
