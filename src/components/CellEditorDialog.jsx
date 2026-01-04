@@ -51,7 +51,6 @@ export default function CellEditorDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => {
-          e.preventDefault();
           onOpenChange(false);
         }}
         style={{
