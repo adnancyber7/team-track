@@ -4491,7 +4491,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     // removed periodic local refresh; relying on pull loop for cross-device and ExcelSheet local tick
   }, [username]);
 
-  // Cross-device pull loop (CS Allocator) - sync cs_sheet
+  // Cross-device pull loop (CS Allocator) - sync cs_sheet (fallback)
   useEffect(() => {
     const interval = setInterval(() => {
       (async () => {
@@ -4508,6 +4508,41 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
       })();
     }, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Realtime long-poll subscription for CS Allocator
+  useEffect(() => {
+    let cancelled = false;
+    let last = { cs: lastRemoteUpdates.cs || 0 };
+
+    const loop = async () => {
+      while (!cancelled) {
+        try {
+          const { data } = await adn7.functions.invoke('eventsLongPoll', {
+            last_cs: last.cs || 0,
+            last_agents: 0,
+            last_users: 0
+          });
+          const changes = data?.changes || [];
+          const now = data?.now || {};
+          if (changes.includes('cs_sheet')) {
+            const csRec = await pullAppState('cs_sheet');
+            if (csRec) {
+              localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+              setCSSheet(loadCSSheet());
+              lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
+              CHANNEL.postMessage({ type: 'app:sync' });
+            }
+          }
+          last = { cs: now.cs || last.cs };
+        } catch {
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+    };
+
+    loop();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -4809,7 +4844,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     // removed periodic local refresh; relying on pull loop for cross-device and ExcelSheet local tick
   }, [username]);
 
-  // Cross-device pull loop (agent) - sync cs_sheet and agent_sheets
+  // Cross-device pull loop (agent) - sync cs_sheet and agent_sheets (fallback)
   useEffect(() => {
     const interval = setInterval(() => {
       (async () => {
@@ -4836,6 +4871,50 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       })();
     }, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Realtime long-poll subscription for Agent
+  useEffect(() => {
+    let cancelled = false;
+    let last = { cs: lastRemoteUpdates.cs || 0, agents: lastRemoteUpdates.agents || 0 };
+
+    const loop = async () => {
+      while (!cancelled) {
+        try {
+          const { data } = await adn7.functions.invoke('eventsLongPoll', {
+            last_cs: last.cs || 0,
+            last_agents: last.agents || 0,
+            last_users: 0
+          });
+          const changes = data?.changes || [];
+          const now = data?.now || {};
+          if (changes.includes('cs_sheet')) {
+            const csRec = await pullAppState('cs_sheet');
+            if (csRec) {
+              localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+              setCSSheet(loadCSSheet());
+              lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
+              CHANNEL.postMessage({ type: 'app:sync' });
+            }
+          }
+          if (changes.includes('agent_sheets')) {
+            const aRec = await pullAppState('agent_sheets');
+            if (aRec) {
+              localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
+              setAgentSheets(loadAgentSheets());
+              lastRemoteUpdates.agents = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '') || Date.now();
+              CHANNEL.postMessage({ type: 'app:sync' });
+            }
+          }
+          last = { cs: now.cs || last.cs, agents: now.agents || last.agents };
+        } catch {
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+    };
+
+    loop();
+    return () => { cancelled = true; };
   }, []);
 
   const handleBreakToggle = useCallback((type) => {
