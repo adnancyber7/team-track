@@ -2807,23 +2807,39 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     };
   };
 
+  const agentStatusMap = useMemo(() => {
+    const statusMap = {};
+    (agents || []).forEach(a => {
+        const agentBreak = csSheet.agentBreaks?.[a.username];
+        if (agentBreak?.active && agentBreak?.start) {
+            statusMap[a.username] = { label: 'On Break', variant: 'break', classes: 'bg-orange-100 text-orange-800 border-orange-300' };
+        } else {
+            statusMap[a.username] = { label: 'Available', variant: 'available', classes: 'bg-green-100 text-green-800 border-green-300' };
+        }
+    });
+
+    const busyAgents = new Set();
+    for (let r = 0; r < ROWS_COUNT; r++) {
+        const rowAgentName = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
+        if (!rowAgentName || busyAgents.has(rowAgentName)) continue;
+        
+        const t = csSheet.timers[r];
+        const st = t?.state?.toUpperCase() || '';
+        
+        if (t?.start && st !== 'DONE' && st !== 'REJECTED') {
+            const agentUsername = (agents || []).find(a => a.username.toLowerCase() === rowAgentName)?.username;
+            if (agentUsername && statusMap[agentUsername]?.label === 'Available') {
+                statusMap[agentUsername] = { label: 'Busy', variant: 'busy', classes: 'bg-blue-100 text-blue-800 border-blue-300' };
+                busyAgents.add(rowAgentName);
+            }
+        }
+    }
+    return statusMap;
+  }, [csSheet, agents]);
+
   // Presence status helper: On Break, Busy, Available
   const getAgentStatus = (agentUser) => {
-    const agentBreak = csSheet.agentBreaks?.[agentUser];
-    if (agentBreak?.active && agentBreak?.start) {
-      return { label: 'On Break', variant: 'break', classes: 'bg-orange-100 text-orange-800 border-orange-300' };
-    }
-    // Busy: any running timer for this agent on a visible (not done/rejected) row
-    for (let r = 0; r < ROWS_COUNT; r++) {
-      const rowAgent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
-      if (rowAgent !== agentUser.toLowerCase()) continue;
-      const t = csSheet.timers[r];
-      const st = t?.state?.toUpperCase() || '';
-      if (t?.start && st !== 'DONE' && st !== 'REJECTED') {
-        return { label: 'Busy', variant: 'busy', classes: 'bg-blue-100 text-blue-800 border-blue-300' };
-      }
-    }
-    return { label: 'Available', variant: 'available', classes: 'bg-green-100 text-green-800 border-green-300' };
+    return agentStatusMap[agentUser] || { label: 'Offline', variant: 'offline', classes: 'bg-gray-200 text-gray-500' };
   };
 
   const getUniqueRegions = (agentUser = null) => {
@@ -3379,7 +3395,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="dashboard">
-          <TabsList className="bg-white/80 border border-black/10 p-1">
+          <TabsList className="bg-white/80 border border-black/10 p-1 h-auto flex flex-wrap">
             <TabsTrigger value="dashboard" className="font-bold data-[state=active]:bg-yellow-400/60">
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
@@ -5187,7 +5203,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                   </Badge>
                 }
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
                 {BREAK_TYPES.map((bt) => {
                   const Icon = bt.icon;
                   const isActive = onBreak && breakType === bt.id;
