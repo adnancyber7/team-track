@@ -4074,9 +4074,36 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           <TabsContent value="uploads" className="mt-4">
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
-                  CS Team Upload History
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-lg font-bold">
+                    <Upload className="w-5 h-5" />
+                    CS Team Upload History
+                  </div>
+                  <Button 
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setConfirmDialog({
+                        open: true,
+                        title: 'Clear Upload History',
+                        message: 'Are you sure you want to delete all CS upload records? This cannot be undone.',
+                        variant: 'danger',
+                        confirmText: 'Clear History',
+                        onConfirm: () => {
+                          const sheets = loadAgentSheets();
+                          sheets.csUploads = [];
+                          saveAgentSheets(sheets);
+                          setCSUploads([]);
+                          CHANNEL.postMessage({ type: "app:sync" });
+                          toast.success("CS Upload history cleared.");
+                        }
+                      });
+                    }}
+                    disabled={csUploads.length === 0}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2"/>
+                    Clear History
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
