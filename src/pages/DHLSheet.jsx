@@ -2459,6 +2459,64 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {stopped = true;clearInterval(id);};
   }, []);
 
+  // Realtime long-poll subscription for instant cross-panel updates (server authoritative)
+  useEffect(() => {
+    let cancelled = false;
+    let last = { cs: lastRemoteUpdates.cs || 0, agents: lastRemoteUpdates.agents || 0, users: lastRemoteUpdates.users || 0 };
+
+    const applyChange = async (key) => {
+      if (key === 'cs_sheet') {
+        const csRec = await pullAppState('cs_sheet');
+        if (csRec) {
+          localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+          setCSSheet(loadCSSheet());
+          lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
+          CHANNEL.postMessage({ type: 'app:sync' });
+        }
+      } else if (key === 'agent_sheets') {
+        const aRec = await pullAppState('agent_sheets');
+        if (aRec) {
+          localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
+          setAgentSheets(loadAgentSheets());
+          lastRemoteUpdates.agents = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '') || Date.now();
+          CHANNEL.postMessage({ type: 'app:sync' });
+        }
+      } else if (key === 'users_sync') {
+        try {
+          const [serverAgents, serverCS] = await Promise.all([
+            adn7.entities.AgentUser.list(),
+            adn7.entities.CSUser.list()
+          ]);
+          setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
+          setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
+        } catch {}
+      }
+    };
+
+    const loop = async () => {
+      while (!cancelled) {
+        try {
+          const { data } = await adn7.functions.invoke('eventsLongPoll', {
+            last_cs: last.cs || 0,
+            last_agents: last.agents || 0,
+            last_users: last.users || 0
+          });
+          const changes = data?.changes || [];
+          const now = data?.now || {};
+          for (const k of changes) {
+            await applyChange(k);
+          }
+          last = { cs: now.cs || last.cs, agents: now.agents || last.agents, users: now.users || last.users };
+        } catch {
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+    };
+
+    loop();
+    return () => { cancelled = true; };
+  }, []);
+
   // Cross-device pull loop (admin) - sync cs_sheet and agent_sheets
   useEffect(() => {
     const interval = setInterval(() => {
