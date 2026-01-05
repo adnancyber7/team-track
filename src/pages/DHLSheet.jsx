@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2 } from 'lucide-react';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
 import { base44 as adn7 } from '@/api/base44Client';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
+const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
 const AgentPerformanceDashboard = lazy(() => import('../components/AgentPerformanceDashboard'));
 const AdvancedReportingModule = lazy(() => import('../components/AdvancedReportingModule'));
@@ -3377,8 +3378,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         </Card>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="dashboard">
           <TabsList className="bg-white/80 border border-black/10 p-1">
+            <TabsTrigger value="dashboard" className="font-bold data-[state=active]:bg-yellow-400/60">
+              <LayoutDashboard className="w-4 h-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger value="cs-sheet" className="font-bold data-[state=active]:bg-yellow-400/60">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Master Sheet
@@ -3425,6 +3430,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           </TabsList>
 
           {/* CS Sheet Tab */}
+          <TabsContent value="dashboard" className="mt-4">
+            <Suspense fallback={<div className="text-sm text-black/50 p-6 text-center">Loading Real-time Dashboard…</div>}>
+              <RealtimeAdminDashboard
+                agents={agents}
+                csSheet={csSheet}
+                agentSheets={agentSheets}
+                allAgentMetrics={allAgentMetrics}
+                getAgentStatus={getAgentStatus}
+                setSelectedAgent={setSelectedAgent}
+                onTabChange={setActiveTab}
+              />
+            </Suspense>
+          </TabsContent>
+
           <TabsContent value="cs-sheet" className="mt-4 space-y-4">
             {/* Analytics & Upload */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
