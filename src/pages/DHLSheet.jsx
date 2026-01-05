@@ -85,7 +85,7 @@ COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
 const AGENT_EDITABLE = new Set([
-  COL_LINE, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
+COL_LINE, COL_REJ2, COL_REJ3, COL_REJ4, COL_REJ5]
 );
 
 const CS_ALLOCATOR_EDITABLE = new Set([
@@ -153,9 +153,27 @@ const loadState = () => {
 const saveState = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 
 const loadCSSheet = () => {
-try {
-  const data = JSON.parse(localStorage.getItem(CS_SHEET_KEY) || "null");
-  if (!data || !Array.isArray(data.raw)) {
+  try {
+    const data = JSON.parse(localStorage.getItem(CS_SHEET_KEY) || "null");
+    if (!data || !Array.isArray(data.raw)) {
+      return {
+        raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
+        timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
+        colWidths: CS_COLUMNS.map(() => 140),
+        blinkRows: {},
+        agentBreaks: {},
+        savedFilters: []
+      };
+    }
+    // Ensure arrays have correct length for high volume
+    while (data.raw.length < ROWS_COUNT) {
+      data.raw.push(Array(CS_COLUMNS.length).fill(''));
+      data.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
+    }
+    if (!data.agentBreaks) data.agentBreaks = {};
+    if (!data.savedFilters) data.savedFilters = [];
+    return data;
+  } catch {
     return {
       raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
       timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
@@ -165,31 +183,13 @@ try {
       savedFilters: []
     };
   }
-  // Ensure arrays have correct length for high volume
-  while (data.raw.length < ROWS_COUNT) {
-    data.raw.push(Array(CS_COLUMNS.length).fill(''));
-    data.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
-  }
-  if (!data.agentBreaks) data.agentBreaks = {};
-  if (!data.savedFilters) data.savedFilters = [];
-  return data;
-} catch {
-  return {
-    raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
-    timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
-    colWidths: CS_COLUMNS.map(() => 140),
-    blinkRows: {},
-    agentBreaks: {},
-    savedFilters: []
-  };
-}
 };
 
 // Debounced save to reduce localStorage writes
 let saveTimeout = null;
 const saveCSSheet = (data) => {
   if (saveTimeout) clearTimeout(saveTimeout);
-  
+
   saveTimeout = setTimeout(() => {
     const optimizedData = {
       ...data,
@@ -231,13 +231,13 @@ const pushAppState = async (stateKey, payload) => {
       await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
     }
   } catch (e) {
+
     // ignore network/backend issues silently
-  }
-};
+  }};
 const pullAppState = async (stateKey) => {
   try {
     const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
-    return (rows && rows[0]) || null;
+    return rows && rows[0] || null;
   } catch {
     return null;
   }
@@ -281,66 +281,66 @@ const excelSerialToTime = (serial) => {
   hours = hours % 12 || 12;
 
   return `${hours}:${String(minutes).padStart(2, '0')} ${period}`;
-  };
+};
 
-  // Validation helpers
-  const normalizeAwb = (v) => {
-    const digits = String(v || '').replace(/\D/g, '');
-    return digits.length === 10 ? digits : null;
-  };
+// Validation helpers
+const normalizeAwb = (v) => {
+  const digits = String(v || '').replace(/\D/g, '');
+  return digits.length === 10 ? digits : null;
+};
 
-  const isValidLineExpr = (v) => {
-    const s = String(v || '').trim();
-    if (!s) return true; // allow empty
-    return /^\d+(\s*\+\s*\d+)*$/.test(s);
-  };
+const isValidLineExpr = (v) => {
+  const s = String(v || '').trim();
+  if (!s) return true; // allow empty
+  return /^\d+(\s*\+\s*\d+)*$/.test(s);
+};
 
-  const isValidTimeStr = (s) => {
-    if (s == null) return false;
-    const str = String(s).trim();
-    if (!str) return false;
-    // 12h or 24h formats like 9:05, 09:05:10, 14:30, 2:15 PM
-    const re = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i;
-    const m = re.exec(str);
-    if (!m) return false;
-    const h = parseInt(m[1], 10); const mins = parseInt(m[2], 10);
-    if (mins > 59) return false;
-    if (m[4]) { return h >= 1 && h <= 12; }
-    return h >= 0 && h <= 23;
-  };
+const isValidTimeStr = (s) => {
+  if (s == null) return false;
+  const str = String(s).trim();
+  if (!str) return false;
+  // 12h or 24h formats like 9:05, 09:05:10, 14:30, 2:15 PM
+  const re = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i;
+  const m = re.exec(str);
+  if (!m) return false;
+  const h = parseInt(m[1], 10);const mins = parseInt(m[2], 10);
+  if (mins > 59) return false;
+  if (m[4]) {return h >= 1 && h <= 12;}
+  return h >= 0 && h <= 23;
+};
 
-  const formatTimeEntry = (val) => {
-    if (val == null) return null;
-    if (typeof val === 'number' || (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 1)) {
-      return excelSerialToTime(val);
-    }
-    const s = String(val).trim();
-    if (!isValidTimeStr(s)) return null;
-    const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i.exec(s);
-    let h = parseInt(m[1], 10); const mins = parseInt(m[2], 10);
-    let period = (m[4] || '').toUpperCase();
-    if (!period) {
-      // assume 24h -> convert
-      period = h >= 12 ? 'PM' : 'AM';
-      h = h % 12 || 12;
-    }
-    return `${h}:${String(mins).padStart(2,'0')} ${period}`;
-  };
+const formatTimeEntry = (val) => {
+  if (val == null) return null;
+  if (typeof val === 'number' || !isNaN(parseFloat(val)) && parseFloat(val) >= 0 && parseFloat(val) <= 1) {
+    return excelSerialToTime(val);
+  }
+  const s = String(val).trim();
+  if (!isValidTimeStr(s)) return null;
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i.exec(s);
+  let h = parseInt(m[1], 10);const mins = parseInt(m[2], 10);
+  let period = (m[4] || '').toUpperCase();
+  if (!period) {
+    // assume 24h -> convert
+    period = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+  }
+  return `${h}:${String(mins).padStart(2, '0')} ${period}`;
+};
 
-  const parseUploadedFile = async (file) => {
+const parseUploadedFile = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
-    try {
-    const XLSX = await import('xlsx');
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellText: false });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: true });
-    resolve(jsonData);
-    } catch (error) {
-    reject(error);
-    }
+      try {
+        const XLSX = await import('xlsx');
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellNF: false, cellText: false });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: true });
+        resolve(jsonData);
+      } catch (error) {
+        reject(error);
+      }
     };
     reader.onerror = (error) => reject(error);
     reader.readAsArrayBuffer(file);
@@ -528,11 +528,11 @@ const LoginScreen = ({ onLogin }) => {
         return;
       }
     } catch (e) {
+
       // ignore and fallback to local
     }
-
     // Fallback to local list (for offline/static hosts)
-    const localMatch = (state.agents || []).find(a => (a.username || "").trim().toLowerCase() === agentUser.trim().toLowerCase() && a.password === agentPass);
+    const localMatch = (state.agents || []).find((a) => (a.username || "").trim().toLowerCase() === agentUser.trim().toLowerCase() && a.password === agentPass);
     if (localMatch) {
       state.session = { role: "agent", username: localMatch.username };
       saveState(state);
@@ -574,11 +574,11 @@ const LoginScreen = ({ onLogin }) => {
         return;
       }
     } catch (e) {
+
       // ignore and fallback to local
     }
-
     // Fallback to local list
-    const localMatch = (state.csAllocators || []).find(u => (u.username || "").trim().toLowerCase() === csUser.trim().toLowerCase() && u.password === csPass);
+    const localMatch = (state.csAllocators || []).find((u) => (u.username || "").trim().toLowerCase() === csUser.trim().toLowerCase() && u.password === csPass);
     if (localMatch) {
       state.session = { role: "cs_allocator", username: localMatch.username };
       saveState(state);
@@ -916,11 +916,11 @@ const LoginScreen = ({ onLogin }) => {
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                         <Input
-                              value={adminUser}
-                              onChange={(e) => setAdminUser(e.target.value)}
-                              placeholder="Enter admin username"
-                              className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
+                            value={adminUser}
+                            onChange={(e) => setAdminUser(e.target.value)}
+                            placeholder="Enter admin username"
+                            className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
                       </div>
                     </motion.div>
                     <motion.div
@@ -932,16 +932,16 @@ const LoginScreen = ({ onLogin }) => {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                         <Input
-                              type={showAdminPass ? "text" : "password"}
-                              value={adminPass}
-                              onChange={(e) => setAdminPass(e.target.value)}
-                              placeholder="Enter admin password"
-                              className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
+                            type={showAdminPass ? "text" : "password"}
+                            value={adminPass}
+                            onChange={(e) => setAdminPass(e.target.value)}
+                            placeholder="Enter admin password"
+                            className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()} />
                           <button
-                              type="button"
-                              onClick={() => setShowAdminPass(!showAdminPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
+                            type="button"
+                            onClick={() => setShowAdminPass(!showAdminPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
                             {showAdminPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                       </div>
@@ -1021,11 +1021,11 @@ const LoginScreen = ({ onLogin }) => {
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                         <Input
-                              value={agentUser}
-                              onChange={(e) => setAgentUser(e.target.value)}
-                              placeholder="Enter agent username"
-                              className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
+                            value={agentUser}
+                            onChange={(e) => setAgentUser(e.target.value)}
+                            placeholder="Enter agent username"
+                            className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
                       </div>
                     </motion.div>
                     <motion.div
@@ -1037,16 +1037,16 @@ const LoginScreen = ({ onLogin }) => {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                         <Input
-                              type={showAgentPass ? "text" : "password"}
-                              value={agentPass}
-                              onChange={(e) => setAgentPass(e.target.value)}
-                              placeholder="Enter agent password"
-                              className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
+                            type={showAgentPass ? "text" : "password"}
+                            value={agentPass}
+                            onChange={(e) => setAgentPass(e.target.value)}
+                            placeholder="Enter agent password"
+                            className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAgentLogin()} />
                           <button
-                              type="button"
-                              onClick={() => setShowAgentPass(!showAgentPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
+                            type="button"
+                            onClick={() => setShowAgentPass(!showAgentPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
                             {showAgentPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                       </div>
@@ -1109,11 +1109,11 @@ const LoginScreen = ({ onLogin }) => {
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                         <Input
-                              value={csUser}
-                              onChange={(e) => setCSUser(e.target.value)}
-                              placeholder="Enter CS username"
-                              className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
+                            value={csUser}
+                            onChange={(e) => setCSUser(e.target.value)}
+                            placeholder="Enter CS username"
+                            className="pl-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
                       </div>
                     </motion.div>
                     <motion.div
@@ -1125,16 +1125,16 @@ const LoginScreen = ({ onLogin }) => {
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                         <Input
-                              type={showCSPass ? "text" : "password"}
-                              value={csPass}
-                              onChange={(e) => setCSPass(e.target.value)}
-                              placeholder="Enter CS password"
-                              className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
+                            type={showCSPass ? "text" : "password"}
+                            value={csPass}
+                            onChange={(e) => setCSPass(e.target.value)}
+                            placeholder="Enter CS password"
+                            className="pl-11 pr-11 h-12 bg-yellow-400/20 border-yellow-400/40 text-white placeholder:text-gray-400 focus:border-yellow-400 focus:bg-yellow-400/30 transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleCSLogin()} />
                           <button
-                              type="button"
-                              onClick={() => setShowCSPass(!showCSPass)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
+                            type="button"
+                            onClick={() => setShowCSPass(!showCSPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-400 hover:text-yellow-300 transition-colors">
                             {showCSPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                       </div>
@@ -1237,12 +1237,12 @@ const LoginScreen = ({ onLogin }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                       <input
-                        type="email"
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="admin@company.com"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
-                        onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()} />
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      placeholder="admin@company.com"
+                      className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
+                      onKeyDown={(e) => e.key === 'Enter' && !sendingOTP && handleSendOTP()} />
                     </div>
                   </motion.div>
 
@@ -1316,12 +1316,12 @@ const LoginScreen = ({ onLogin }) => {
                     <div className="relative">
                       <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                       <input
-                        type="text"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="000000"
-                        maxLength={6}
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center" />
+                      type="text"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="000000"
+                      maxLength={6}
+                      className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400 font-mono text-lg tracking-[0.5em] text-center" />
                     </div>
                     {remainingAttempts < 5 &&
                   <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
@@ -1341,11 +1341,11 @@ const LoginScreen = ({ onLogin }) => {
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                       <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400" />
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400" />
                     </div>
                   </motion.div>
 
@@ -1359,12 +1359,12 @@ const LoginScreen = ({ onLogin }) => {
                     <div className="relative">
                       <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-yellow-400 transition-colors" />
                       <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                        className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
-                        onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()} />
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full px-4 py-3 pl-12 rounded-xl border border-yellow-400/40 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-200 bg-yellow-400/20 text-white placeholder:text-gray-400"
+                      onKeyDown={(e) => e.key === 'Enter' && !verifyingOTP && handleVerifyOTP()} />
                     </div>
                   </motion.div>
 
@@ -1426,7 +1426,7 @@ const LoginScreen = ({ onLogin }) => {
 // EXCEL-LIKE SHEET COMPONENT (Virtualized for Performance)
 // ============================================================================
 
-const ExcelSheet = memo(({ 
+const ExcelSheet = memo(({
   columns,
   data,
   timers,
@@ -1464,11 +1464,11 @@ const ExcelSheet = memo(({
   const editorRef = useRef(null);
   const containerRef = useRef(null);
   const typingTimerRef = useRef(null);
-const [, setTick] = useState(0);
-useEffect(() => {
-  const id = setInterval(() => setTick(t => t + 1), 1000);
-  return () => clearInterval(id);
-}, []);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Compact view for agents - removes gaps from done/rejected rows - MEMOIZED
   const getCompactedView = useMemo(() => {
@@ -1738,7 +1738,7 @@ useEffect(() => {
           if (activeCell.c !== COL_STATUS) {
             const isEditable = canEdit(activeCell.r, activeCell.c);
             const isViewOnly = [COL_REASON, COL_CONF1, COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(activeCell.c);
-            
+
             setEditingCell({ r: activeCell.r, c: activeCell.c, readOnly: !isEditable || isViewOnly });
             setEditValue(e.key);
             setShowCellEditor(true);
@@ -1941,7 +1941,7 @@ useEffect(() => {
     return displayData[r]?.[c] || '';
   }, [displayData, isRowVisible, isAdmin]);
 
-  const visibleRows = (isAdmin && !filterAgentUsername) ? ROWS_COUNT : getCompactedView.data.length;
+  const visibleRows = isAdmin && !filterAgentUsername ? ROWS_COUNT : getCompactedView.data.length;
   const gridStyle = useMemo(() => ({
     display: 'grid',
     gridTemplateColumns: `48px ${colWidths.map((w) => `${w}px`).join(' ')}`,
@@ -2325,8 +2325,8 @@ useEffect(() => {
         onSave={commitEdit}
         rowIndex={editingCell?.r || 0}
         columnName={editingCell ? columns[editingCell.c] : ''}
-        readOnly={editingCell?.readOnly || false}
-      />
+        readOnly={editingCell?.readOnly || false} />
+
     </div>);
 
 });
@@ -2368,7 +2368,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Precompute metrics for all agents in one pass for performance
   const allAgentMetrics = useMemo(() => {
     const map = {};
-    (agents || []).forEach(a => {
+    (agents || []).forEach((a) => {
       map[a.username.toLowerCase()] = { username: a.username, awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
     });
     for (let r = 0; r < ROWS_COUNT; r++) {
@@ -2380,9 +2380,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       }
       const state = csSheet.timers[r]?.state?.toUpperCase() || '';
       const lineSum = parseLineSum(csSheet.raw[r]?.[COL_LINE]);
-      if (state === 'DONE') { map[key].done++; map[key].totalDoneLines += lineSum; }
-      else if (state === 'REJECTED') { map[key].rej++; map[key].totalRejectedLines += lineSum; }
-      else { if (csSheet.raw[r]?.[COL_AWB]?.trim()) map[key].awb++; map[key].lineSum += lineSum; }
+      if (state === 'DONE') {map[key].done++;map[key].totalDoneLines += lineSum;} else
+      if (state === 'REJECTED') {map[key].rej++;map[key].totalRejectedLines += lineSum;} else
+      {if (csSheet.raw[r]?.[COL_AWB]?.trim()) map[key].awb++;map[key].lineSum += lineSum;}
     }
     return map;
   }, [csSheet, agents]);
@@ -2410,11 +2410,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     (async () => {
       try {
         const [serverAgents, serverCS] = await Promise.all([
-          adn7.entities.AgentUser.list(),
-          adn7.entities.CSUser.list()
-        ]);
-        setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
-        setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
+        adn7.entities.AgentUser.list(),
+        adn7.entities.CSUser.list()]
+        );
+        setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
+        setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
       } catch {
         setAgents(state.agents || []);
         setCSAllocators(state.csAllocators || []);
@@ -2427,7 +2427,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setCSUploads(sheets.csUploads || []);
     setPriorityNumbers(sheets.priorityNumbers || "");
 
-    const interval = setInterval(() => { setRefreshKey((k) => k + 1); }, 10000);
+    const interval = setInterval(() => {setRefreshKey((k) => k + 1);}, 10000);
 
     return () => clearInterval(interval);
   }, []);
@@ -2443,19 +2443,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         if (t && t > lastUsersTs) {
           lastUsersTs = t;
           const [serverAgents, serverCS] = await Promise.all([
-            adn7.entities.AgentUser.list(),
-            adn7.entities.CSUser.list()
-          ]);
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()]
+          );
           if (!stopped) {
-            setAgents((serverAgents || []).map(a => ({ username: a.username, password: a.password })));
-            setCSAllocators((serverCS || []).map(a => ({ username: a.username, password: a.password })));
+            setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
+            setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
           }
         }
       } catch {}
     };
     const id = setInterval(refreshLists, 3000);
     refreshLists();
-    return () => { stopped = true; clearInterval(id); };
+    return () => {stopped = true;clearInterval(id);};
   }, []);
 
   // Cross-device pull loop (admin) - sync cs_sheet and agent_sheets
@@ -2494,30 +2494,30 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     (async () => {
       try {
         const [serverAgents, serverCS] = await Promise.all([
-          adn7.entities.AgentUser.list(),
-          adn7.entities.CSUser.list()
-        ]);
+        adn7.entities.AgentUser.list(),
+        adn7.entities.CSUser.list()]
+        );
         const local = loadState();
-        const serverAgentSet = new Set((serverAgents || []).map(a => (a.username || '').toLowerCase()));
-        const serverCSSet = new Set((serverCS || []).map(a => (a.username || '').toLowerCase()));
+        const serverAgentSet = new Set((serverAgents || []).map((a) => (a.username || '').toLowerCase()));
+        const serverCSSet = new Set((serverCS || []).map((a) => (a.username || '').toLowerCase()));
 
         // Upsert local -> server
-        for (const a of (local.agents || [])) {
+        for (const a of local.agents || []) {
           const u = String(a.username || '').toLowerCase();
           if (u && !serverAgentSet.has(u)) {
-            try { await adn7.entities.AgentUser.create({ username: a.username, password: a.password }); } catch {}
+            try {await adn7.entities.AgentUser.create({ username: a.username, password: a.password });} catch {}
           }
         }
-        for (const c of (local.csAllocators || [])) {
+        for (const c of local.csAllocators || []) {
           const u = String(c.username || '').toLowerCase();
           if (u && !serverCSSet.has(u)) {
-            try { await adn7.entities.CSUser.create({ username: c.username, password: c.password }); } catch {}
+            try {await adn7.entities.CSUser.create({ username: c.username, password: c.password });} catch {}
           }
         }
 
         // Prefer server lists going forward
-        if (serverAgents && serverAgents.length) setAgents(serverAgents.map(a => ({ username: a.username, password: a.password })));
-        if (serverCS && serverCS.length) setCSAllocators(serverCS.map(a => ({ username: a.username, password: a.password })));
+        if (serverAgents && serverAgents.length) setAgents(serverAgents.map((a) => ({ username: a.username, password: a.password })));
+        if (serverCS && serverCS.length) setCSAllocators(serverCS.map((a) => ({ username: a.username, password: a.password })));
       } catch {}
     })();
   }, []);
@@ -2576,10 +2576,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Notify on agent status changes (Busy / On Break / Available)
   useEffect(() => {
     const current = {};
-    (agents || []).forEach(a => {
+    (agents || []).forEach((a) => {
       current[a.username] = getAgentStatus(a.username).label;
     });
-    Object.keys(current).forEach(name => {
+    Object.keys(current).forEach((name) => {
       const prev = prevAgentStatuses.current[name];
       const now = current[name];
       if (prev && now && prev !== now) {
@@ -2596,13 +2596,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     let newValue = value;
     if (c === COL_AWB) {
       const awb = normalizeAwb(value);
-      if (!awb) { toast.error('AWB must be exactly 10 digits'); return; }
+      if (!awb) {toast.error('AWB must be exactly 10 digits');return;}
       newValue = awb;
     } else if (c === COL_LINE) {
-      if (!isValidLineExpr(value)) { toast.error('LINE must be numbers separated by + (e.g., 2+3+5)'); return; }
+      if (!isValidLineExpr(value)) {toast.error('LINE must be numbers separated by + (e.g., 2+3+5)');return;}
     } else if (c === COL_TIME) {
       const formatted = formatTimeEntry(value);
-      if (!formatted) { toast.error('TIME must be a valid time (e.g., 2:30 PM or 14:30)'); return; }
+      if (!formatted) {toast.error('TIME must be a valid time (e.g., 2:30 PM or 14:30)');return;}
       newValue = formatted;
     } else if (c === COL_STATUS) {
       if (typeof newValue === 'string' && /reject/i.test(newValue)) newValue = 'REJECT';
@@ -2615,8 +2615,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const agentNow = String(newSheet.raw[r]?.[COL_AGENTS] || '').trim();
     const reasonNow = String(newSheet.raw[r]?.[COL_REASON] || '').trim();
     const statusNow = String(newSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
-    if (awbNow && !agentNow) { toast.warning('AGENTS is required when AWB is set'); }
-    if (statusNow === 'REJECT' && !reasonNow) { toast.warning('REASON is required for REJECT status'); }
+    if (awbNow && !agentNow) {toast.warning('AGENTS is required when AWB is set');}
+    if (statusNow === 'REJECT' && !reasonNow) {toast.warning('REASON is required for REJECT status');}
 
     // If admin enters AWB, start timer
     if (c === COL_AWB && isValidAwb(value)) {
@@ -2631,9 +2631,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
     // CS confirmations are informational only; do not change rejection state or trigger blinks
     if ([COL_CONF2, COL_CONF3, COL_CONF4, COL_CONF5, COL_CONF6].includes(c) && value.trim()) {
+
       // no-op: keep state as-is (REJECTED rows remain for CS view)
     }
-
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
@@ -2642,9 +2642,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const handleCSStatusClick = (r, action) => {
 
 
+
     // Admin doesn't use status buttons in CS sheet
-  };const createAgent = async () => {
-    if (!newAgentUser.trim() || !newAgentPass.trim()) {
+  };const createAgent = async () => {if (!newAgentUser.trim() || !newAgentPass.trim()) {
       toast.error("Please enter agent username and password");
       return;
     }
@@ -2664,7 +2664,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         return;
       }
       const list = await adn7.entities.AgentUser.list();
-      setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
+      setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       setNewAgentUser("");
       setNewAgentPass("");
       CHANNEL.postMessage({ type: "app:sync" });
@@ -2678,7 +2678,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     try {
       await adn7.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
       const list = await adn7.entities.AgentUser.list();
-      setAgents((list || []).map(a => ({ username: a.username, password: a.password })));
+      setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
     } catch {}
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`Agent "${username}" deleted`);
@@ -2700,14 +2700,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         return;
       }
       const list = await adn7.entities.CSUser.list();
-      setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
+      setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
     } catch (e) {
       // still add locally as a fallback
       const st = loadState();
       st.csAllocators = Array.isArray(st.csAllocators) ? st.csAllocators : [];
       st.csAllocators.push({ username: newCSUser, password: newCSPass });
       saveState(st);
-      setCSAllocators((st.csAllocators || []).map(a => ({ username: a.username, password: a.password })));
+      setCSAllocators((st.csAllocators || []).map((a) => ({ username: a.username, password: a.password })));
     } finally {
       setNewCSUser("");
       setNewCSPass("");
@@ -2720,7 +2720,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     try {
       await adn7.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
       const list = await adn7.entities.CSUser.list();
-      setCSAllocators((list || []).map(a => ({ username: a.username, password: a.password })));
+      setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
     } catch {}
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`CS Allocator "${username}" deleted`);
@@ -2941,7 +2941,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           const st = String(csSheet.timers[r]?.state || '').toUpperCase();
           const statusCell = String(csSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
           // Consider a row rejected if either timer state is REJECTED or STATUS cell says REJECT
-          const marker = (st === 'REJECTED' || statusCell === 'REJECT') ? 'REJECTED' : (st || statusCell || '');
+          const marker = st === 'REJECTED' || statusCell === 'REJECT' ? 'REJECTED' : st || statusCell || '';
           if (!existingByAwb[awb]) existingByAwb[awb] = [];
           existingByAwb[awb].push(marker);
         }
@@ -3270,7 +3270,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           break;
         }
       }
-      
+
       if (foundAgent) {
         sheets.priorityAgentMap[priorityNum] = foundAgent;
         if (!sheets.agentPriorityMap[foundAgent]) {
@@ -3292,13 +3292,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const handleReassignPriority = (priorityNum, newAgent) => {
     const sheets = loadAgentSheets();
-    
+
     // Remove from old agent's list
     const oldAgent = sheets.priorityAgentMap?.[priorityNum];
     if (oldAgent && sheets.agentPriorityMap?.[oldAgent]) {
       sheets.agentPriorityMap[oldAgent] = sheets.agentPriorityMap[oldAgent].filter((p) => p !== priorityNum);
     }
-    
+
     // Add to new agent's list
     sheets.priorityAgentMap[priorityNum] = newAgent;
     if (!sheets.agentPriorityMap[newAgent]) {
@@ -3395,9 +3395,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 const sheets = agentSheets || {};
                 const statusMap = sheets.priorityStatus || {};
                 const pendingCount = Object.values(statusMap).filter((s) => s !== 'completed').length;
-                return pendingCount > 0 ? (
-                  <Badge className="ml-2 bg-red-500 text-white">{pendingCount}</Badge>
-                ) : null;
+                return pendingCount > 0 ?
+                <Badge className="ml-2 bg-red-500 text-white">{pendingCount}</Badge> :
+                null;
               })()}
             </TabsTrigger>
             <TabsTrigger value="uploads" className="font-bold data-[state=active]:bg-yellow-400/60">
@@ -3405,9 +3405,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               CS Uploads
               {(() => {
                 const pending = (csUploads || []).filter((u) => !u.downloadedBy).length;
-                return pending > 0 ? (
-                  <Badge className="ml-2 bg-blue-500 text-white">{pending}</Badge>
-                ) : null;
+                return pending > 0 ?
+                <Badge className="ml-2 bg-blue-500 text-white">{pending}</Badge> :
+                null;
               })()}
             </TabsTrigger>
             <TabsTrigger value="reports" className="font-bold data-[state=active]:bg-yellow-400/60">
@@ -3567,8 +3567,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 COL_REJ3={COL_REJ3}
                 COL_REJ4={COL_REJ4}
                 COL_REJ5={COL_REJ5}
-                COL_REGION={COL_REGION}
-              />
+                COL_REGION={COL_REGION} />
+
             </Suspense>
 
             
@@ -3583,8 +3583,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 COL_REJ2={COL_REJ2}
                 COL_REJ3={COL_REJ3}
                 COL_REJ4={COL_REJ4}
-                COL_REJ5={COL_REJ5}
-              />
+                COL_REJ5={COL_REJ5} />
+
             </Suspense>
 
             
@@ -3672,8 +3672,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
                     <div className="space-y-2">
                         {agents.map((agent) => {
-                          const metrics = allAgentMetrics[agent.username.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
-                          const agentBreak = csSheet.agentBreaks?.[agent.username];
+                        const metrics = allAgentMetrics[agent.username.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
+                        const agentBreak = csSheet.agentBreaks?.[agent.username];
                         const breakActive = agentBreak?.active && agentBreak?.start;
                         const breakType = breakActive ? BREAK_TYPES.find((b) => b.id === agentBreak.type) : null;
                         const breakDuration = breakActive && agentBreak.start ?
@@ -3686,19 +3686,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                                   <div className="font-bold">{agent.username}</div>
                                   {/* Live status badge + dot */}
                                   {(() => {
-                                    const status = getAgentStatus(agent.username);
-                                    const dotColor = status.label === 'Available' ? 'bg-green-500' : status.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
-                                    return (
-                                      <>
+                                  const status = getAgentStatus(agent.username);
+                                  const dotColor = status.label === 'Available' ? 'bg-green-500' : status.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
+                                  return (
+                                    <>
                                         <div className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
-                                        <Badge className={`${status.classes} text-xs`}>{status.label}{status.label==='On Break' && breakActive ? ` • ${breakDuration}m` : ''}</Badge>
-                                      </>
-                                    );
-                                  })()}
+                                        <Badge className={`${status.classes} text-xs`}>{status.label}{status.label === 'On Break' && breakActive ? ` • ${breakDuration}m` : ''}</Badge>
+                                      </>);
+
+                                })()}
                                   {/* Detailed break type badge when on break */}
                                   {breakActive && breakType &&
-                                    <Badge className={`${breakType.color} text-[10px]`}>{breakType.label}</Badge>
-                                  }
+                                <Badge className={`${breakType.color} text-[10px]`}>{breakType.label}</Badge>
+                                }
                                 </div>
                                 <div className="text-xs text-black/50">
                                   Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
@@ -3706,24 +3706,24 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setSelectedAgent(agent.username)}
-                                  className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedAgent(agent.username)}
+                                className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
                                   <Eye className="w-4 h-4" />
                                 </Button>
                                 <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => downloadAgentData(agent.username)}
-                                  className="font-bold">
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadAgentData(agent.username)}
+                                className="font-bold">
                                   <Download className="w-4 h-4" />
                                 </Button>
                                 <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => deleteAgent(agent.username)}
-                                  className="font-bold text-red-600 hover:bg-red-50">
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deleteAgent(agent.username)}
+                                className="font-bold text-red-600 hover:bg-red-50">
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </div>
@@ -3776,35 +3776,35 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <div className="flex items-center gap-3">
                       <Badge className="bg-yellow-400 text-black font-black">AGENT PROFILE</Badge>
                       {(() => {
-                        const s = getAgentStatus(selectedAgent);
-                        const dc = s.label === 'Available' ? 'bg-green-500' : s.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
-                        return <div className={`w-2 h-2 rounded-full ${dc} animate-pulse`} />;
-                      })()}
+                      const s = getAgentStatus(selectedAgent);
+                      const dc = s.label === 'Available' ? 'bg-green-500' : s.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
+                      return <div className={`w-2 h-2 rounded-full ${dc} animate-pulse`} />;
+                    })()}
                       <span className="font-bold text-lg">{selectedAgent}</span>
                       {/* Live break status on profile header */}
                       {(() => {
-                        const b = csSheet.agentBreaks?.[selectedAgent];
-                        if (b?.active && b?.start) {
-                          const bt = BREAK_TYPES.find((t) => t.id === b.type);
-                          const mins = Math.floor((Date.now() - b.start) / 60000);
-                          return (
-                            <Badge className={`${bt ? bt.color : 'bg-orange-100 text-orange-800 border-orange-300'} text-xs animate-pulse`}>
-                              {bt?.label || 'On Break'} • {mins}m
-                            </Badge>
-                          );
-                        }
-                        return null;
-                      })()}
-                      {(() => {
-                        const m = allAgentMetrics[selectedAgent.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
-                        const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
+                      const b = csSheet.agentBreaks?.[selectedAgent];
+                      if (b?.active && b?.start) {
+                        const bt = BREAK_TYPES.find((t) => t.id === b.type);
+                        const mins = Math.floor((Date.now() - b.start) / 60000);
                         return (
-                          <span className="text-sm text-black/50">
+                          <Badge className={`${bt ? bt.color : 'bg-orange-100 text-orange-800 border-orange-300'} text-xs animate-pulse`}>
+                              {bt?.label || 'On Break'} • {mins}m
+                            </Badge>);
+
+                      }
+                      return null;
+                    })()}
+                      {(() => {
+                      const m = allAgentMetrics[selectedAgent.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
+                      const currentFilter = agentSheets.agentFilters?.[selectedAgent]?.region || "";
+                      return (
+                        <span className="text-sm text-black/50">
                             Pending: {m.awb} ({m.lineSum} lines) | Done: {m.done} ({m.totalDoneLines} lines) | Rej: {m.rej} ({m.totalRejectedLines} lines)
                             {currentFilter && ` | Region: ${currentFilter}`}
-                          </span>
-                        );
-                      })()}
+                          </span>);
+
+                    })()}
                     </div>
                     <div className="flex items-center gap-2">
                       {/* Live status dot in header is above by the name */}
@@ -3822,7 +3822,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                           <SelectItem value={null}>ALL REGIONS</SelectItem>
                           {getUniqueRegions(selectedAgent).map((r) =>
                         <SelectItem key={r} value={r}>{r}</SelectItem>
-                          )}
+                        )}
                         </SelectContent>
                       </Select>
                       <Button onClick={() => downloadAgentData(selectedAgent)} variant="outline" size="sm" className="font-bold">
@@ -3924,78 +3924,78 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       <ScrollArea className="max-h-[500px]">
                         <div className="space-y-2 pr-4">
                           {Object.entries(agentSheets.priorityAgentMap || {}).map(([priorityNum, agentName]) => {
-                            const status = agentSheets.priorityStatus?.[priorityNum] || 'pending';
-                            const isCompleted = status === 'completed';
-                            
-                            // Check real-time status
-                            let actionTaken = false;
-                            let rowStatus = '';
-                            for (let r = 0; r < ROWS_COUNT; r++) {
-                              if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === priorityNum) {
-                                rowStatus = csSheet.timers[r]?.state?.toUpperCase() || '';
-                                actionTaken = rowStatus === 'DONE' || rowStatus === 'REJECTED' || csSheet.timers[r]?.start !== null;
-                                break;
-                              }
+                          const status = agentSheets.priorityStatus?.[priorityNum] || 'pending';
+                          const isCompleted = status === 'completed';
+
+                          // Check real-time status
+                          let actionTaken = false;
+                          let rowStatus = '';
+                          for (let r = 0; r < ROWS_COUNT; r++) {
+                            if (String(csSheet.raw[r]?.[COL_AWB] || '').trim() === priorityNum) {
+                              rowStatus = csSheet.timers[r]?.state?.toUpperCase() || '';
+                              actionTaken = rowStatus === 'DONE' || rowStatus === 'REJECTED' || csSheet.timers[r]?.start !== null;
+                              break;
                             }
-                            
-                            return (
-                              <div
-                                key={priorityNum}
-                                className={`flex items-center gap-3 p-3 rounded border ${
-                                  isCompleted ? 'bg-green-50 border-green-300' : 'bg-white border-red-200'
-                                }`}>
+                          }
+
+                          return (
+                            <div
+                              key={priorityNum}
+                              className={`flex items-center gap-3 p-3 rounded border ${
+                              isCompleted ? 'bg-green-50 border-green-300' : 'bg-white border-red-200'}`
+                              }>
 
                                 <div className="flex items-center gap-2 flex-1">
                                   {isCompleted ?
-                                    <CheckCircle2 className="w-5 h-5 text-green-600" /> :
-                                    <Clock className="w-5 h-5 text-orange-600" />
-                                  }
+                                <CheckCircle2 className="w-5 h-5 text-green-600" /> :
+                                <Clock className="w-5 h-5 text-orange-600" />
+                                }
                                   <Badge className={`font-mono ${isCompleted ? 'bg-green-600' : 'bg-red-600'} text-white`}>
                                     {priorityNum}
                                   </Badge>
 
                                   {agentName ?
-                                    <Badge className="bg-yellow-400 text-black font-bold">
+                                <Badge className="bg-yellow-400 text-black font-bold">
                                       {agentName}
                                     </Badge> :
-                                    <Badge variant="outline" className="text-red-600">
+                                <Badge variant="outline" className="text-red-600">
                                       Not Assigned
                                     </Badge>
-                                  }
+                                }
 
                                   {!isCompleted && agentName &&
-                                    <Select value={agentName} onValueChange={(agent) => handleReassignPriority(priorityNum, agent)}>
+                                <Select value={agentName} onValueChange={(agent) => handleReassignPriority(priorityNum, agent)}>
                                       <SelectTrigger className="w-[140px] h-7 text-xs">
                                         <SelectValue placeholder="Reassign" />
                                       </SelectTrigger>
                                       <SelectContent>
                                         {agents.map((agent) =>
-                                          <SelectItem key={agent.username} value={agent.username}>
+                                    <SelectItem key={agent.username} value={agent.username}>
                                             {agent.username}
                                           </SelectItem>
-                                        )}
+                                    )}
                                       </SelectContent>
                                     </Select>
-                                  }
+                                }
                                 </div>
 
                                 <div className="flex items-center gap-2">
                                   {isCompleted ?
-                                    <Badge className="bg-green-600 text-white text-xs">
+                                <Badge className="bg-green-600 text-white text-xs">
                                       ✓ COMPLETED
                                     </Badge> :
-                                    actionTaken ?
-                                      <Badge className="bg-blue-500 text-white text-xs">
+                                actionTaken ?
+                                <Badge className="bg-blue-500 text-white text-xs">
                                         ⚡ IN PROGRESS
                                       </Badge> :
-                                      <Badge className="bg-orange-500 text-white text-xs">
+                                <Badge className="bg-orange-500 text-white text-xs">
                                         ⏳ PENDING
                                       </Badge>
-                                  }
+                                }
                                 </div>
-                              </div>
-                            );
-                          })}
+                              </div>);
+
+                        })}
                         </div>
                       </ScrollArea>
 
@@ -4004,13 +4004,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                         <h4 className="font-bold text-red-900 mb-2">Agent Overview:</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {agents.map((agent) => {
-                            const myPriorities = agentSheets.agentPriorityMap?.[agent.username] || [];
-                            if (myPriorities.length === 0) return null;
-                            
-                            const completed = myPriorities.filter((p) => agentSheets.priorityStatus?.[p] === 'completed').length;
-                            
-                            return (
-                              <div key={agent.username} className="p-2 bg-white rounded border border-red-200 flex items-center justify-between">
+                          const myPriorities = agentSheets.agentPriorityMap?.[agent.username] || [];
+                          if (myPriorities.length === 0) return null;
+
+                          const completed = myPriorities.filter((p) => agentSheets.priorityStatus?.[p] === 'completed').length;
+
+                          return (
+                            <div key={agent.username} className="p-2 bg-white rounded border border-red-200 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <Badge className="bg-yellow-400 text-black font-bold text-xs">
                                     {agent.username}
@@ -4020,12 +4020,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                                   </span>
                                 </div>
                                 {completed === myPriorities.length ?
-                                  <CheckCircle2 className="w-4 h-4 text-green-600" /> :
-                                  <Clock className="w-4 h-4 text-orange-600" />
-                                }
-                              </div>
-                            );
-                          })}
+                              <CheckCircle2 className="w-4 h-4 text-green-600" /> :
+                              <Clock className="w-4 h-4 text-orange-600" />
+                              }
+                              </div>);
+
+                        })}
                         </div>
                       </div>
                     </CardContent>
@@ -4150,8 +4150,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 COL_REJ4={COL_REJ4}
                 COL_REJ5={COL_REJ5}
                 COL_REGION={COL_REGION}
-                COL_REASON={COL_REASON}
-              />
+                COL_REASON={COL_REASON} />
+
             </Suspense>
 
           </TabsContent>
@@ -4257,30 +4257,30 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <div className="grid md:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-black/60">ADMIN_DEFAULT_USERNAME</Label>
-                      <Input value={envTemplate.ADMIN_DEFAULT_USERNAME} onChange={(e)=>setEnvTemplate({...envTemplate, ADMIN_DEFAULT_USERNAME: e.target.value})} />
+                      <Input value={envTemplate.ADMIN_DEFAULT_USERNAME} onChange={(e) => setEnvTemplate({ ...envTemplate, ADMIN_DEFAULT_USERNAME: e.target.value })} />
                     </div>
                     <div>
                       <Label className="text-xs text-black/60">ADMIN_DEFAULT_PASSWORD</Label>
-                      <Input type="password" value={envTemplate.ADMIN_DEFAULT_PASSWORD} onChange={(e)=>setEnvTemplate({...envTemplate, ADMIN_DEFAULT_PASSWORD: e.target.value})} />
+                      <Input type="password" value={envTemplate.ADMIN_DEFAULT_PASSWORD} onChange={(e) => setEnvTemplate({ ...envTemplate, ADMIN_DEFAULT_PASSWORD: e.target.value })} />
                     </div>
                     <div>
                       <Label className="text-xs text-black/60">OTP_EXPIRY_MINUTES</Label>
-                      <Input value={envTemplate.OTP_EXPIRY_MINUTES} onChange={(e)=>setEnvTemplate({...envTemplate, OTP_EXPIRY_MINUTES: e.target.value})} />
+                      <Input value={envTemplate.OTP_EXPIRY_MINUTES} onChange={(e) => setEnvTemplate({ ...envTemplate, OTP_EXPIRY_MINUTES: e.target.value })} />
                     </div>
                     <div>
                       <Label className="text-xs text-black/60">EMAIL_SENDER_NAME</Label>
-                      <Input value={envTemplate.EMAIL_SENDER_NAME} onChange={(e)=>setEnvTemplate({...envTemplate, EMAIL_SENDER_NAME: e.target.value})} />
+                      <Input value={envTemplate.EMAIL_SENDER_NAME} onChange={(e) => setEnvTemplate({ ...envTemplate, EMAIL_SENDER_NAME: e.target.value })} />
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={async ()=>{ await adn7.functions.invoke('adminSettingsApi', { action: 'updateEnvTemplate', payload: envTemplate }); toast.success('Env template saved'); }}
+                      onClick={async () => {await adn7.functions.invoke('adminSettingsApi', { action: 'updateEnvTemplate', payload: envTemplate });toast.success('Env template saved');}}
                       className="font-bold bg-yellow-400 hover:bg-yellow-500 text-black">
                       <Save className="w-4 h-4 mr-2" /> Save Template
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadDotEnv' }); const blob = new Blob([res.data], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='.env'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async () => {const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadDotEnv' });const blob = new Blob([res.data], { type: 'text/plain' });const url = URL.createObjectURL(blob);const a = document.createElement('a');a.href = url;a.download = '.env';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Download .env
                     </Button>
@@ -4291,52 +4291,52 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <Label className="text-sm font-bold">Custom Variables</Label>
                     <p className="text-xs text-black/50 mb-2">Add any extra variables you need (they will be included in the downloaded .env).</p>
 
-                    {Object.entries(envTemplate).filter(([k]) => !['ADMIN_DEFAULT_USERNAME','ADMIN_DEFAULT_PASSWORD','OTP_EXPIRY_MINUTES','EMAIL_SENDER_NAME'].includes(k)).length === 0 && (
-                      <p className="text-xs text-black/40">No custom variables yet.</p>
-                    )}
+                    {Object.entries(envTemplate).filter(([k]) => !['ADMIN_DEFAULT_USERNAME', 'ADMIN_DEFAULT_PASSWORD', 'OTP_EXPIRY_MINUTES', 'EMAIL_SENDER_NAME'].includes(k)).length === 0 &&
+                    <p className="text-xs text-black/40">No custom variables yet.</p>
+                    }
 
-                    {Object.entries(envTemplate)
-                      .filter(([k]) => !['ADMIN_DEFAULT_USERNAME','ADMIN_DEFAULT_PASSWORD','OTP_EXPIRY_MINUTES','EMAIL_SENDER_NAME'].includes(k))
-                      .map(([k, v]) => (
-                        <div key={k} className="grid md:grid-cols-5 gap-2 items-center mb-2">
+                    {Object.entries(envTemplate).
+                    filter(([k]) => !['ADMIN_DEFAULT_USERNAME', 'ADMIN_DEFAULT_PASSWORD', 'OTP_EXPIRY_MINUTES', 'EMAIL_SENDER_NAME'].includes(k)).
+                    map(([k, v]) =>
+                    <div key={k} className="grid md:grid-cols-5 gap-2 items-center mb-2">
                           <Input
-                            value={k}
-                            onChange={(e) => {
-                              const newKey = e.target.value.trim();
-                              setEnvTemplate(prev => {
-                                const next = { ...prev };
-                                const val = next[k];
-                                delete next[k];
-                                next[newKey || k] = val;
-                                return next;
-                              });
-                            }}
-                            placeholder="KEY"
-                          />
+                        value={k}
+                        onChange={(e) => {
+                          const newKey = e.target.value.trim();
+                          setEnvTemplate((prev) => {
+                            const next = { ...prev };
+                            const val = next[k];
+                            delete next[k];
+                            next[newKey || k] = val;
+                            return next;
+                          });
+                        }}
+                        placeholder="KEY" />
+
                           <div className="md:col-span-3">
                             <Input
-                              value={v}
-                              onChange={(e) => setEnvTemplate(prev => ({ ...prev, [k]: e.target.value }))}
-                              placeholder="value"
-                            />
+                          value={v}
+                          onChange={(e) => setEnvTemplate((prev) => ({ ...prev, [k]: e.target.value }))}
+                          placeholder="value" />
+
                           </div>
                           <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEnvTemplate(prev => { const next = { ...prev }; delete next[k]; return next; })}
-                            className="text-red-600 hover:bg-red-50"
-                          >
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEnvTemplate((prev) => {const next = { ...prev };delete next[k];return next;})}
+                        className="text-red-600 hover:bg-red-50">
+
                             <Trash2 className="w-4 h-4 mr-1" /> Remove
                           </Button>
                         </div>
-                      ))}
+                    )}
 
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setEnvTemplate(prev => ({ ...prev, ["CUSTOM_VAR_" + Date.now()]: '' }))}
-                      className="mt-2"
-                    >
+                      onClick={() => setEnvTemplate((prev) => ({ ...prev, ["CUSTOM_VAR_" + Date.now()]: '' }))}
+                      className="mt-2">
+
                       <Plus className="w-4 h-4 mr-1" /> Add Variable
                     </Button>
                   </div>
@@ -4352,17 +4352,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'exportBackup' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backup.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async () => {const res = await adn7.functions.invoke('adminSettingsApi', { action: 'exportBackup' });const blob = new Blob([res.data], { type: 'application/json' });const url = URL.createObjectURL(blob);const a = document.createElement('a');a.href = url;a.download = 'backup.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Export Backup
                     </Button>
-                    <input ref={backupFileInputRef} type="file" accept="application/json" className="hidden" onChange={async (e)=>{
-                      const file = e.target.files?.[0]; if (!file) return; setImportingBackup(true);
-                      try { const text = await file.text(); const backup = JSON.parse(text); await adn7.functions.invoke('adminSettingsApi', { action: 'importBackup', payload: { backup } }); toast.success('Backup imported'); CHANNEL.postMessage({ type: 'app:sync' }); }
-                      catch { toast.error('Invalid backup file'); }
-                      finally { setImportingBackup(false); e.target.value=''; }
-                    }}/>
-                    <Button onClick={()=>backupFileInputRef.current?.click()} className="font-bold bg-blue-600 hover:bg-blue-700 text-white" disabled={importingBackup}>
+                    <input ref={backupFileInputRef} type="file" accept="application/json" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0];if (!file) return;setImportingBackup(true);
+                      try {const text = await file.text();const backup = JSON.parse(text);await adn7.functions.invoke('adminSettingsApi', { action: 'importBackup', payload: { backup } });toast.success('Backup imported');CHANNEL.postMessage({ type: 'app:sync' });}
+                      catch {toast.error('Invalid backup file');} finally
+                      {setImportingBackup(false);e.target.value = '';}
+                    }} />
+                    <Button onClick={() => backupFileInputRef.current?.click()} className="font-bold bg-blue-600 hover:bg-blue-700 text-white" disabled={importingBackup}>
                       {importingBackup ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
                       Import Backup
                     </Button>
@@ -4377,17 +4377,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   <CardTitle className="text-lg font-bold">Developer Bundle</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <p className="text-xs text-black/60">Download entities schemas, function docs, and base44Client helper (admin-only).</p>
+                  <p className="text-xs text-black/60">Download entities schemas, function docs, and Client helper (admin-only).</p>
                   <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' }); const blob = new Blob([res.data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='developer_bundle.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async () => {const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadDeveloperBundle' });const blob = new Blob([res.data], { type: 'application/json' });const url = URL.createObjectURL(blob);const a = document.createElement('a');a.href = url;a.download = 'developer_bundle.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Download Developer Bundle (JSON)
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={async ()=>{ const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadBackendZip' }); const blob = new Blob([res.data], { type: 'application/zip' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='backend_bundle.zip'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }}
+                      onClick={async () => {const res = await adn7.functions.invoke('adminSettingsApi', { action: 'downloadBackendZip' });const blob = new Blob([res.data], { type: 'application/zip' });const url = URL.createObjectURL(blob);const a = document.createElement('a');a.href = url;a.download = 'backend_bundle.zip';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}}
                       className="font-bold">
                       <Download className="w-4 h-4 mr-2" /> Download Backend ZIP
                     </Button>
@@ -4475,9 +4475,9 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
 
     // CS confirmations are informational only; do not change rejection state or trigger blinks
     if (value.trim()) {
+
       // no-op: keep state as-is (REJECTED rows remain for CS view)
     }
-
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
@@ -4821,10 +4821,10 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         setCSSheet(updated);
         const sheets = loadAgentSheets();
         setAgentSheets(sheets);
-        
+
         // Update priority list
         setPriorityList(sheets);
-        setForceRefresh(prev => prev + 1);
+        setForceRefresh((prev) => prev + 1);
 
         // Update break status from other tabs/sessions
         const agentBreak = updated.agentBreaks?.[username];
@@ -4947,11 +4947,11 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       // Check if this AWB was a priority number for this agent
       const rowAwb = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
       const myPriorityNumbers = sheets.agentPriorityMap?.[username] || [];
-      
+
       if (myPriorityNumbers.includes(rowAwb)) {
         // Mark this priority number as completed
         sheets.priorityStatus[rowAwb] = 'completed';
-        
+
         // Check if agent completed ALL their priority numbers
         const allMyPrioritiesCompleted = myPriorityNumbers.every((pNum) => {
           // Check if this priority number is completed
@@ -4964,13 +4964,13 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           }
           return false;
         });
-        
+
         if (allMyPrioritiesCompleted) {
           // Remove this agent from priority mode
           delete sheets.agentPriorityMap[username];
           saveAgentSheets(sheets);
           setAgentSheets(sheets);
-          setForceRefresh(prev => prev + 1);
+          setForceRefresh((prev) => prev + 1);
           toast.success(`✅ All priority AWBs completed! Showing all content now.`, { duration: 5000 });
           CHANNEL.postMessage({ type: "app:sync" });
         } else {
@@ -5119,7 +5119,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       // Apply priority mode filter for pending
       const myPriorityNumbers = agentSheets.agentPriorityMap?.[username] || [];
       const priorityModeActive = agentSheets.priorityModeActive && myPriorityNumbers.length > 0;
-      
+
       if (priorityModeActive) {
         const rowAwb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
         if (!myPriorityNumbers.includes(rowAwb)) continue;
@@ -5311,7 +5311,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
                   const XLSX = await import('xlsx');
-    const wb = XLSX.utils.book_new();
+                  const wb = XLSX.utils.book_new();
 
                   // Done sheet
                   const doneData = [['AWB', 'LINE', 'LOT', 'REGION', 'TIMESTAMP']];
@@ -5348,18 +5348,18 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
         {/* Agent Sheet - Optimized */}
         <ExcelSheet
-        columns={AGENT_COLUMNS}
-        data={csSheet.raw}
-        timers={csSheet.timers}
-        onCellChange={handleCellChange}
-        onStatusClick={handleStatusClick}
-        isAdmin={false}
-        agentUsername={username}
-        editableCols={AGENT_EDITABLE}
-        blinkRows={csSheet.blinkRows}
-        regionFilter={regionFilter}
-        priorityList={priorityList}
-        zoomLevel={zoomLevel} />
+          columns={AGENT_COLUMNS}
+          data={csSheet.raw}
+          timers={csSheet.timers}
+          onCellChange={handleCellChange}
+          onStatusClick={handleStatusClick}
+          isAdmin={false}
+          agentUsername={username}
+          editableCols={AGENT_EDITABLE}
+          blinkRows={csSheet.blinkRows}
+          regionFilter={regionFilter}
+          priorityList={priorityList}
+          zoomLevel={zoomLevel} />
 
 
         {/* Start Reminder Dialog */}
