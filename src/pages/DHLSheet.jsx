@@ -482,6 +482,23 @@ const LoginScreen = ({ onLogin }) => {
     } catch {}
   }, []);
 
+  const [maintenanceInfo, setMaintenanceInfo] = useState({ on: false, message: '' });
+  useEffect(() => {
+    let stopped = false;
+    const fetchCfg = async () => {
+      try {
+        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
+        const cfg = (cfgs || [])[0];
+        if (!stopped && cfg) {
+          setMaintenanceInfo({ on: !!cfg.maintenance_mode, message: String(cfg.banner_message || '').trim() });
+        }
+      } catch {}
+    };
+    fetchCfg();
+    const id = setInterval(fetchCfg, 3000);
+    return () => { stopped = true; clearInterval(id); };
+  }, []);
+
   const handleAdminLogin = async () => {
     const state = loadState();
     if (!adminUser.trim() || !adminPass) {
@@ -824,6 +841,11 @@ const LoginScreen = ({ onLogin }) => {
       )}
 
       <div className="w-full max-w-md relative z-10">
+        {maintenanceInfo.on && (
+          <div className="mb-4 p-3 rounded-xl border-2 border-yellow-300 bg-yellow-50 text-yellow-900 text-sm font-semibold shadow">
+            {maintenanceInfo.message || 'We are doing some updates in the app, We will get back soon...'}
+          </div>
+        )}
         {/* Brand Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}

@@ -66,7 +66,7 @@ export default function Layout({ children, currentPageName }) {
           {banner || 'We are doing some updates in the app, We will get back soon...'}
         </div>
       )}
-      {(!maintenance || session.role === 'admin') && children}
+      {children}
     </div>
   );
 }
