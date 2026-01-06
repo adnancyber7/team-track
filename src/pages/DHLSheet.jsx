@@ -2417,7 +2417,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setRolePerm(next);
     await pushAppState('role_permissions', next);
     toast.success('Role permissions saved');
-    await logAudit('update_role_permissions', next);
+    logAudit('update_role_permissions', next);
   };
   const loadAudit = async () => {
     try {
@@ -2430,7 +2430,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     try {
       await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner } });
       toast.success('Maintenance settings saved');
-      await logAudit('update_maintenance', { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner });
+      logAudit('update_maintenance', { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner });
     } catch {}
   };
 
@@ -2844,7 +2844,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       setNewAgentPass('');
       await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
-      await logAudit('create_agent', { username });
+      logAudit('create_agent', { username });
       toast.success(`Agent "${username}" created`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to create agent');
@@ -2864,7 +2864,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-      await logAudit('delete_agent', { username });
+      logAudit('delete_agent', { username });
     toast.success(`Agent "${username}" deleted`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to delete agent');
@@ -2889,7 +2889,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-      await logAudit('create_cs_allocator', { username });
+      logAudit('create_cs_allocator', { username });
       toast.success(`CS Allocator "${username}" created`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to create CS allocator');
@@ -2910,7 +2910,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-      await logAudit('delete_cs_allocator', { username });
+      logAudit('delete_cs_allocator', { username });
     toast.success(`CS Allocator "${username}" deleted`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to delete CS allocator');
@@ -2938,7 +2938,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload });
     } catch {}
     setNewAdminPass("");
-    await logAudit('update_admin_credentials', { username: newAdminUser });
+    logAudit('update_admin_credentials', { username: newAdminUser });
     toast.success("Admin credentials updated");
   };
 
@@ -2960,7 +2960,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     try {
       await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { admin_email: adminEmail } });
     } catch {}
-    await logAudit('update_admin_email', { email: adminEmail });
+    logAudit('update_admin_email', { email: adminEmail });
     toast.success("Recovery email saved successfully");
   };
 
@@ -3065,7 +3065,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setRegionFilter(region);
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`Region filter "${region || 'ALL'}" applied to ${agent}${region ? ' - Agent will only see rows with this region' : ' - Agent will see all their rows'}`);
-    await logAudit('apply_region_filter', { agent, region });
+    logAudit('apply_region_filter', { agent, region });
   };
 
   const clearAllData = () => {
@@ -3087,7 +3087,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         saveCSSheet(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("All data cleared");
-        await logAudit('clear_cs_sheet', {});
+        logAudit('clear_cs_sheet', {});
       }
     });
   };
@@ -3500,7 +3500,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     saveAgentSheets(sheets);
     setAgentSheets(sheets); // Update state immediately
     CHANNEL.postMessage({ type: "app:sync" });
-    await logAudit('priority_activate', { count: numbers.length });
+    logAudit('priority_activate', { count: numbers.length });
     toast.success(`🚨 Priority Mode activated for ${numbers.length} AWBs!`);
   };
 
@@ -3561,7 +3561,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         setPriorityNumbers("");
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("Priority Mode deactivated");
-        await logAudit('priority_deactivate', {});
+        logAudit('priority_deactivate', {});
       }
     });
   };
