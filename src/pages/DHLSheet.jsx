@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -2376,6 +2377,78 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const fileInputRef = useRef(null);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
   const prevAgentStatuses = useRef({});
+  // Role permissions config (stored in AppState: role_permissions)
+  const [rolePerm, setRolePerm] = useState({
+    agent: { allowCopyButtons: true, allowDownloadReport: true },
+    cs_allocator: { allowUpload: true, allowClear: true, allowDownload: true }
+  });
+  // Maintenance settings (mirrors AdminConfig)
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceBanner, setMaintenanceBanner] = useState("");
+  // Audit logs
+  const [auditLogs, setAuditLogs] = useState([]);
+
+  // Write an audit record (admin actions in this dashboard)
+  const logAudit = async (action, details = {}, targetType = "", targetId = "") => {
+    try {
+      await adn7.entities.AuditLog.create({
+        action,
+        actor_username: username,
+        actor_role: 'admin',
+        target_type: targetType,
+        target_identifier: targetId,
+        details: JSON.stringify(details || {}),
+        timestamp: Date.now()
+      });
+    } catch {}
+  };
+
+  const loadRolePerms = async () => {
+    try {
+      const rec = await pullAppState('role_permissions');
+      const cfg = rec?.data;
+      if (cfg) setRolePerm((prev) => ({
+        agent: { ...prev.agent, ...(cfg.agent || {}) },
+        cs_allocator: { ...prev.cs_allocator, ...(cfg.cs_allocator || {}) }
+      }));
+    } catch {}
+  };
+  const saveRolePerms = async (next) => {
+    setRolePerm(next);
+    await pushAppState('role_permissions', next);
+    toast.success('Role permissions saved');
+    await logAudit('update_role_permissions', next);
+  };
+  const loadAudit = async () => {
+    try {
+      const list = await adn7.entities.AuditLog.list();
+      const sorted = (list || []).sort((a,b) => (new Date(b.created_date).getTime()) - (new Date(a.created_date).getTime()));
+      setAuditLogs(sorted.slice(0, 100));
+    } catch {}
+  };
+  const saveMaintenance = async () => {
+    try {
+      await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner } });
+      toast.success('Maintenance settings saved');
+      await logAudit('update_maintenance', { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner });
+    } catch {}
+  };
+
+  useEffect(() => {
+    (async () => {
+      // Load AdminConfig
+      try {
+        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
+        const cfg = (cfgs || [])[0];
+        if (cfg) {
+          setMaintenanceMode(!!cfg.maintenance_mode);
+          setMaintenanceBanner(String(cfg.banner_message || ''));
+        }
+      } catch {}
+      await loadRolePerms();
+      await loadAudit();
+    })();
+  }, []);
 
   // Precompute metrics for all agents in one pass for performance
   const allAgentMetrics = useMemo(() => {
@@ -2771,6 +2844,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       setNewAgentPass('');
       await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
+      await logAudit('create_agent', { username });
       toast.success(`Agent "${username}" created`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to create agent');
@@ -2790,7 +2864,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-      toast.success(`Agent "${username}" deleted`);
+      await logAudit('delete_agent', { username });
+    toast.success(`Agent "${username}" deleted`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to delete agent');
     } finally {
@@ -2814,6 +2889,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
+      await logAudit('create_cs_allocator', { username });
       toast.success(`CS Allocator "${username}" created`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to create CS allocator');
@@ -2834,7 +2910,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-      toast.success(`CS Allocator "${username}" deleted`);
+      await logAudit('delete_cs_allocator', { username });
+    toast.success(`CS Allocator "${username}" deleted`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to delete CS allocator');
     } finally {
@@ -2861,6 +2938,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload });
     } catch {}
     setNewAdminPass("");
+    await logAudit('update_admin_credentials', { username: newAdminUser });
     toast.success("Admin credentials updated");
   };
 
@@ -2882,6 +2960,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     try {
       await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { admin_email: adminEmail } });
     } catch {}
+    await logAudit('update_admin_email', { email: adminEmail });
     toast.success("Recovery email saved successfully");
   };
 
@@ -3419,6 +3498,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     saveAgentSheets(sheets);
     setAgentSheets(sheets); // Update state immediately
     CHANNEL.postMessage({ type: "app:sync" });
+    await logAudit('priority_activate', { count: numbers.length });
     toast.success(`🚨 Priority Mode activated for ${numbers.length} AWBs!`);
   };
 
@@ -3467,7 +3547,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       message: 'Deactivate Priority Mode and remove all priority assignments?',
       variant: 'warning',
       confirmText: 'Deactivate',
-      onConfirm: () => {
+      onConfirm: async () => {
         const sheets = loadAgentSheets();
         sheets.priorityNumbers = "";
         sheets.priorityModeActive = false;
@@ -3479,6 +3559,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         setPriorityNumbers("");
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("Priority Mode deactivated");
+        await logAudit('priority_deactivate', {});
       }
     });
   };
