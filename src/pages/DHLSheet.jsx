@@ -2537,10 +2537,33 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   };
   const saveMaintenance = async () => {
     try {
-      await adn7.functions.invoke('adminSettingsApi', { action: 'updateSettings', payload: { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner } });
-      toast.success('Maintenance settings saved');
+      await adn7.functions.invoke('adminSettingsApi', { 
+        action: 'updateSettings', 
+        payload: { 
+          maintenance_mode: maintenanceMode, 
+          banner_message: maintenanceBanner 
+        } 
+      });
+      
+      // If enabling maintenance, kick all non-admin users
+      if (maintenanceMode) {
+        try {
+          const rows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+          const sessionData = rows?.[0]?.data || {};
+          Object.keys(sessionData).forEach(key => {
+            if (sessionData[key]?.role !== 'admin') {
+              sessionData[key].kick = true;
+            }
+          });
+          if (rows?.[0]) await adn7.entities.AppState.update(rows[0].id, { data: sessionData });
+        } catch {}
+      }
+      
+      toast.success(`✅ Maintenance mode ${maintenanceMode ? 'enabled' : 'disabled'}`);
       logAudit('update_maintenance', { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner });
-    } catch {}
+    } catch {
+      toast.error('Failed to save maintenance settings');
+    }
   };
 
   useEffect(() => {
@@ -2551,12 +2574,26 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         const cfg = (cfgs || [])[0];
         if (cfg) {
           setMaintenanceMode(!!cfg.maintenance_mode);
-          setMaintenanceBanner(String(cfg.banner_message || ''));
+          setMaintenanceBanner(String(cfg.banner_message || '').trim());
         }
       } catch {}
       await loadRolePerms();
       await loadAudit();
     })();
+    
+    // Poll maintenance mode for real-time updates
+    const pollMaintenance = setInterval(async () => {
+      try {
+        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
+        const cfg = (cfgs || [])[0];
+        if (cfg) {
+          setMaintenanceMode(!!cfg.maintenance_mode);
+          setMaintenanceBanner(String(cfg.banner_message || '').trim());
+        }
+      } catch {}
+    }, 2000);
+    
+    return () => clearInterval(pollMaintenance);
   }, []);
 
   // Poll active sessions for real-time presence - faster updates
@@ -2942,133 +2979,156 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   };
 
   const createAgent = async () => {
-    // Validate inputs early to avoid bad records
     const username = String(newAgentUser || '').trim();
     const password = String(newAgentPass || '');
-    if (!username || !password) { toast.error('Please enter agent username and password'); return; }
-    if (password.length < 4) { toast.error('Password must be at least 4 characters'); return; }
-
-    // Prevent conflict with admin username
-    const state = loadState();
-    if (username.toLowerCase() === String(state.admin.username || '').toLowerCase()) {
-      toast.error('Agent username cannot be same as admin');
-      return;
+    
+    if (!username || !password) { 
+      toast.error('Please enter agent username and password'); 
+      return; 
+    }
+    if (password.length < 4) { 
+      toast.error('Password must be at least 4 characters'); 
+      return; 
     }
 
     try {
-      // Enforce unique username (case-insensitive)
-      const existing = await adn7.entities.AgentUser.filter({ username });
-      if (existing && existing[0]) {
-        toast.error('Agent username already exists');
-        return;
-      }
-
       await adn7.entities.AgentUser.create({ username, password, is_active: true });
+      
+      // Instant refresh
       const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       setNewAgentUser('');
       setNewAgentPass('');
+      
       await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
       logAudit('create_agent', { username });
-      toast.success(`Agent "${username}" created`);
+      toast.success(`✅ Agent "${username}" created`);
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to create agent');
+      const msg = e?.message || String(e);
+      if (msg.includes('duplicate') || msg.includes('unique')) {
+        toast.error('Username already exists');
+      } else {
+        toast.error('Failed to create agent');
+      }
     }
   };
 
   const deleteAgent = async (username) => {
-    // Delete agent from backend and clean all references
-    try {
-      const rows = await adn7.entities.AgentUser.filter({ username });
-      if (rows && rows[0]) {
-        await adn7.entities.AgentUser.delete(rows[0].id);
-      }
-      
-      // Force logout deleted agent from all active sessions
-      try {
-        const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
-        const sessionData = sessionRows?.[0]?.data || {};
-        Object.keys(sessionData).forEach(key => {
-          if (sessionData[key]?.username === username && sessionData[key]?.role === 'agent') {
-            sessionData[key].kick = true;
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Agent',
+      message: `Delete agent "${username}"? This will remove all assignments and log them out.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        try {
+          const rows = await adn7.entities.AgentUser.filter({ username });
+          if (rows && rows[0]) {
+            await adn7.entities.AgentUser.delete(rows[0].id);
           }
-        });
-        if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
-      } catch {}
-      
-      // Clean CS sheet assignments and priority references
-      await cleanOrphanDataForAgent(username);
+          
+          // Force logout deleted agent
+          try {
+            const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+            const sessionData = sessionRows?.[0]?.data || {};
+            Object.keys(sessionData).forEach(key => {
+              if (sessionData[key]?.username === username && sessionData[key]?.role === 'agent') {
+                sessionData[key].kick = true;
+              }
+            });
+            if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+          } catch {}
+          
+          // Clean CS sheet assignments
+          await cleanOrphanDataForAgent(username);
 
-      const list = await adn7.entities.AgentUser.list();
-      setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
-      await notifyUsersSync();
-      logAudit('delete_agent', { username });
-      toast.success(`Agent "${username}" deleted`);
-    } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to delete agent');
-    } finally {
-      CHANNEL.postMessage({ type: 'app:sync' });
-    }
+          const list = await adn7.entities.AgentUser.list();
+          setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
+          await notifyUsersSync();
+          logAudit('delete_agent', { username });
+          toast.success(`✅ Agent "${username}" deleted`);
+          CHANNEL.postMessage({ type: 'app:sync' });
+        } catch (e) {
+          toast.error('Failed to delete agent');
+        }
+      }
+    });
   };
 
   const createCSAllocator = async () => {
-    // Validate inputs
     const username = String(newCSUser || '').trim();
     const password = String(newCSPass || '');
-    if (!username || !password) { toast.error('Please enter CS Allocator username and password'); return; }
-    if (password.length < 4) { toast.error('Password must be at least 4 characters'); return; }
+    
+    if (!username || !password) { 
+      toast.error('Please enter CS username and password'); 
+      return; 
+    }
+    if (password.length < 4) { 
+      toast.error('Password must be at least 4 characters'); 
+      return; 
+    }
 
     try {
-      // Unique username check
-      const existing = await adn7.entities.CSUser.filter({ username });
-      if (existing && existing[0]) { toast.error('CS username already exists'); return; }
-
-      await adn7.entities.CSUser.create({ username, password });
+      await adn7.entities.CSUser.create({ username, password, is_active: true });
+      
+      // Instant refresh
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
-      await notifyUsersSync();
-      logAudit('create_cs_allocator', { username });
-      toast.success(`CS Allocator "${username}" created`);
-    } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to create CS allocator');
-    } finally {
       setNewCSUser('');
       setNewCSPass('');
+      
+      await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
+      logAudit('create_cs_allocator', { username });
+      toast.success(`✅ CS Allocator "${username}" created`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if (msg.includes('duplicate') || msg.includes('unique')) {
+        toast.error('Username already exists');
+      } else {
+        toast.error('Failed to create CS allocator');
+      }
     }
   };
 
   const deleteCSAllocator = async (username) => {
-    // Delete CS user and refresh list
-    try {
-      const rows = await adn7.entities.CSUser.filter({ username });
-      if (rows && rows[0]) {
-        await adn7.entities.CSUser.delete(rows[0].id);
-      }
-      
-      // Force logout deleted CS user from all active sessions
-      try {
-        const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
-        const sessionData = sessionRows?.[0]?.data || {};
-        Object.keys(sessionData).forEach(key => {
-          if (sessionData[key]?.username === username && sessionData[key]?.role === 'cs_allocator') {
-            sessionData[key].kick = true;
+    setConfirmDialog({
+      open: true,
+      title: 'Delete CS Allocator',
+      message: `Delete CS user "${username}"? They will be logged out immediately.`,
+      variant: 'danger',
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        try {
+          const rows = await adn7.entities.CSUser.filter({ username });
+          if (rows && rows[0]) {
+            await adn7.entities.CSUser.delete(rows[0].id);
           }
-        });
-        if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
-      } catch {}
-      
-      const list = await adn7.entities.CSUser.list();
-      setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
-      await notifyUsersSync();
-      logAudit('delete_cs_allocator', { username });
-      toast.success(`CS Allocator "${username}" deleted`);
-    } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to delete CS allocator');
-    } finally {
-      CHANNEL.postMessage({ type: 'app:sync' });
-    }
+          
+          // Force logout deleted CS user
+          try {
+            const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+            const sessionData = sessionRows?.[0]?.data || {};
+            Object.keys(sessionData).forEach(key => {
+              if (sessionData[key]?.username === username && sessionData[key]?.role === 'cs_allocator') {
+                sessionData[key].kick = true;
+              }
+            });
+            if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+          } catch {}
+          
+          const list = await adn7.entities.CSUser.list();
+          setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
+          await notifyUsersSync();
+          logAudit('delete_cs_allocator', { username });
+          toast.success(`✅ CS "${username}" deleted`);
+          CHANNEL.postMessage({ type: 'app:sync' });
+        } catch (e) {
+          toast.error('Failed to delete CS allocator');
+        }
+      }
+    });
   };
 
   const saveAdminCreds = async () => {
@@ -4645,45 +4705,154 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="mt-4">
-            {/* Maintenance controls moved to Admin Settings page to avoid duplicates */}
-
+            {/* Maintenance Mode Control */}
             <Card className="bg-white/95 border-black/10 shadow-lg mb-4">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold">Role Permissions</CardTitle>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-orange-600" />
+                  Maintenance Mode
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-3">
-                  <div className="p-3 rounded border">
-                    <Label className="font-bold">Agent</Label>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm">Allow Copy Buttons</span>
-                      <Switch checked={!!rolePerm.agent.allowCopyButtons} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, agent: { ...rolePerm.agent, allowCopyButtons: v } })} />
+                <div className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <Label className="font-bold text-lg">Enable Maintenance Mode</Label>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Disables Agent and CS logins. Shows banner on login screen.
+                      </p>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm">Allow Download Report</span>
-                      <Switch checked={!!rolePerm.agent.allowDownloadReport} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, agent: { ...rolePerm.agent, allowDownloadReport: v } })} />
-                    </div>
+                    <Switch 
+                      checked={maintenanceMode} 
+                      onCheckedChange={setMaintenanceMode}
+                      className="scale-125"
+                    />
                   </div>
-                  <div className="p-3 rounded border">
-                    <Label className="font-bold">CS Allocator</Label>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm">Allow Upload</span>
-                      <Switch checked={!!rolePerm.cs_allocator.allowUpload} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, cs_allocator: { ...rolePerm.cs_allocator, allowUpload: v } })} />
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold">Banner Message</Label>
+                    <Textarea
+                      value={maintenanceBanner}
+                      onChange={(e) => setMaintenanceBanner(e.target.value)}
+                      placeholder="We are doing some updates in the app, We will get back soon..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+
+                  {maintenanceMode && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-300 rounded text-sm text-red-700 font-semibold">
+                      ⚠️ Warning: All non-admin users will be immediately logged out when you save.
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm">Allow Clear</span>
-                      <Switch checked={!!rolePerm.cs_allocator.allowClear} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, cs_allocator: { ...rolePerm.cs_allocator, allowClear: v } })} />
+                  )}
+
+                  <Button 
+                    onClick={saveMaintenance} 
+                    className="w-full mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Maintenance Settings
+                  </Button>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-3 pt-4 border-t">
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div>
+                      <Label className="font-bold">Admin Login</Label>
+                      <p className="text-xs text-gray-600">Always enabled</p>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-sm">Allow Download</span>
-                      <Switch checked={!!rolePerm.cs_allocator.allowDownload} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, cs_allocator: { ...rolePerm.cs_allocator, allowDownload: v } })} />
+                    <Badge className="bg-green-100 text-green-800">ON</Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div>
+                      <Label className="font-bold">Agent Login</Label>
+                      <p className="text-xs text-gray-600">Controlled by maintenance</p>
                     </div>
+                    <Badge className={maintenanceMode ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
+                      {maintenanceMode ? "BLOCKED" : "ON"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                    <div>
+                      <Label className="font-bold">CS Team Login</Label>
+                      <p className="text-xs text-gray-600">Controlled by maintenance</p>
+                    </div>
+                    <Badge className={maintenanceMode ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
+                      {maintenanceMode ? "BLOCKED" : "ON"}
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/95 border-black/10 shadow-lg">
+            {/* Admin Credentials moved after Maintenance Mode */}
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Admin Credentials
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-black/60">Admin Username</Label>
+                    <Input
+                      value={newAdminUser}
+                      onChange={(e) => setNewAdminUser(e.target.value)}
+                      placeholder="Enter new username"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-black/60">New Password (optional)</Label>
+                    <Input
+                      type="password"
+                      value={newAdminPass}
+                      onChange={(e) => setNewAdminPass(e.target.value)}
+                      placeholder="Leave empty to keep current"
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button onClick={saveAdminCreds} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Credentials
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/95 border-black/10 shadow-lg">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Recovery Email
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-black/60">Email Address</Label>
+                    <Input
+                      type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      placeholder="admin@company.com"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Used for password recovery via OTP
+                    </p>
+                  </div>
+                  <Button onClick={saveAdminEmail} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Email
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-white/95 border-black/10 shadow-lg mt-4">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-bold">Audit Log (latest)</CardTitle>
               </CardHeader>
@@ -4716,79 +4885,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 )}
               </CardContent>
             </Card>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Card className="bg-white/95 border-black/10 shadow-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Admin Credentials
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-black/60">Admin Username</Label>
-                    <Input
-                      value={newAdminUser}
-                      onChange={(e) => setNewAdminUser(e.target.value)}
-                      placeholder="Enter new username"
-                      className="mt-1" />
-
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">New Password (optional)</Label>
-                    <Input
-                      type="password"
-                      value={newAdminPass}
-                      onChange={(e) => setNewAdminPass(e.target.value)}
-                      placeholder="Leave empty to keep current"
-                      className="mt-1" />
-
-                  </div>
-                  <Button onClick={saveAdminCreds} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Credentials
-                  </Button>
-                  <Separator className="my-4" />
-                  <p className="text-xs text-center text-black/40 font-medium">Made by Adnan</p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/95 border-black/10 shadow-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Security / Account Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-black/60">Recovery Email</Label>
-                    <Input
-                      type="email"
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      placeholder="admin@company.com"
-                      className="mt-1" />
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      Used for password recovery via OTP
-                    </p>
-                  </div>
-                  <Button onClick={saveAdminEmail} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Email
-                  </Button>
-
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-4">
-                    <p className="text-xs text-blue-800">
-                      <b>Forgot Password:</b> Uses email OTP verification for secure password reset.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
             {/* Backend Manager */}
             <div className="grid md:grid-cols-2 gap-4 mt-4">
