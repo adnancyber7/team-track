@@ -3592,6 +3592,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="dashboard">
           <TabsList className="bg-white/80 border border-black/10 p-1 h-auto flex flex-wrap">
+            {/* Role-based access guards: hide tabs if role permissions disabled */}
             <TabsTrigger value="dashboard" className="font-bold data-[state=active]:bg-yellow-400/60">
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
