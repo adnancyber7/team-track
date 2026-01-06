@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { createPageUrl } from "./utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -3680,7 +3681,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               <span className="font-bold">Welcome, {username}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={onLogout} variant="outline" className="font-bold bg-yellow-400/50 hover:bg-yellow-400/70 border-black/10">
+              <Button onClick={() => (window.location.href = createPageUrl('AdminSettings'))} variant="outline" className="font-bold">
+                Settings
+              </Button>
+              <Button onClick={onLogout} variant="outline" className="font-bold bg.yellow-400/50 hover:bg-yellow-400/70 border-black/10">
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
