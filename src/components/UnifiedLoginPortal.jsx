@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, Lock, User, Loader2, AlertCircle, CheckCircle2, KeyRound, Shield, Users, Briefcase } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,25 @@ export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveStat
   const [sendingOTP, setSendingOTP] = useState(false);
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState(5);
+  const [maintenance, setMaintenance] = useState(false);
+  const [banner, setBanner] = useState("");
+
+  useEffect(() => {
+    let stopped = false;
+    const fetchCfg = async () => {
+      try {
+        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
+        const cfg = (cfgs || [])[0];
+        if (!stopped && cfg) {
+          setMaintenance(!!cfg.maintenance_mode);
+          setBanner(String(cfg.banner_message || '').trim());
+        }
+      } catch {}
+    };
+    fetchCfg();
+    const id = setInterval(fetchCfg, 3000);
+    return () => { stopped = true; clearInterval(id); };
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -41,6 +60,10 @@ export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveStat
       }
 
       // Check CS Allocator
+      if (maintenance) {
+        setError("Maintenance mode is active. Only admin can sign in right now.");
+        return;
+      }
       const csUser = state.csAllocators.find(
         cs => cs.username === username && cs.password === password
       );
@@ -238,6 +261,11 @@ export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveStat
             <p className="text-gray-400 mt-2 text-sm font-medium">Unified Authentication Portal</p>
           </motion.div>
 
+          {maintenance && (
+            <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-100/90 text-yellow-900 p-3 text-sm font-semibold shadow">
+              {banner || 'We are doing some updates in the app, We will get back soon...'}
+            </div>
+          )}
           {/* Login Card */}
           <Card className="backdrop-blur-2xl bg-white/10 border-white/20 shadow-2xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
