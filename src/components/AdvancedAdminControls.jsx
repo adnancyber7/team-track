@@ -523,21 +523,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-sm font-bold flex items-center gap-2">
-                    <Megaphone className="w-4 h-4" />
-                    Banner Message
-                  </Label>
-                  <Input
-                    value={settings.userAccess?.bannerMessage || ''}
-                    onChange={(e) => updateUserAccess({ bannerMessage: e.target.value })}
-                    placeholder="e.g., Scheduled maintenance at 6pm UAE time" className="mt-1" />
-                  {settings.userAccess?.bannerMessage && (
-                    <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm font-medium">
-                      Preview: {settings.userAccess.bannerMessage}
-                    </div>
-                  )}
-                </div>
+                {/* Banner Message moved to Admin Settings page */}
               </CardContent>
             </Card>
           </TabsContent>

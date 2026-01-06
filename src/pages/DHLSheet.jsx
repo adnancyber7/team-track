@@ -4617,30 +4617,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="mt-4">
-            {/* Maintenance Mode + Role Permissions + Audit Log */}
-            <Card className="bg-white/95 border-black/10 shadow-lg mb-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold">Maintenance Mode</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-                  <div>
-                    <Label className="font-bold">Enable Maintenance Mode</Label>
-                    <p className="text-xs text-gray-600">Disables non-admin logins and shows a banner to all users.</p>
-                  </div>
-                  <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
-                </div>
-                <div>
-                  <Label className="text-xs text-black/60">Banner Message</Label>
-                  <Input value={maintenanceBanner} onChange={(e) => setMaintenanceBanner(e.target.value)} placeholder="We are doing some updates in the app, We will get back soon..." />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={saveMaintenance} className="font-bold bg-yellow-400 hover:bg-yellow-500 text-black">
-                    <Save className="w-4 h-4 mr-2" /> Save Maintenance Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Maintenance controls moved to Admin Settings page to avoid duplicates */}
 
             <Card className="bg-white/95 border-black/10 shadow-lg mb-4">
               <CardHeader className="pb-2">
