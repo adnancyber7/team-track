@@ -488,16 +488,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
           <TabsContent value="access" className="space-y-4">
             <Card>
               <CardContent className="p-4 space-y-4">
-                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div>
-                    <Label className="font-bold flex items-center gap-2">
-                      <Shield className="w-4 h-4" />
-                      Maintenance Mode
-                    </Label>
-                    <p className="text-xs text-gray-600">Disable logins and display a global banner</p>
-                  </div>
-                  <Switch checked={settings.userAccess?.maintenanceMode} onCheckedChange={(v) => updateUserAccess({ maintenanceMode: v })} />
-                </div>
+                {/* Maintenance Mode controls removed (centralized in Admin Settings page) */}
 
                 <div className="grid md:grid-cols-3 gap-3">
                   <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
