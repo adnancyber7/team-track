@@ -57,7 +57,7 @@ export default function Layout({ children, currentPageName }) {
         setTimeout(() => { window.location.reload(); }, 200);
       }
     } catch {}
-  }, [maintenance]);
+  }, [maintenance, banner]);
 
   return (
     <div className="min-h-screen">
