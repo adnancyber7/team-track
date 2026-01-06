@@ -2725,11 +2725,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => { cancelled = true; };
   }, []);
 
-  // Cross-device pull loop (admin) - sync cs_sheet and agent_sheets
+  // Cross-device pull loop (admin) - sync cs_sheet and agent_sheets - DISABLED (long-poll handles this)
+  // Kept as fallback only
   useEffect(() => {
     const interval = setInterval(() => {
       (async () => {
-        // cs_sheet
+        // Fallback sync if long-poll fails
         const csRec = await pullAppState('cs_sheet');
         if (csRec) {
           const t = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '');
@@ -2740,7 +2741,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             CHANNEL.postMessage({ type: 'app:sync' });
           }
         }
-        // agent_sheets
         const aRec = await pullAppState('agent_sheets');
         if (aRec) {
           const t2 = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '');
@@ -2752,7 +2752,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 3000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -4959,7 +4959,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     })();
   }, []);
 
-  // Cross-device pull loop (CS Allocator) - sync cs_sheet (fallback)
+  // Cross-device pull loop (CS Allocator) - DISABLED (long-poll primary)
   useEffect(() => {
     const interval = setInterval(() => {
       (async () => {
@@ -4974,7 +4974,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 3000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -5341,7 +5341,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     })();
   }, []);
 
-  // Cross-device pull loop (agent) - sync cs_sheet and agent_sheets (fallback)
+  // Cross-device pull loop (agent) - DISABLED (long-poll primary, this is fallback)
   useEffect(() => {
     const interval = setInterval(() => {
       (async () => {
@@ -5366,7 +5366,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           }
         }
       })();
-    }, 3000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -6243,7 +6243,7 @@ export default function DHLSheet() {
 
   useEffect(() => {
     if (!session.role) return;
-    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 5000);
+    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 2000);
     checkKickAndLogout(handleLogout);
     const onBeforeUnload = () => { markSessionLogout(); };
     window.addEventListener('beforeunload', onBeforeUnload);

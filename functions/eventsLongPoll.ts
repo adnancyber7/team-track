@@ -11,11 +11,21 @@ function sleep(ms) {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     let body = {};
@@ -62,8 +72,13 @@ Deno.serve(async (req) => {
       await sleep(250);
     }
 
-    return Response.json({ changes, now });
+    return Response.json({ changes, now }, { headers: corsHeaders });
   } catch (error) {
-    return Response.json({ error: error.message || 'internal_error' }, { status: 500 });
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+    return Response.json({ error: error.message || 'internal_error' }, { status: 500, headers: corsHeaders });
   }
 });
