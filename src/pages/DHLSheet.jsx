@@ -2766,11 +2766,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       return;
     }
     try {
-      const res = await adn7.functions.invoke('adminSettingsApi', { action: 'createCS', payload: { username: newCSUser, password: newCSPass } });
-      if (res.data?.error) {
-        toast.error(res.data.error);
-        return;
-      }
+      await adn7.entities.CSUser.create({ username: newCSUser, password: newCSPass });
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
@@ -2791,7 +2787,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
   const deleteCSAllocator = async (username) => {
     try {
-      await adn7.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
+      const rows = await adn7.entities.CSUser.filter({ username });
+      if (rows && rows[0]) {
+        await adn7.entities.CSUser.delete(rows[0].id);
+      }
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
