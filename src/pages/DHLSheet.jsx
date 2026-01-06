@@ -238,10 +238,19 @@ const pushAppState = async (stateKey, payload) => {
 const pullAppState = async (stateKey) => {
   try {
     const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
-    return rows && rows[0] || null;
+    return (rows && rows[0]) || null;
   } catch {
     return null;
   }
+};
+
+// --- Global session sync helpers (shared across domains) ---
+const pushSessionToBackend = async (session) => {
+  await pushAppState('global_session', { session });
+};
+const pullSessionFromBackend = async () => {
+  const rec = await pullAppState('global_session');
+  return rec?.data?.session || null;
 };
 
 const downloadCSV = (data, filename) => {
@@ -5681,15 +5690,49 @@ export default function DHLSheet() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const state = loadState();
-    if (state.session?.role) {
-      setSession(state.session);
-    }
-    setLoading(false);
+    (async () => {
+      const state = loadState();
+      let sess = state.session || { role: null, username: null };
+      // Prefer backend session if available (shared across domains)
+      try {
+        const backendSession = await pullSessionFromBackend();
+        if (backendSession && (backendSession.role !== sess.role || backendSession.username !== sess.username)) {
+          sess = backendSession;
+          const local = loadState();
+          local.session = sess;
+          saveState(local);
+        }
+      } catch {}
+      if (sess?.role) setSession(sess);
+      setLoading(false);
+    })();
   }, []);
+
+  // Poll backend session to keep both domains in sync
+  useEffect(() => {
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const s = await pullSessionFromBackend();
+        if (!stopped && s && (s.role !== session.role || s.username !== session.username)) {
+          setSession(s);
+          const local = loadState();
+          local.session = s;
+          saveState(local);
+        }
+      } catch {}
+    };
+    const id = setInterval(tick, 3000);
+    tick();
+    return () => { stopped = true; clearInterval(id); };
+  }, [session.role, session.username]);
 
   const handleLogin = (role, username) => {
     setSession({ role, username });
+    // Push to backend for cross-domain sync
+    (async () => {
+      try { await pushSessionToBackend({ role, username }); CHANNEL.postMessage({ type: 'app:sync' }); } catch {}
+    })();
   };
 
   const handleLogout = () => {
@@ -5708,6 +5751,8 @@ export default function DHLSheet() {
     state.session = { role: null, username: null };
     saveState(state);
     setSession({ role: null, username: null });
+    // Push to backend so other domain logs out too
+    (async () => { try { await pushSessionToBackend({ role: null, username: null }); CHANNEL.postMessage({ type: 'app:sync' }); } catch {} })();
   };
 
   if (loading) {

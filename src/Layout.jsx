@@ -16,6 +16,7 @@ export default function Layout({ children, currentPageName }) {
 
   const [maintenance, setMaintenance] = useState(false);
   const [banner, setBanner] = useState('');
+  const [session, setSession] = useState({ role: null, username: null });
 
   // Poll admin config for maintenance/banner (fast, small payload)
   useEffect(() => {
@@ -35,18 +36,22 @@ export default function Layout({ children, currentPageName }) {
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
+  // Read session (shared) for maintenance enforcement
+  useEffect(() => {
+    const raw = localStorage.getItem('DHL_LOGIN_DEMO_V1');
+    try { setSession(JSON.parse(raw || '{}')?.session || { role: null, username: null }); } catch {}
+  }, [maintenance]);
+
   // Auto-logout non-admin users while maintenance is ON
   useEffect(() => {
     if (!maintenance) return;
     try {
       const raw = localStorage.getItem('DHL_LOGIN_DEMO_V1');
-      if (!raw) return;
-      const state = JSON.parse(raw);
+      const state = raw ? JSON.parse(raw) : {};
       const role = state?.session?.role;
       if (role && role !== 'admin') {
         state.session = { role: null, username: null };
         localStorage.setItem('DHL_LOGIN_DEMO_V1', JSON.stringify(state));
-        // Give the banner a tick to render first
         setTimeout(() => { window.location.reload(); }, 200);
       }
     } catch {}
@@ -59,7 +64,7 @@ export default function Layout({ children, currentPageName }) {
           {banner || 'We are doing some updates in the app, We will get back soon...'}
         </div>
       )}
-      {children}
+      {(!maintenance || session.role === 'admin') && children}
     </div>
   );
 }
