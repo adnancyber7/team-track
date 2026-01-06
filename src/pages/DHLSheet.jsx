@@ -552,7 +552,7 @@ const LoginScreen = ({ onLogin }) => {
       } catch {}
     };
     fetchCfg();
-    const id = setInterval(fetchCfg, 3000);
+    const id = setInterval(fetchCfg, 800);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2559,7 +2559,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     })();
   }, []);
 
-  // Poll active sessions for real-time presence
+  // Poll active sessions for real-time presence - faster updates
   useEffect(() => {
     let stopped = false;
     const load = async () => {
@@ -2570,7 +2570,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       } catch {}
     };
     load();
-    const id = setInterval(load, 3000);
+    const id = setInterval(load, 1000);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2927,7 +2927,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         changed = true;
       }
     }
-    if (changed) { setCSSheet(nextSheet); saveCSSheet(nextSheet); }
+    if (changed) { setCSSheet(nextSheet); saveCSSheet(nextSheet); pushCSImmediate(nextSheet); }
 
     const sheets = loadAgentSheets();
     if (sheets.agentPriorityMap && sheets.agentPriorityMap[agentUsername]) {
@@ -3211,6 +3211,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         };
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
+        pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("All data cleared");
         logAudit('clear_cs_sheet', {});
@@ -3362,6 +3363,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
       setCSSheet(newSheet);
       saveCSSheet(newSheet);
+      pushCSImmediate(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`Uploaded ${rowsAdded} rows successfully${duplicatesSkipped ? ", skipped " + duplicatesSkipped + " duplicates" : ''}`);
     } catch (error) {
@@ -3841,12 +3843,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             {/* Analytics & Upload */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4 space-y-3">
-                <FilterBar
-                  columns={CS_COLUMNS}
-                  initial={csFilters || undefined}
-                  onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
-                  onClear={() => { setCsFilters(null); applyFilters(null); }}
-                />
                 <FilterBar
                   columns={CS_COLUMNS}
                   initial={csFilters || undefined}
@@ -5097,6 +5093,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
         }
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
+        pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success('Cleared rejected items');
         try { await adn7.entities.AuditLog.create({ action: 'cs_clear_rejected', actor_username: username, actor_role: 'cs_allocator', target_type: 'cs_sheet', timestamp: Date.now() }); } catch {}

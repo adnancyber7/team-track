@@ -135,6 +135,7 @@ export default function AdminSettings() {
   const saveMaintenance = async () => {
     try {
       await adn7.functions.invoke("adminSettingsApi", { action: "updateSettings", payload: { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner } });
+      
       // If enabling maintenance, signal forced logout for all non-admin sessions
       if (maintenanceMode) {
         try {
@@ -145,6 +146,14 @@ export default function AdminSettings() {
           if (row) await adn7.entities.AppState.update(row.id, { data });
         } catch {}
       }
+      
+      // Trigger instant update across all devices
+      try {
+        const rows = await adn7.entities.AppState.filter({ state_key: 'maintenance_sync' });
+        if (rows?.[0]) await adn7.entities.AppState.update(rows[0].id, { data: { ts: Date.now(), mode: maintenanceMode } });
+        else await adn7.entities.AppState.create({ state_key: 'maintenance_sync', data: { ts: Date.now(), mode: maintenanceMode } });
+      } catch {}
+      
       toast.success("Maintenance settings saved");
       await adn7.entities.AuditLog.create({ action: "update_maintenance", actor_username: session.username, actor_role: "admin", details: JSON.stringify({ maintenance_mode: maintenanceMode, banner_message: maintenanceBanner }), timestamp: Date.now() });
     } catch {}

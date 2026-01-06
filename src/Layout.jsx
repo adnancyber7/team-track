@@ -18,7 +18,7 @@ export default function Layout({ children, currentPageName }) {
   const [banner, setBanner] = useState('');
   const [session, setSession] = useState({ role: null, username: null });
 
-  // Poll admin config for maintenance/banner (fast, small payload)
+  // Poll admin config for maintenance/banner - fast updates
   useEffect(() => {
     let stopped = false;
     const fetchCfg = async () => {
@@ -32,7 +32,7 @@ export default function Layout({ children, currentPageName }) {
       } catch {}
     };
     fetchCfg();
-    const id = setInterval(fetchCfg, 3000);
+    const id = setInterval(fetchCfg, 1000);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 

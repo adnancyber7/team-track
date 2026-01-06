@@ -31,7 +31,7 @@ const RealtimeAdminDashboard = ({
       } catch {}
     };
     load();
-    const id = setInterval(load, 10000);
+    const id = setInterval(load, 3000);
     return () => { stop = true; clearInterval(id); };
   }, []);
 
