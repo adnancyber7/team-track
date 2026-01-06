@@ -3055,7 +3055,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return Array.from(regions).sort();
   };
 
-  const applyRegionFilter = (agent, region) => {
+  const applyRegionFilter = async (agent, region) => {
     const sheets = loadAgentSheets();
     if (!sheets.agentFilters) sheets.agentFilters = {};
     if (!sheets.agentFilters[agent]) sheets.agentFilters[agent] = {};
@@ -3065,6 +3065,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setRegionFilter(region);
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`Region filter "${region || 'ALL'}" applied to ${agent}${region ? ' - Agent will only see rows with this region' : ' - Agent will see all their rows'}`);
+    await logAudit('apply_region_filter', { agent, region });
   };
 
   const clearAllData = () => {
@@ -3086,6 +3087,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         saveCSSheet(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("All data cleared");
+        await logAudit('clear_cs_sheet', {});
       }
     });
   };
@@ -4779,6 +4781,17 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     // removed periodic local refresh; relying on pull loop for cross-device and ExcelSheet local tick
   }, [username]);
 
+  // Load role permissions for CS Allocator
+  useEffect(() => {
+    (async () => {
+      try {
+        const rec = await pullAppState('role_permissions');
+        const cfg = rec?.data;
+        if (cfg?.cs_allocator) setRolePerm((prev)=>({ cs_allocator: { ...prev.cs_allocator, ...cfg.cs_allocator } }));
+      } catch {}
+    })();
+  }, []);
+
   // Cross-device pull loop (CS Allocator) - sync cs_sheet (fallback)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -4876,6 +4889,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
   };
 
   const downloadCSData = async () => {
+    if (!rolePerm.cs_allocator?.allowDownload) { toast.error('Download is disabled by admin'); return; }
     const headers = CS_COLUMNS;
     const rejectedRows = csSheet.raw.filter((row) => {
       const status = String(row[COL_STATUS] || '').toUpperCase();
@@ -4887,9 +4901,11 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     XLSX.utils.book_append_sheet(wb, ws, 'CS Team Rejected');
     XLSX.writeFile(wb, `cs_team_rejected_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success("Downloaded rejected items");
+    try { await adn7.entities.AuditLog.create({ action: 'cs_download_rejected', actor_username: username, actor_role: 'cs_allocator', target_type: 'file', target_identifier: `cs_team_rejected_${new Date().toISOString().split('T')[0]}.xlsx`, timestamp: Date.now() }); } catch {}
   };
 
   const handleClearSheet = () => {
+    if (!rolePerm.cs_allocator?.allowClear) { toast.error('Clearing is disabled by admin'); return; }
     setConfirmDialog({
       open: true,
       title: 'Clear Rejected Items',
@@ -4909,11 +4925,13 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
         saveCSSheet(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success('Cleared rejected items');
+        try { await adn7.entities.AuditLog.create({ action: 'cs_clear_rejected', actor_username: username, actor_role: 'cs_allocator', target_type: 'cs_sheet', timestamp: Date.now() }); } catch {}
       }
     });
   };
 
   const handleUploadFile = async (e) => {
+    if (!rolePerm.cs_allocator?.allowUpload) { toast.error('Upload is disabled by admin'); return; }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -4949,6 +4967,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
 
       CHANNEL.postMessage({ type: "app:sync", uploadNotification: uploadLog });
       toast.success(`✅ File uploaded successfully. Admin notified.`);
+      try { await adn7.entities.AuditLog.create({ action: 'cs_upload', actor_username: username, actor_role: 'cs_allocator', target_type: 'file', target_identifier: file.name, timestamp: Date.now() }); } catch {}
     } catch (error) {
       toast.error("Failed to upload file");
     }
@@ -5037,6 +5056,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
                   className="hidden"
                   id="cs-upload" />
 
+                {rolePerm.cs_allocator.allowUpload && (
                 <Button
                   onClick={() => document.getElementById('cs-upload').click()}
                   variant="outline"
@@ -5046,10 +5066,12 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
                   <Upload className="w-4 h-4 mr-2" />
                   Upload
                 </Button>
+                {rolePerm.cs_allocator.allowClear && (
                 <Button onClick={handleClearSheet} variant="outline" size="sm" className="font-bold bg-orange-50 hover:bg-orange-100">
                   <Trash2 className="w-4 h-4 mr-2" />
                   Clear
                 </Button>
+                {rolePerm.cs_allocator.allowDownload && (
                 <Button onClick={downloadCSData} variant="outline" size="sm" className="font-bold">
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -5103,6 +5125,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
   const [regionFilter, setRegionFilter] = useState("");
   const [priorityMode, setPriorityMode] = useState(false);
   const [priorityList, setPriorityList] = useState([]);
+  const [rolePerm, setRolePerm] = useState({ agent: { allowCopyButtons: true, allowDownloadReport: true } });
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showStartReminder, setShowStartReminder] = useState(false);
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
@@ -5131,6 +5154,17 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     }
     // removed periodic local refresh; relying on pull loop for cross-device and ExcelSheet local tick
   }, [username]);
+
+  // Load role permissions for agent
+  useEffect(() => {
+    (async () => {
+      try {
+        const rec = await pullAppState('role_permissions');
+        const cfg = rec?.data;
+        if (cfg?.agent) setRolePerm((prev)=>({ agent: { ...prev.agent, ...cfg.agent } }));
+      } catch {}
+    })();
+  }, []);
 
   // Cross-device pull loop (agent) - sync cs_sheet and agent_sheets (fallback)
   useEffect(() => {
@@ -5692,6 +5726,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
                 Copy Done
               </Button>
+              )}
               <Button
                 onClick={() => {
                   // Get all rejected AWBs for this agent
@@ -5716,6 +5751,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
                 Copy Reject
               </Button>
+              )}
               <div className="flex items-center gap-2">
                 <Button
                   onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}
@@ -5735,6 +5771,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                   Zoom +
                 </Button>
               </div>
+              {rolePerm.agent.allowDownloadReport && (
               <Button
                 onClick={async () => {
                   const sheets = loadAgentSheets();
@@ -5764,6 +5801,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <Download className="w-4 h-4 mr-2" />
                 My Report
               </Button>
+              )}
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
               {agentSheets.priorityModeActive && agentSheets.agentPriorityMap?.[username]?.length > 0 ?
