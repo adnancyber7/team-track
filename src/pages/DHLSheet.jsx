@@ -502,7 +502,7 @@ const LoginScreen = ({ onLogin }) => {
       const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
       const cfg = (cfgs || [])[0];
       if (cfg?.maintenance_mode) {
-        setError("Maintenance mode is enabled. Please try again later.");
+        setError(cfg?.banner_message?.trim() || "We are doing some updates in the app, We will get back soon...");
         return;
       }
       if (cfg && cfg.allow_agent_login === false) {
