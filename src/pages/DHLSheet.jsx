@@ -234,9 +234,12 @@ const pushAppState = async (stateKey, payload) => {
       await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
     }
   } catch (e) {
-
     // ignore network/backend issues silently
-  }};
+  }
+};
+
+// Immediate cs_sheet push to trigger near-instant long-poll updates
+const pushCSImmediate = async (data) => { try { await pushAppState('cs_sheet', data); } catch {} };
 const pullAppState = async (stateKey) => {
   try {
     const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
@@ -2900,6 +2903,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    // trigger instant cross-device update
+    pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
 
@@ -5044,6 +5049,8 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     }
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    // trigger instant cross-device update
+    pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
 
@@ -5520,6 +5527,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    // trigger instant cross-device update
+    pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   }, [csSheet, username]);
 
@@ -5726,6 +5735,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     newSheet.timers[r] = timer;
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    // trigger instant cross-device update
+    pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   }, [csSheet, username]);
 

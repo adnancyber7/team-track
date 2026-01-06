@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       if (agentsChanged) changes.push('agent_sheets');
       if (usersChanged) changes.push('users_sync');
       if (changes.length) break;
-      await sleep(900);
+      await sleep(250);
     }
 
     return Response.json({ changes, now });
