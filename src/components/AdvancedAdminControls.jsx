@@ -293,8 +293,7 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="priority" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="breaks">Break Reminders</TabsTrigger>
             <TabsTrigger value="mass">Mass Assignment</TabsTrigger>
             <TabsTrigger value="access">Access Controls</TabsTrigger>

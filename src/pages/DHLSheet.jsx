@@ -2984,6 +2984,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       if (rows && rows[0]) {
         await adn7.entities.AgentUser.delete(rows[0].id);
       }
+      
+      // Force logout deleted agent from all active sessions
+      try {
+        const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+        const sessionData = sessionRows?.[0]?.data || {};
+        Object.keys(sessionData).forEach(key => {
+          if (sessionData[key]?.username === username && sessionData[key]?.role === 'agent') {
+            sessionData[key].kick = true;
+          }
+        });
+        if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+      } catch {}
+      
       // Clean CS sheet assignments and priority references
       await cleanOrphanDataForAgent(username);
 
@@ -2991,7 +3004,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
       logAudit('delete_agent', { username });
-    toast.success(`Agent "${username}" deleted`);
+      toast.success(`Agent "${username}" deleted`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to delete agent');
     } finally {
@@ -3033,11 +3046,24 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       if (rows && rows[0]) {
         await adn7.entities.CSUser.delete(rows[0].id);
       }
+      
+      // Force logout deleted CS user from all active sessions
+      try {
+        const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+        const sessionData = sessionRows?.[0]?.data || {};
+        Object.keys(sessionData).forEach(key => {
+          if (sessionData[key]?.username === username && sessionData[key]?.role === 'cs_allocator') {
+            sessionData[key].kick = true;
+          }
+        });
+        if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+      } catch {}
+      
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
       logAudit('delete_cs_allocator', { username });
-    toast.success(`CS Allocator "${username}" deleted`);
+      toast.success(`CS Allocator "${username}" deleted`);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to delete CS allocator');
     } finally {

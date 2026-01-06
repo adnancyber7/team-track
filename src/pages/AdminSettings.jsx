@@ -193,6 +193,22 @@ export default function AdminSettings() {
       const rows = await adn7.entities.AgentUser.filter({ username: u });
       if (rows && rows[0]) await adn7.entities.AgentUser.delete(rows[0].id);
       setAgents((await adn7.entities.AgentUser.list()) || []);
+
+      // Trigger instant sync across all devices
+      const syncRows = await adn7.entities.AppState.filter({ state_key: 'users_sync' });
+      if (syncRows?.[0]) await adn7.entities.AppState.update(syncRows[0].id, { data: { ts: Date.now() } });
+      else await adn7.entities.AppState.create({ state_key: 'users_sync', data: { ts: Date.now() } });
+
+      // Force logout deleted agent from all sessions
+      const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+      const sessionData = sessionRows?.[0]?.data || {};
+      Object.keys(sessionData).forEach(key => {
+        if (sessionData[key]?.username === u && sessionData[key]?.role === 'agent') {
+          sessionData[key].kick = true;
+        }
+      });
+      if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+
       toast.success("Agent deleted");
       await adn7.entities.AuditLog.create({ action: "delete_agent", actor_username: session.username, actor_role: "admin", details: JSON.stringify({ username: u }), timestamp: Date.now() });
     } catch { toast.error("Failed"); }
@@ -219,6 +235,22 @@ export default function AdminSettings() {
       const rows = await adn7.entities.CSUser.filter({ username: u });
       if (rows && rows[0]) await adn7.entities.CSUser.delete(rows[0].id);
       setCSAllocators((await adn7.entities.CSUser.list()) || []);
+
+      // Trigger instant sync across all devices
+      const syncRows = await adn7.entities.AppState.filter({ state_key: 'users_sync' });
+      if (syncRows?.[0]) await adn7.entities.AppState.update(syncRows[0].id, { data: { ts: Date.now() } });
+      else await adn7.entities.AppState.create({ state_key: 'users_sync', data: { ts: Date.now() } });
+
+      // Force logout deleted CS user from all sessions
+      const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+      const sessionData = sessionRows?.[0]?.data || {};
+      Object.keys(sessionData).forEach(key => {
+        if (sessionData[key]?.username === u && sessionData[key]?.role === 'cs_allocator') {
+          sessionData[key].kick = true;
+        }
+      });
+      if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+
       toast.success("CS user deleted");
       await adn7.entities.AuditLog.create({ action: "delete_cs_allocator", actor_username: session.username, actor_role: "admin", details: JSON.stringify({ username: u }), timestamp: Date.now() });
     } catch { toast.error("Failed"); }
