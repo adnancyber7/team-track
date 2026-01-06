@@ -5732,7 +5732,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 Copy Done
               </Button>
               )}
-              )}
               {rolePerm.agent.allowCopyButtons && (
                             <Button
                                      onClick={() => {
@@ -5759,7 +5758,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 Copy Reject
               </Button>
               )}
-              )}
               <div className="flex items-center gap-2">
                 <Button
                   onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}
@@ -5779,7 +5777,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                   Zoom +
                 </Button>
               </div>
-              {rolePerm.agent.allowDownloadReport && (
               {rolePerm.agent.allowDownloadReport && (
                             <Button
                                onClick={async () => {
@@ -5810,7 +5807,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <Download className="w-4 h-4 mr-2" />
                 My Report
               </Button>
-              )}
               )}
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
