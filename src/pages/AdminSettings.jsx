@@ -11,7 +11,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Download, Save, Shield, Upload, Users, Trash2, ArrowLeft, KeyRound, FileCog, Search } from "lucide-react";
 import { toast } from "sonner";
-import { createPageUrl } from "./utils";
 
 export default function AdminSettings() {
   // Simple session check (local) to guard page
