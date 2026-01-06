@@ -3075,7 +3075,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       message: 'Are you sure you want to clear all CS Sheet data? This cannot be undone.',
       variant: 'danger',
       confirmText: 'Clear All',
-      onConfirm: () => {
+      onConfirm: async () => {
         const newSheet = {
           raw: Array.from({ length: ROWS_COUNT }, () => Array(CS_COLUMNS.length).fill('')),
           timers: Array.from({ length: ROWS_COUNT }, () => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" })),
@@ -4912,7 +4912,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
       message: 'Clear all rejected items from CS Team sheet? This will remove all REJECTED status rows.',
       variant: 'danger',
       confirmText: 'Clear All',
-      onConfirm: () => {
+      onConfirm: async () => {
         const newSheet = deepCopy(csSheet);
         for (let r = 0; r < newSheet.raw.length; r++) {
           const status = String(newSheet.raw[r]?.[COL_STATUS] || '').toUpperCase();
@@ -5702,9 +5702,10 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <span className="font-mono font-bold text-red-800">{getAgentMetrics.rej}</span>
               </div>
 
-              <Button
-                onClick={() => {
-                  // Get all done AWBs for this agent
+              {rolePerm.agent.allowCopyButtons && (
+                            <Button
+                                     onClick={() => {
+                                       // Get all done AWBs for this agent
                   const doneAwbs = [];
                   for (let r = 0; r < ROWS_COUNT; r++) {
                     const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
@@ -5727,9 +5728,11 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 Copy Done
               </Button>
               )}
-              <Button
-                onClick={() => {
-                  // Get all rejected AWBs for this agent
+              )}
+              {rolePerm.agent.allowCopyButtons && (
+                            <Button
+                                     onClick={() => {
+                                       // Get all rejected AWBs for this agent
                   const rejAwbs = [];
                   for (let r = 0; r < ROWS_COUNT; r++) {
                     const agent = String(csSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase();
@@ -5752,6 +5755,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 Copy Reject
               </Button>
               )}
+              )}
               <div className="flex items-center gap-2">
                 <Button
                   onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}
@@ -5772,8 +5776,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 </Button>
               </div>
               {rolePerm.agent.allowDownloadReport && (
-              <Button
-                onClick={async () => {
+              {rolePerm.agent.allowDownloadReport && (
+                            <Button
+                               onClick={async () => {
                   const sheets = loadAgentSheets();
                   const stats = sheets.agentStats?.[username] || { done: [], rejected: [] };
                   const XLSX = await import('xlsx');
@@ -5801,6 +5806,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
                 <Download className="w-4 h-4 mr-2" />
                 My Report
               </Button>
+              )}
               )}
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
