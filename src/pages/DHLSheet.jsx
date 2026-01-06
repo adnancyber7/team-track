@@ -5699,49 +5699,19 @@ export default function DHLSheet() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      const state = loadState();
-      let sess = state.session || { role: null, username: null };
-      // Prefer backend session if available (shared across domains)
-      try {
-        const backendSession = await pullSessionFromBackend();
-        if (backendSession && (backendSession.role !== sess.role || backendSession.username !== sess.username)) {
-          sess = backendSession;
-          const local = loadState();
-          local.session = sess;
-          saveState(local);
-        }
-      } catch {}
-      if (sess?.role) setSession(sess);
-      setLoading(false);
-    })();
+    const state = loadState();
+    if (state.session?.role) setSession(state.session);
+    setLoading(false);
   }, []);
 
-  // Poll backend session to keep both domains in sync
-  useEffect(() => {
-    let stopped = false;
-    const tick = async () => {
-      try {
-        const s = await pullSessionFromBackend();
-        if (!stopped && s && (s.role !== session.role || s.username !== session.username)) {
-          setSession(s);
-          const local = loadState();
-          local.session = s;
-          saveState(local);
-        }
-      } catch {}
-    };
-    const id = setInterval(tick, 3000);
-    tick();
-    return () => { stopped = true; clearInterval(id); };
-  }, [session.role, session.username]);
+
 
   const handleLogin = (role, username) => {
     setSession({ role, username });
-    // Push to backend for cross-domain sync
-    (async () => {
-      try { await pushSessionToBackend({ role, username }); CHANNEL.postMessage({ type: 'app:sync' }); } catch {}
-    })();
+    const local = loadState();
+    local.session = { role, username };
+    saveState(local);
+    CHANNEL.postMessage({ type: 'app:sync' });
   };
 
   const handleLogout = () => {
@@ -5760,8 +5730,7 @@ export default function DHLSheet() {
     state.session = { role: null, username: null };
     saveState(state);
     setSession({ role: null, username: null });
-    // Push to backend so other domain logs out too
-    (async () => { try { await pushSessionToBackend({ role: null, username: null }); CHANNEL.postMessage({ type: 'app:sync' }); } catch {} })();
+    CHANNEL.postMessage({ type: 'app:sync' });
   };
 
   if (loading) {
