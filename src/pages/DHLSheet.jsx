@@ -466,10 +466,7 @@ const LoginScreen = ({ onLogin }) => {
     try {
       const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
       const cfg = (cfgs || [])[0];
-      if (cfg?.maintenance_mode) {
-        setError("Maintenance mode is enabled. Please try again later.");
-        return;
-      }
+      // Allow admin login even if maintenance is ON (so admin can manage settings)
       if (cfg && cfg.allow_admin_login === false) {
         setError("Admin logins are disabled.");
         return;
