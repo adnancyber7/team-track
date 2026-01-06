@@ -194,7 +194,7 @@ export default function AdminSettings() {
           <CardContent>
             <p className="text-sm text-gray-600">You must be an admin to view Admin Settings.</p>
             <div className="mt-3">
-              <Button onClick={() => (window.location.href = createPageUrl("DHLSheet"))} variant="outline" className="font-bold">
+              <Button onClick={() => (window.location.href = "/DHLSheet")} variant="outline" className="font-bold">
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
               </Button>
             </div>
@@ -213,7 +213,7 @@ export default function AdminSettings() {
             <span className="font-bold">{session.username}</span>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => (window.location.href = createPageUrl("DHLSheet"))} variant="outline" className="font-bold">
+            <Button onClick={() => (window.location.href = "/DHLSheet")} variant="outline" className="font-bold">
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
             </Button>
           </div>
