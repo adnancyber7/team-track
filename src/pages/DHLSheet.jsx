@@ -253,6 +253,11 @@ const pullSessionFromBackend = async () => {
   return rec?.data?.session || null;
 };
 
+// Notify other devices to refresh user lists (agents/CS)
+const notifyUsersSync = async () => {
+  await pushAppState('users_sync', { ts: Date.now() });
+};
+
 const downloadCSV = (data, filename) => {
   const csvContent = data.map((row) =>
   row.map((cell) => {
@@ -2732,6 +2737,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       setNewAgentUser("");
       setNewAgentPass("");
+      await notifyUsersSync();
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`Agent "${newAgentUser}" created`);
     } catch (e) {
@@ -2744,6 +2750,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       await adn7.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
       const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
+      await notifyUsersSync();
     } catch {}
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`Agent "${username}" deleted`);
@@ -2766,6 +2773,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       }
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
+      await notifyUsersSync();
     } catch (e) {
       // still add locally as a fallback
       const st = loadState();
@@ -2786,6 +2794,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       await adn7.functions.invoke('adminSettingsApi', { action: 'deleteCS', payload: { username } });
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
+      await notifyUsersSync();
     } catch {}
     CHANNEL.postMessage({ type: "app:sync" });
     toast.success(`CS Allocator "${username}" deleted`);

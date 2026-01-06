@@ -132,18 +132,27 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
   };
 
   const updateUserProfile = async (agentId, patch, username) => {
-    // Update local fallback copy for immediate UI responsiveness
-    setSettings(prev => ({
-      ...prev,
-      userProfiles: {
-        ...(prev.userProfiles || {}),
-        [username || agentId]: { ...(prev.userProfiles?.[username || agentId] || {}), ...patch }
-      }
-    }));
-    await adn7.entities.AgentUser.update(agentId, patch);
-    toast.success('Profile updated');
-    if (onUpdate) onUpdate();
-  };
+            // Update local fallback copy for immediate UI responsiveness
+            setSettings(prev => ({
+              ...prev,
+              userProfiles: {
+                ...(prev.userProfiles || {}),
+                [username || agentId]: { ...(prev.userProfiles?.[username || agentId] || {}), ...patch }
+              }
+            }));
+            await adn7.entities.AgentUser.update(agentId, patch);
+            // Notify all devices to refresh user lists
+            try {
+              const rows = await adn7.entities.AppState.filter({ state_key: 'users_sync' });
+              if (rows && rows[0]) {
+                await adn7.entities.AppState.update(rows[0].id, { data: { ts: Date.now() } });
+              } else {
+                await adn7.entities.AppState.create({ state_key: 'users_sync', data: { ts: Date.now() } });
+              }
+            } catch {}
+            toast.success('Profile updated');
+            if (onUpdate) onUpdate();
+          };
 
   const handleMassAssignment = () => {
     const awbs = massAssignment.awbList
