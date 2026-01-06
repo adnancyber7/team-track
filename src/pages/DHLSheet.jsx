@@ -3701,6 +3701,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
                   onClear={() => { setCsFilters(null); applyFilters(null); }}
                 />
+                <FilterBar
+                  columns={CS_COLUMNS}
+                  initial={csFilters || undefined}
+                  onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
+                  onClear={() => { setCsFilters(null); applyFilters(null); }}
+                />
                 <div className="flex items-center gap-4 flex-wrap mt-3">
                   <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
@@ -4908,6 +4914,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
 
     const newSheet = deepCopy(csSheet);
     newSheet.raw[r][c] = value;
+    newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
 
     // CS confirmations are informational only; do not change rejection state or trigger blinks
     if (value.trim()) {
@@ -5167,6 +5174,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
   const [priorityMode, setPriorityMode] = useState(false);
   const [priorityList, setPriorityList] = useState([]);
   const [rolePerm, setRolePerm] = useState({ agent: { allowCopyButtons: true, allowDownloadReport: true } });
+  const [agentFilters, setAgentFilters] = useState(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [showStartReminder, setShowStartReminder] = useState(false);
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
@@ -5431,6 +5439,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       timer.doneClicks = (timer.doneClicks || 0) + 1;
       const doneCount = timer.doneClicks;
       timer.state = "DONE";
+      timer.updatedAt = Date.now();
       timer.hidden = true; // Hide from agent view
       if (timer.start != null) {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
@@ -5535,6 +5544,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     if (action === 'confirmReject') {
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
+      timer.updatedAt = Date.now();
       timer.hidden = true; // Hide from agent view after rejection
 
       // Set STATUS column to REJECT
@@ -5645,6 +5655,73 @@ const AgentDashboard = memo(({ username, onLogout }) => {
   }, [csSheet, username, agentSheets]);
 
   const metrics = getAgentMetrics;
+
+  const agentDisplayData = React.useMemo(() => {
+    if (!agentFilters) return { raw: csSheet.raw, timers: csSheet.timers };
+    let items = csSheet.raw.map((row, idx) => ({ row, idx, timer: csSheet.timers[idx] }));
+
+    // Date range filter
+    if (agentFilters.dateFrom || agentFilters.dateTo) {
+      const from = agentFilters.dateFrom ? new Date(agentFilters.dateFrom + 'T00:00:00').getTime() : null;
+      const to = agentFilters.dateTo ? new Date(agentFilters.dateTo + 'T23:59:59').getTime() : null;
+      items = items.filter((item) => {
+        const t = item.timer?.updatedAt ?? (item.timer?.start || null);
+        if (!t) return false;
+        if (from && t < from) return false;
+        if (to && t > to) return false;
+        return true;
+      });
+    }
+
+    // Status filter
+    if (agentFilters.statuses) {
+      const wantPending = !!agentFilters.statuses.pending;
+      const wantDone = !!agentFilters.statuses.done;
+      const wantRejected = !!agentFilters.statuses.rejected;
+      items = items.filter((item) => {
+        const st = String(item.timer?.state || item.row[COL_STATUS] || '').toUpperCase();
+        const isDone = st === 'DONE';
+        const isRejected = st === 'REJECTED' || st === 'REJECT';
+        const hasAwb = !!String(item.row[COL_AWB] || '').trim();
+        const isPending = !isDone && !isRejected && hasAwb;
+        return (isPending && wantPending) || (isDone && wantDone) || (isRejected && wantRejected);
+      });
+    }
+
+    // Sorting
+    if (agentFilters.sortColumns && agentFilters.sortColumns.length > 0) {
+      items.sort((a, b) => {
+        for (const sort of agentFilters.sortColumns) {
+          if (!sort.column) continue;
+          const colIdx = AGENT_COLUMNS.indexOf(sort.column);
+          if (colIdx === -1) continue;
+          const valA = String(a.row[colIdx] || '').toLowerCase();
+          const valB = String(b.row[colIdx] || '').toLowerCase();
+          let comparison = 0;
+          if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
+            comparison = parseFloat(valA) - parseFloat(valB);
+          } else {
+            comparison = valA.localeCompare(valB);
+          }
+          if (comparison !== 0) {
+            return sort.direction === 'asc' ? comparison : -comparison;
+          }
+        }
+        return 0;
+      });
+    }
+
+    // Build fixed-size arrays for grid
+    const result = Array(ROWS_COUNT).fill(null).map(() => Array(AGENT_COLUMNS.length).fill(''));
+    const resultTimers = Array(ROWS_COUNT).fill(null).map(() => ({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" }));
+    items.forEach((item, newIdx) => {
+      if (newIdx < ROWS_COUNT) {
+        result[newIdx] = item.row;
+        resultTimers[newIdx] = item.timer;
+      }
+    });
+    return { raw: result, timers: resultTimers };
+  }, [agentFilters, csSheet]);
 
   const getBreakDuration = () => {
     if (!onBreak || !breakStart) return 0;
@@ -5860,8 +5937,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         {/* Agent Sheet - Optimized */}
         <ExcelSheet
           columns={AGENT_COLUMNS}
-          data={csSheet.raw}
-          timers={csSheet.timers}
+          data={agentDisplayData.raw}
+          timers={agentDisplayData.timers}
           onCellChange={handleCellChange}
           onStatusClick={handleStatusClick}
           isAdmin={false}
