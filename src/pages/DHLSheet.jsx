@@ -2482,6 +2482,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [activeSessions, setActiveSessions] = useState({});
   // Audit logs
   const [auditLogs, setAuditLogs] = useState([]);
+  const [liveSessions, setLiveSessions] = useState([]);
   const filteredAuditLogs = useMemo(() => {
     const q = (auditSearch || '').toLowerCase().trim();
     if (!q) return auditLogs;
@@ -2594,6 +2595,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }, 2000);
     
     return () => clearInterval(pollMaintenance);
+  }, []);
+
+  // Poll live sessions
+  useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      try {
+        const rows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+        const data = rows?.[0]?.data || {};
+        const list = Object.values(data).map((s) => ({ ...s }));
+        if (!stopped) setLiveSessions(list);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => { stopped = true; clearInterval(id); };
   }, []);
 
   // Poll active sessions for real-time presence - faster updates
@@ -4781,6 +4798,61 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     </Badge>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Live Sessions */}
+            <Card className="bg-white/95 border-black/10 shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Live Active Sessions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-gray-600 mb-3">Users currently logged in</div>
+                {liveSessions.length === 0 ? (
+                  <p className="text-sm text-black/50">No active sessions</p>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {liveSessions.sort((a,b) => (b.last_activity||0)-(a.last_activity||0)).map((s) => (
+                      <div key={s.id} className="flex items-center justify-between p-3 rounded border bg-white">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-yellow-400 text-black font-bold">{s.username}</Badge>
+                          <Badge variant="outline" className="text-xs">{s.role}</Badge>
+                          <span className="text-xs text-gray-600">
+                            Last: {Math.max(0, Math.round((Date.now()-(s.last_activity||0))/1000))}s ago
+                          </span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={async () => {
+                            try {
+                              const rows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+                              const data = rows?.[0]?.data || {};
+                              if (data[s.id]) {
+                                data[s.id].kick = true;
+                                await adn7.entities.AppState.update(rows[0].id, { data });
+                                await adn7.entities.AuditLog.create({ 
+                                  action: 'force_logout', 
+                                  actor_username: session.username, 
+                                  actor_role: 'admin', 
+                                  details: JSON.stringify({ instance_id: s.id, username: s.username, role: s.role }), 
+                                  timestamp: Date.now() 
+                                });
+                                toast.success('Logout signal sent');
+                              }
+                            } catch {}
+                          }}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          Force Logout
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
