@@ -4773,6 +4773,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [myUploads, setMyUploads] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
+  const [rolePerm, setRolePerm] = useState({ cs_allocator: { allowUpload: true, allowClear: true, allowDownload: true } });
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -5057,25 +5058,28 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
                   id="cs-upload" />
 
                 {rolePerm.cs_allocator.allowUpload && (
-                <Button
-                  onClick={() => document.getElementById('cs-upload').click()}
-                  variant="outline"
-                  size="sm"
-                  className="font-bold bg-green-50 hover:bg-green-100">
-
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
-                </Button>
+                  <Button
+                    onClick={() => document.getElementById('cs-upload').click()}
+                    variant="outline"
+                    size="sm"
+                    className="font-bold bg-green-50 hover:bg-green-100"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload
+                  </Button>
+                )}
                 {rolePerm.cs_allocator.allowClear && (
-                <Button onClick={handleClearSheet} variant="outline" size="sm" className="font-bold bg-orange-50 hover:bg-orange-100">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Clear
-                </Button>
+                  <Button onClick={handleClearSheet} variant="outline" size="sm" className="font-bold bg-orange-50 hover:bg-orange-100">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear
+                  </Button>
+                )}
                 {rolePerm.cs_allocator.allowDownload && (
-                <Button onClick={downloadCSData} variant="outline" size="sm" className="font-bold">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
+                  <Button onClick={downloadCSData} variant="outline" size="sm" className="font-bold">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                )}
               </div>
             </div>
             <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
