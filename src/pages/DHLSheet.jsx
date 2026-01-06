@@ -5,6 +5,7 @@ import { base44 as adn7 } from '@/api/base44Client';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
+import FilterBar from '../components/filters/FilterBar';
 const AgentPerformanceDashboard = lazy(() => import('../components/AgentPerformanceDashboard'));
 const AdvancedReportingModule = lazy(() => import('../components/AdvancedReportingModule'));
 const FreeAnalytics = lazy(() => import('../components/analytics/FreeAnalytics'));
@@ -2368,6 +2369,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [fastEditMode, setFastEditMode] = useState(false);
   const [activeFilters, setActiveFilters] = useState(null);
+  const [csFilters, setCsFilters] = useState(null);
   const [filteredData, setFilteredData] = useState(null);
   const [csAllocators, setCSAllocators] = useState([]);
   const [newCSUser, setNewCSUser] = useState("");
@@ -3219,7 +3221,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             start: null,
             doneClicks: 0,
             rejClicks: 0,
-            state: ""
+            state: "",
+            updatedAt: Date.now()
           };
         }
 
@@ -3350,7 +3353,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const applyFilters = (filters) => {
     setActiveFilters(filters);
 
-    if (!filters || !filters.remarkKeyword && !filters.reasonKeyword && !filters.timeFrom && !filters.timeTo && (!filters.sortColumns || filters.sortColumns.length === 0)) {
+    if (!filters || (!filters.remarkKeyword && !filters.reasonKeyword && !filters.timeFrom && !filters.timeTo && !filters.dateFrom && !filters.dateTo && !filters.statuses && (!filters.sortColumns || filters.sortColumns.length === 0))) {
       setFilteredData(null);
       return;
     }
@@ -3371,7 +3374,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       );
     }
 
-    // Time range filter
+    // Date range filter using timers.updatedAt (fallback to timer.start for in-progress)
+    if (filters.dateFrom || filters.dateTo) {
+      const from = filters.dateFrom ? new Date(filters.dateFrom + 'T00:00:00').getTime() : null;
+      const to = filters.dateTo ? new Date(filters.dateTo + 'T23:59:59').getTime() : null;
+      filtered = filtered.filter((item) => {
+        const t = item.timer?.updatedAt ?? (item.timer?.start || null);
+        if (!t) return false;
+        if (from && t < from) return false;
+        if (to && t > to) return false;
+        return true;
+      });
+    }
+
+    // Time range filter (legacy, by elapsed ms)
     if (filters.timeFrom || filters.timeTo) {
       filtered = filtered.filter((item) => {
         const elapsed = item.timer.elapsed || 0;
@@ -3379,6 +3395,21 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         if (filters.timeFrom && running < filters.timeFrom) return false;
         if (filters.timeTo && running > filters.timeTo) return false;
         return true;
+      });
+    }
+
+    // Status filter
+    if (filters.statuses) {
+      const wantPending = !!filters.statuses.pending;
+      const wantDone = !!filters.statuses.done;
+      const wantRejected = !!filters.statuses.rejected;
+      filtered = filtered.filter((item) => {
+        const st = String(item.timer?.state || item.row[COL_STATUS] || '').toUpperCase();
+        const isDone = st === 'DONE';
+        const isRejected = st === 'REJECTED' || st === 'REJECT';
+        const hasAwb = !!String(item.row[COL_AWB] || '').trim();
+        const isPending = !isDone && !isRejected && hasAwb;
+        return (isPending && wantPending) || (isDone && wantDone) || (isRejected && wantRejected);
       });
     }
 
