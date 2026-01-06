@@ -2714,78 +2714,118 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
 
     // Admin doesn't use status buttons in CS sheet
-  };const createAgent = async () => {if (!newAgentUser.trim() || !newAgentPass.trim()) {
-      toast.error("Please enter agent username and password");
-      return;
+  };
+
+  // Helper: Clean orphaned references when an agent is removed
+  // - Clears AGENTS column in CS sheet for rows assigned to the deleted agent
+  // - Removes agent entries from priority maps (agentPriorityMap, priorityAgentMap)
+  const cleanOrphanDataForAgent = async (agentUsername) => {
+    const nextSheet = deepCopy(csSheet);
+    let changed = false;
+    for (let r = 0; r < ROWS_COUNT; r++) {
+      if (String(nextSheet.raw[r]?.[COL_AGENTS] || '').trim().toLowerCase() === String(agentUsername).toLowerCase()) {
+        nextSheet.raw[r][COL_AGENTS] = '';
+        changed = true;
+      }
     }
-    if (newAgentPass.length < 4) {
-      toast.error("Password must be at least 4 characters");
-      return;
+    if (changed) { setCSSheet(nextSheet); saveCSSheet(nextSheet); }
+
+    const sheets = loadAgentSheets();
+    if (sheets.agentPriorityMap && sheets.agentPriorityMap[agentUsername]) {
+      const numbers = sheets.agentPriorityMap[agentUsername] || [];
+      delete sheets.agentPriorityMap[agentUsername];
+      if (sheets.priorityAgentMap) {
+        numbers.forEach((p) => { if (sheets.priorityAgentMap[p] === agentUsername) sheets.priorityAgentMap[p] = null; });
+      }
+      saveAgentSheets(sheets);
+      setAgentSheets(sheets);
     }
+  };
+
+  const createAgent = async () => {
+    // Validate inputs early to avoid bad records
+    const username = String(newAgentUser || '').trim();
+    const password = String(newAgentPass || '');
+    if (!username || !password) { toast.error('Please enter agent username and password'); return; }
+    if (password.length < 4) { toast.error('Password must be at least 4 characters'); return; }
+
+    // Prevent conflict with admin username
     const state = loadState();
-    if (newAgentUser === state.admin.username) {
-      toast.error("Agent username cannot be same as admin");
+    if (username.toLowerCase() === String(state.admin.username || '').toLowerCase()) {
+      toast.error('Agent username cannot be same as admin');
       return;
     }
+
     try {
-      const res = await adn7.functions.invoke('adminSettingsApi', { action: 'createAgent', payload: { username: newAgentUser, password: newAgentPass } });
-      if (res.data?.error) {
-        toast.error(res.data.error);
+      // Enforce unique username (case-insensitive)
+      const existing = await adn7.entities.AgentUser.filter({ username });
+      if (existing && existing[0]) {
+        toast.error('Agent username already exists');
         return;
       }
+
+      await adn7.entities.AgentUser.create({ username, password, is_active: true });
       const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
-      setNewAgentUser("");
-      setNewAgentPass("");
+      setNewAgentUser('');
+      setNewAgentPass('');
       await notifyUsersSync();
-      CHANNEL.postMessage({ type: "app:sync" });
-      toast.success(`Agent "${newAgentUser}" created`);
+      CHANNEL.postMessage({ type: 'app:sync' });
+      toast.success(`Agent "${username}" created`);
     } catch (e) {
-      toast.error("Failed to create agent");
+      toast.error(e?.response?.data?.error || 'Failed to create agent');
     }
   };
 
   const deleteAgent = async (username) => {
+    // Delete agent from backend and clean all references
     try {
-      await adn7.functions.invoke('adminSettingsApi', { action: 'deleteAgent', payload: { username } });
+      const rows = await adn7.entities.AgentUser.filter({ username });
+      if (rows && rows[0]) {
+        await adn7.entities.AgentUser.delete(rows[0].id);
+      }
+      // Clean CS sheet assignments and priority references
+      await cleanOrphanDataForAgent(username);
+
       const list = await adn7.entities.AgentUser.list();
       setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-    } catch {}
-    CHANNEL.postMessage({ type: "app:sync" });
-    toast.success(`Agent "${username}" deleted`);
+      toast.success(`Agent "${username}" deleted`);
+    } catch (e) {
+      toast.error(e?.response?.data?.error || 'Failed to delete agent');
+    } finally {
+      CHANNEL.postMessage({ type: 'app:sync' });
+    }
   };
 
   const createCSAllocator = async () => {
-    if (!newCSUser.trim() || !newCSPass.trim()) {
-      toast.error("Please enter CS Allocator username and password");
-      return;
-    }
-    if (newCSPass.length < 4) {
-      toast.error("Password must be at least 4 characters");
-      return;
-    }
+    // Validate inputs
+    const username = String(newCSUser || '').trim();
+    const password = String(newCSPass || '');
+    if (!username || !password) { toast.error('Please enter CS Allocator username and password'); return; }
+    if (password.length < 4) { toast.error('Password must be at least 4 characters'); return; }
+
     try {
-      await adn7.entities.CSUser.create({ username: newCSUser, password: newCSPass });
+      // Unique username check
+      const existing = await adn7.entities.CSUser.filter({ username });
+      if (existing && existing[0]) { toast.error('CS username already exists'); return; }
+
+      await adn7.entities.CSUser.create({ username, password });
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
+      toast.success(`CS Allocator "${username}" created`);
     } catch (e) {
-      // still add locally as a fallback
-      const st = loadState();
-      st.csAllocators = Array.isArray(st.csAllocators) ? st.csAllocators : [];
-      st.csAllocators.push({ username: newCSUser, password: newCSPass });
-      saveState(st);
-      setCSAllocators((st.csAllocators || []).map((a) => ({ username: a.username, password: a.password })));
+      toast.error(e?.response?.data?.error || 'Failed to create CS allocator');
     } finally {
-      setNewCSUser("");
-      setNewCSPass("");
-      CHANNEL.postMessage({ type: "app:sync" });
-      toast.success(`CS Allocator "${newCSUser}" created`);
+      setNewCSUser('');
+      setNewCSPass('');
+      CHANNEL.postMessage({ type: 'app:sync' });
     }
   };
 
   const deleteCSAllocator = async (username) => {
+    // Delete CS user and refresh list
     try {
       const rows = await adn7.entities.CSUser.filter({ username });
       if (rows && rows[0]) {
@@ -2794,9 +2834,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       const list = await adn7.entities.CSUser.list();
       setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
       await notifyUsersSync();
-    } catch {}
-    CHANNEL.postMessage({ type: "app:sync" });
-    toast.success(`CS Allocator "${username}" deleted`);
+      toast.success(`CS Allocator "${username}" deleted`);
+    } catch (e) {
+      toast.error(e?.response?.data?.error || 'Failed to delete CS allocator');
+    } finally {
+      CHANNEL.postMessage({ type: 'app:sync' });
+    }
   };
 
   const saveAdminCreds = async () => {
