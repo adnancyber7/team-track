@@ -3483,6 +3483,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         const affected = Array.from(selectedRows).map((r) => ({ row: r, awb: String(prevSheet.raw[r]?.[COL_AWB] || '') }));
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
+        pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         setSelectedRows(new Set());
         setUndoAction({ type: 'delete_selected', prevSheet, meta: { count: affected.length, rows: affected } });
@@ -5441,6 +5442,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    pushCSImmediate(newSheet);
 
     // Send break update notification immediately
     CHANNEL.postMessage({
@@ -5545,6 +5547,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         newSheet.timers[r] = timer;
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
+        pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("Timer started");
       }
