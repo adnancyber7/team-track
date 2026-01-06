@@ -333,8 +333,24 @@ const AgentPerformanceDashboard = ({ csSheet, agents, ROWS_COUNT, COL_AGENTS, CO
           <TabsContent value="status" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Object.values(calculateMetrics).map(agent => {
-                const statusColor = agent.status === 'online' ? 'bg-green-500' : 'bg-gray-400';
-                const statusText = agent.status === 'online' ? 'ONLINE' : 'OFFLINE';
+                const onBreak = !!csSheet?.agentBreaks?.[agent.username]?.active;
+                let statusText = 'OFFLINE';
+                let statusColor = 'bg-gray-400';
+
+                if (onBreak) {
+                  statusText = 'ON BREAK';
+                  statusColor = 'bg-orange-500';
+                } else {
+                  let hasActive = false;
+                  for (let r = 0; r < (ROWS_COUNT || 0); r++) {
+                    const aName = String(csSheet?.raw?.[r]?.[COL_AGENTS] || '').trim();
+                    if (aName !== agent.username) continue;
+                    const st = String(csSheet?.timers?.[r]?.state || '').toUpperCase();
+                    if (st !== 'DONE' && st !== 'REJECTED') { hasActive = true; break; }
+                  }
+                  if (hasActive) { statusText = 'BUSY'; statusColor = 'bg-blue-500'; }
+                  else if (agent.is_active !== false) { statusText = 'AVAILABLE'; statusColor = 'bg-green-500'; }
+                }
                 
                 return (
                   <Card key={agent.username} className="border-2">
@@ -343,7 +359,7 @@ const AgentPerformanceDashboard = ({ csSheet, agents, ROWS_COUNT, COL_AGENTS, CO
                         <Badge className="bg-yellow-400 text-black font-bold">{agent.username}</Badge>
                         <div className="flex items-center gap-2">
                           <div className={`w-3 h-3 rounded-full ${statusColor} animate-pulse`} />
-                          <Badge className={statusColor + " text-white"}>{statusText}</Badge>
+                          <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold border-transparent shadow ${statusColor} text-white`}>{statusText}</span>
                         </div>
                       </div>
                       
