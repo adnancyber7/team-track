@@ -52,6 +52,8 @@ export default function Layout({ children, currentPageName }) {
       if (role && role !== 'admin') {
         state.session = { role: null, username: null };
         localStorage.setItem('DHL_LOGIN_DEMO_V1', JSON.stringify(state));
+        const msg = (banner && banner.trim()) || 'We are doing some updates in the app, We will get back soon...';
+        localStorage.setItem('MAINTENANCE_LOGOUT_MSG', msg);
         setTimeout(() => { window.location.reload(); }, 200);
       }
     } catch {}

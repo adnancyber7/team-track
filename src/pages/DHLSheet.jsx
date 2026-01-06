@@ -472,6 +472,16 @@ const LoginScreen = ({ onLogin }) => {
   const [showAgentPass, setShowAgentPass] = useState(false);
   const [showCSPass, setShowCSPass] = useState(false);
 
+  useEffect(() => {
+    try {
+      const msg = localStorage.getItem('MAINTENANCE_LOGOUT_MSG');
+      if (msg) {
+        setError(msg);
+        localStorage.removeItem('MAINTENANCE_LOGOUT_MSG');
+      }
+    } catch {}
+  }, []);
+
   const handleAdminLogin = async () => {
     const state = loadState();
     if (!adminUser.trim() || !adminPass) {
@@ -2367,6 +2377,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [selectedRows, setSelectedRows] = useState(new Set());
+  const [undoAction, setUndoAction] = useState(null);
+  const [auditSearch, setAuditSearch] = useState("");
   const [fastEditMode, setFastEditMode] = useState(false);
   const [activeFilters, setActiveFilters] = useState(null);
   const [csFilters, setCsFilters] = useState(null);
@@ -2389,6 +2401,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [maintenanceBanner, setMaintenanceBanner] = useState("");
   // Audit logs
   const [auditLogs, setAuditLogs] = useState([]);
+  const filteredAuditLogs = useMemo(() => {
+    const q = (auditSearch || '').toLowerCase().trim();
+    if (!q) return auditLogs;
+    return auditLogs.filter((log) => {
+      const details = (log.details || '');
+      const target = `${log.target_type || ''}:${log.target_identifier || ''}`;
+      return (
+        (log.action || '').toLowerCase().includes(q) ||
+        (log.actor_username || '').toLowerCase().includes(q) ||
+        target.toLowerCase().includes(q) ||
+        details.toLowerCase().includes(q)
+      );
+    });
+  }, [auditLogs, auditSearch]);
 
   // Write an audit record (admin actions in this dashboard)
   const logAudit = async (action, details = {}, targetType = "", targetId = "") => {
@@ -3291,6 +3317,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     toast.success('Deselected all rows');
   };
 
+  const undoLast = () => {
+    if (!undoAction) return;
+    setCSSheet(undoAction.prevSheet);
+    saveCSSheet(undoAction.prevSheet);
+    CHANNEL.postMessage({ type: "app:sync" });
+    logAudit('undo_action', { action: undoAction.type, meta: undoAction.meta }, 'cs_sheet', '');
+    setUndoAction(null);
+    toast.success('Action undone');
+  };
+
   const handleClearSelected = () => {
     if (selectedRows.size === 0) {
       toast.error('No rows selected');
@@ -3309,11 +3345,15 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           newSheet.raw[r] = Array(CS_COLUMNS.length).fill('');
           newSheet.timers[r] = { elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" };
         });
+        const prevSheet = deepCopy(csSheet);
+        const affected = Array.from(selectedRows).map((r) => ({ row: r, awb: String(prevSheet.raw[r]?.[COL_AWB] || '') }));
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         setSelectedRows(new Set());
-        toast.success(`Cleared ${selectedRows.size} rows`);
+        setUndoAction({ type: 'clear_selected', prevSheet, meta: { count: affected.length, rows: affected } });
+        logAudit('clear_selected', { count: affected.length, rows: affected.map(x=>x.row), awbs: affected.map(x=>x.awb) }, 'cs_sheet', '');
+        toast.success(`Cleared ${affected.length} rows`, { action: { label: 'Undo', onClick: () => undoLast() } });
       }
     });
   };
@@ -3341,12 +3381,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           newSheet.timers.push({ elapsed: 0, start: null, doneClicks: 0, rejClicks: 0, state: "" });
         });
 
+        const prevSheet = deepCopy(csSheet);
+        const affected = Array.from(selectedRows).map((r) => ({ row: r, awb: String(prevSheet.raw[r]?.[COL_AWB] || '') }));
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         setSelectedRows(new Set());
-        toast.success(`Deleted ${selectedRows.size} rows`);
-      }
+        setUndoAction({ type: 'delete_selected', prevSheet, meta: { count: affected.length, rows: affected } });
+        logAudit('delete_selected', { count: affected.length, rows: affected.map(x=>x.row), awbs: affected.map(x=>x.awb) }, 'cs_sheet', '');
+        toast.success(`Deleted ${affected.length} rows`, { action: { label: 'Undo', onClick: () => undoLast() } });
+        }
     });
   };
 
@@ -4543,12 +4587,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 <CardTitle className="text-lg font-bold">Audit Log (latest)</CardTitle>
               </CardHeader>
               <CardContent>
-                {auditLogs.length === 0 ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <Input value={auditSearch} onChange={(e)=>setAuditSearch(e.target.value)} placeholder="Search by action, user, AWB, or details..." className="max-w-sm" />
+                  <Button variant="outline" onClick={loadAudit} className="font-bold">Refresh</Button>
+                </div>
+                {filteredAuditLogs.length === 0 ? (
                   <p className="text-sm text-black/50">No audit entries yet.</p>
                 ) : (
                   <ScrollArea className="h-[240px] pr-4">
                     <div className="space-y-2">
-                      {auditLogs.map((log) => (
+                      {filteredAuditLogs.map((log) => (
                         <div key={log.id} className="p-2 rounded border bg-white flex items-center justify-between">
                           <div className="text-sm">
                             <div className="font-bold">{log.action}</div>
