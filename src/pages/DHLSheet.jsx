@@ -3695,7 +3695,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             {/* Analytics & Upload */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-4 flex-wrap">
+                <FilterBar
+                  columns={CS_COLUMNS}
+                  initial={csFilters || undefined}
+                  onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
+                  onClear={() => { setCsFilters(null); applyFilters(null); }}
+                />
+                <div className="flex items-center gap-4 flex-wrap mt-3">
                   <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                     <span className="text-sm font-medium">AWB:</span>
@@ -5382,6 +5388,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     }
 
     newSheet.raw[r][c] = newValue;
+    newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
