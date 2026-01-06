@@ -1,11 +1,11 @@
-import DHLSheet from './pages/DHLSheet';
 import AdminSettings from './pages/AdminSettings';
+import DHLSheet from './pages/DHLSheet';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "DHLSheet": DHLSheet,
     "AdminSettings": AdminSettings,
+    "DHLSheet": DHLSheet,
 }
 
 export const pagesConfig = {

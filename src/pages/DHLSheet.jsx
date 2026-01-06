@@ -255,6 +255,60 @@ const pullSessionFromBackend = async () => {
   return rec?.data?.session || null;
 };
 
+// Active sessions (cross-device) helpers
+const INSTANCE_ID_KEY = 'DHL_INSTANCE_ID';
+const getInstanceId = () => {
+  let id = localStorage.getItem(INSTANCE_ID_KEY);
+  if (!id) {
+    id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem(INSTANCE_ID_KEY, id);
+  }
+  return id;
+};
+
+const updateActiveSessions = async (mutateFn) => {
+  try {
+    const rows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+    const row = rows && rows[0];
+    const data = (row?.data) || {};
+    const next = mutateFn({ ...data });
+    if (row) await adn7.entities.AppState.update(row.id, { data: next });
+    else await adn7.entities.AppState.create({ state_key: 'active_sessions', data: next });
+  } catch {}
+};
+
+const markSessionLogin = async (role, username) => {
+  const id = getInstanceId();
+  await updateActiveSessions((data) => ({ ...data, [id]: { id, role, username, last_activity: Date.now() } }));
+};
+
+const markSessionHeartbeat = async () => {
+  const id = getInstanceId();
+  await updateActiveSessions((data) => {
+    if (!data[id]) return data;
+    return { ...data, [id]: { ...data[id], last_activity: Date.now() } };
+  });
+};
+
+const markSessionLogout = async () => {
+  const id = getInstanceId();
+  await updateActiveSessions((data) => { const next = { ...data }; delete next[id]; return next; });
+};
+
+const checkKickAndLogout = async (onLogout) => {
+  try {
+    const id = getInstanceId();
+    const rows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+    const data = rows?.[0]?.data || {};
+    const me = data[id];
+    if (me?.kick) {
+      await markSessionLogout();
+      toast.error('You have been logged out by admin');
+      onLogout();
+    }
+  } catch {}
+};
+
 // Notify other devices to refresh user lists (agents/CS)
 const notifyUsersSync = async () => {
   await pushAppState('users_sync', { ts: Date.now() });
@@ -2421,6 +2475,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Maintenance settings (mirrors AdminConfig)
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceBanner, setMaintenanceBanner] = useState("");
+  // Live active sessions
+  const [activeSessions, setActiveSessions] = useState({});
   // Audit logs
   const [auditLogs, setAuditLogs] = useState([]);
   const filteredAuditLogs = useMemo(() => {
@@ -2498,6 +2554,21 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       await loadRolePerms();
       await loadAudit();
     })();
+  }, []);
+
+  // Poll active sessions for real-time presence
+  useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      try {
+        const rec = await pullAppState('active_sessions');
+        const data = rec?.data || {};
+        if (!stopped) setActiveSessions(data);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => { stopped = true; clearInterval(id); };
   }, []);
 
   // Precompute metrics for all agents in one pass for performance
@@ -6159,6 +6230,7 @@ export default function DHLSheet() {
     local.session = { role, username };
     saveState(local);
     CHANNEL.postMessage({ type: 'app:sync' });
+    markSessionLogin(role, username);
   };
 
   const handleLogout = () => {
@@ -6177,8 +6249,18 @@ export default function DHLSheet() {
     state.session = { role: null, username: null };
     saveState(state);
     setSession({ role: null, username: null });
+    markSessionLogout();
     CHANNEL.postMessage({ type: 'app:sync' });
   };
+
+  useEffect(() => {
+    if (!session.role) return;
+    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 5000);
+    checkKickAndLogout(handleLogout);
+    const onBeforeUnload = () => { markSessionLogout(); };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => { clearInterval(id); window.removeEventListener('beforeunload', onBeforeUnload); };
+  }, [session.role]);
 
   if (loading) {
     return (
