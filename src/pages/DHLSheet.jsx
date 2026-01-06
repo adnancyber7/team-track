@@ -4432,6 +4432,96 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="mt-4">
+            {/* Maintenance Mode + Role Permissions + Audit Log */}
+            <Card className="bg-white/95 border-black/10 shadow-lg mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold">Maintenance Mode</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                  <div>
+                    <Label className="font-bold">Enable Maintenance Mode</Label>
+                    <p className="text-xs text-gray-600">Disables non-admin logins and shows a banner to all users.</p>
+                  </div>
+                  <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
+                </div>
+                <div>
+                  <Label className="text-xs text-black/60">Banner Message</Label>
+                  <Input value={maintenanceBanner} onChange={(e) => setMaintenanceBanner(e.target.value)} placeholder="We are doing some updates in the app, We will get back soon..." />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveMaintenance} className="font-bold bg-yellow-400 hover:bg-yellow-500 text-black">
+                    <Save className="w-4 h-4 mr-2" /> Save Maintenance Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/95 border-black/10 shadow-lg mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold">Role Permissions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="p-3 rounded border">
+                    <Label className="font-bold">Agent</Label>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm">Allow Copy Buttons</span>
+                      <Switch checked={!!rolePerm.agent.allowCopyButtons} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, agent: { ...rolePerm.agent, allowCopyButtons: v } })} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm">Allow Download Report</span>
+                      <Switch checked={!!rolePerm.agent.allowDownloadReport} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, agent: { ...rolePerm.agent, allowDownloadReport: v } })} />
+                    </div>
+                  </div>
+                  <div className="p-3 rounded border">
+                    <Label className="font-bold">CS Allocator</Label>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm">Allow Upload</span>
+                      <Switch checked={!!rolePerm.cs_allocator.allowUpload} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, cs_allocator: { ...rolePerm.cs_allocator, allowUpload: v } })} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm">Allow Clear</span>
+                      <Switch checked={!!rolePerm.cs_allocator.allowClear} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, cs_allocator: { ...rolePerm.cs_allocator, allowClear: v } })} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-sm">Allow Download</span>
+                      <Switch checked={!!rolePerm.cs_allocator.allowDownload} onCheckedChange={(v)=>saveRolePerms({ ...rolePerm, cs_allocator: { ...rolePerm.cs_allocator, allowDownload: v } })} />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/95 border-black/10 shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold">Audit Log (latest)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {auditLogs.length === 0 ? (
+                  <p className="text-sm text-black/50">No audit entries yet.</p>
+                ) : (
+                  <ScrollArea className="h-[240px] pr-4">
+                    <div className="space-y-2">
+                      {auditLogs.map((log) => (
+                        <div key={log.id} className="p-2 rounded border bg-white flex items-center justify-between">
+                          <div className="text-sm">
+                            <div className="font-bold">{log.action}</div>
+                            <div className="text-xs text-gray-600">By {log.actor_username} ({log.actor_role}) • {new Date(log.created_date).toLocaleString()}</div>
+                            {log.details && (
+                              <div className="text-xs text-gray-700 mt-1 font-mono truncate">{log.details}</div>
+                            )}
+                          </div>
+                          {log.target_type && (
+                            <Badge variant="outline" className="text-xs">{log.target_type}:{log.target_identifier}</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
             <div className="grid md:grid-cols-2 gap-4">
               <Card className="bg-white/95 border-black/10 shadow-lg">
                 <CardHeader className="pb-2">
