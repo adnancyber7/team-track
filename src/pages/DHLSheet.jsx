@@ -3628,6 +3628,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 null;
               })()}
             </TabsTrigger>
+            {/* Example: disable Reports for agents via rolePerm (admin sees all here, but we store policy centrally) */}
             <TabsTrigger value="reports" className="font-bold data-[state=active]:bg-yellow-400/60">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Reports
