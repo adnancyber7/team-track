@@ -2478,6 +2478,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Maintenance settings (mirrors AdminConfig)
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceBanner, setMaintenanceBanner] = useState("");
+  const [isEditingMaintenance, setIsEditingMaintenance] = useState(false);
   // Live active sessions
   const [activeSessions, setActiveSessions] = useState({});
   // Audit logs
@@ -2538,14 +2539,15 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   };
   const saveMaintenance = async () => {
     try {
-      await adn7.functions.invoke('adminSettingsApi', { 
-        action: 'updateSettings', 
-        payload: { 
-          maintenance_mode: maintenanceMode, 
-          banner_message: maintenanceBanner 
-        } 
+      setIsEditingMaintenance(false);
+      await adn7.functions.invoke('adminSettingsApi', {
+        action: 'updateSettings',
+        payload: {
+          maintenance_mode: maintenanceMode,
+          banner_message: maintenanceBanner
+        }
       });
-      
+
       // If enabling maintenance, kick all non-admin users
       if (maintenanceMode) {
         try {
@@ -2559,11 +2561,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           if (rows?.[0]) await adn7.entities.AppState.update(rows[0].id, { data: sessionData });
         } catch {}
       }
-      
+
       toast.success(`✅ Maintenance mode ${maintenanceMode ? 'enabled' : 'disabled'}`);
       logAudit('update_maintenance', { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner });
-    } catch {
+    } catch (err) {
       toast.error('Failed to save maintenance settings');
+      setIsEditingMaintenance(false);
     }
   };
 
@@ -2584,6 +2587,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     
     // Poll maintenance mode for real-time updates
     const pollMaintenance = setInterval(async () => {
+      if (isEditingMaintenance) return;
       try {
         const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
         const cfg = (cfgs || [])[0];
@@ -2593,9 +2597,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         }
       } catch {}
     }, 2000);
-    
+
     return () => clearInterval(pollMaintenance);
-  }, []);
+  }, [isEditingMaintenance]);
 
   // Poll live sessions
   useEffect(() => {
@@ -4737,9 +4741,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                         Disables Agent and CS logins. Shows banner on login screen.
                       </p>
                     </div>
-                    <Switch 
-                      checked={maintenanceMode} 
-                      onCheckedChange={setMaintenanceMode}
+                    <Switch
+                      checked={maintenanceMode}
+                      onCheckedChange={(checked) => {
+                        setMaintenanceMode(checked);
+                        setIsEditingMaintenance(true);
+                      }}
                       className="scale-125"
                     />
                   </div>
@@ -4748,7 +4755,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <Label className="text-sm font-bold">Banner Message</Label>
                     <Textarea
                       value={maintenanceBanner}
-                      onChange={(e) => setMaintenanceBanner(e.target.value)}
+                      onChange={(e) => {
+                        setMaintenanceBanner(e.target.value);
+                        setIsEditingMaintenance(true);
+                      }}
                       placeholder="We are doing some updates in the app, We will get back soon..."
                       className="min-h-[80px]"
                     />
