@@ -899,9 +899,26 @@ const LoginScreen = ({ onLogin }) => {
 
       <div className="w-full max-w-md relative z-10">
         {maintenanceInfo.on && (
-          <div className="mb-4 p-3 rounded-xl border-2 border-yellow-300 bg-yellow-50 text-yellow-900 text-sm font-semibold shadow">
-            {maintenanceInfo.message || 'We are doing some updates in the app, We will get back soon...'}
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-xl border-2 border-yellow-400 bg-gradient-to-r from-yellow-50 to-orange-50 shadow-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-600">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <path d="M12 9v4"/>
+                  <path d="M12 17h.01"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-yellow-900 font-bold text-base mb-1">Maintenance Mode Active</h3>
+                <p className="text-yellow-800 text-sm leading-relaxed">
+                  {maintenanceInfo.message || 'We are doing some updates in the app, We will get back soon...'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
         )}
         {/* Brand Logo */}
         <motion.div
@@ -4733,12 +4750,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                <div className={`p-4 rounded-lg border-2 transition-colors ${maintenanceMode ? 'bg-red-50 border-red-300' : 'bg-yellow-50 border-yellow-300'}`}>
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <Label className="font-bold text-lg">Enable Maintenance Mode</Label>
                       <p className="text-sm text-gray-600 mt-1">
-                        Disables Agent and CS logins. Shows banner on login screen.
+                        Immediately logs out all Agents and CS users. Shows custom banner on login screen.
                       </p>
                     </div>
                     <Switch
@@ -4750,9 +4767,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       className="scale-125"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">Banner Message</Label>
+                    <Label className="text-sm font-bold">Custom Banner Message</Label>
                     <Textarea
                       value={maintenanceBanner}
                       onChange={(e) => {
@@ -4762,20 +4779,31 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       placeholder="We are doing some updates in the app, We will get back soon..."
                       className="min-h-[80px]"
                     />
+                    <p className="text-xs text-gray-500">This message will be displayed on the authentication portal</p>
                   </div>
 
                   {maintenanceMode && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-300 rounded text-sm text-red-700 font-semibold">
-                      ⚠️ Warning: All non-admin users will be immediately logged out when you save.
+                    <div className="mt-3 p-4 bg-red-100 border-2 border-red-400 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 flex-shrink-0 mt-0.5">
+                          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                          <path d="M12 9v4"/>
+                          <path d="M12 17h.01"/>
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-sm text-red-800 font-bold">Critical Warning</p>
+                          <p className="text-xs text-red-700 mt-1">All Agents and CS Team members will be immediately logged out when you click Save. Admin access remains active.</p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  <Button 
-                    onClick={saveMaintenance} 
-                    className="w-full mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold"
+                  <Button
+                    onClick={saveMaintenance}
+                    className={`w-full mt-3 text-white font-bold transition-colors ${maintenanceMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    Save Maintenance Settings
+                    {maintenanceMode ? 'Enable Maintenance & Logout Users' : 'Save Maintenance Settings'}
                   </Button>
                 </div>
 
