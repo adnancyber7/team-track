@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/api/supabaseClient';
+import { db } from '@/api/supabaseClient';
 
 export default function Layout({ children, currentPageName }) {
   // Force HTTPS in production
@@ -23,7 +23,7 @@ export default function Layout({ children, currentPageName }) {
     let stopped = false;
     const fetchCfg = async () => {
       try {
-        const { data: cfgs } = await supabase.from('AdminConfig').select('*').eq('config_key', 'main');
+        const cfgs = await db.entities.AdminConfig.filter({ config_key: 'main' });
         const cfg = (cfgs || [])[0];
         if (!stopped && cfg) {
           setMaintenance(!!cfg.maintenance_mode);

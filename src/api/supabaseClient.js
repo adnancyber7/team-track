@@ -13,19 +13,14 @@ const createEntityWrapper = (tableName) => {
   return {
     async list(orderBy = 'created_at', limit = 1000) {
       try {
-        let query = supabase.from(tableName).select('*');
-
-        if (orderBy) {
-          const isDescending = orderBy.startsWith('-');
-          const column = isDescending ? orderBy.slice(1) : orderBy;
-          query = query.order(column, { ascending: !isDescending });
-        }
-
-        if (limit) {
-          query = query.limit(limit);
-        }
-
-        const { data, error } = await query;
+        const { data, error } = await supabase.functions.invoke('databaseApi', {
+          body: {
+            operation: 'list',
+            table: tableName,
+            orderBy,
+            limit
+          }
+        });
 
         if (error) throw error;
         return data || [];
@@ -37,11 +32,13 @@ const createEntityWrapper = (tableName) => {
 
     async create(payload) {
       try {
-        const { data, error } = await supabase
-          .from(tableName)
-          .insert(payload)
-          .select()
-          .single();
+        const { data, error } = await supabase.functions.invoke('databaseApi', {
+          body: {
+            operation: 'create',
+            table: tableName,
+            data: payload
+          }
+        });
 
         if (error) throw error;
         return data;
@@ -53,12 +50,14 @@ const createEntityWrapper = (tableName) => {
 
     async update(id, payload) {
       try {
-        const { data, error } = await supabase
-          .from(tableName)
-          .update(payload)
-          .eq('id', id)
-          .select()
-          .single();
+        const { data, error } = await supabase.functions.invoke('databaseApi', {
+          body: {
+            operation: 'update',
+            table: tableName,
+            id,
+            data: payload
+          }
+        });
 
         if (error) throw error;
         return data;
@@ -70,13 +69,16 @@ const createEntityWrapper = (tableName) => {
 
     async delete(id) {
       try {
-        const { error } = await supabase
-          .from(tableName)
-          .delete()
-          .eq('id', id);
+        const { data, error } = await supabase.functions.invoke('databaseApi', {
+          body: {
+            operation: 'delete',
+            table: tableName,
+            id
+          }
+        });
 
         if (error) throw error;
-        return { success: true };
+        return data || { success: true };
       } catch (error) {
         console.error(`[${tableName}] delete error:`, error);
         throw error;
@@ -85,23 +87,15 @@ const createEntityWrapper = (tableName) => {
 
     async filter(filters, orderBy = null, limit = null) {
       try {
-        let query = supabase.from(tableName).select('*');
-
-        Object.entries(filters).forEach(([key, value]) => {
-          query = query.eq(key, value);
+        const { data, error } = await supabase.functions.invoke('databaseApi', {
+          body: {
+            operation: 'filter',
+            table: tableName,
+            filters,
+            orderBy,
+            limit
+          }
         });
-
-        if (orderBy) {
-          const isDescending = orderBy.startsWith('-');
-          const column = isDescending ? orderBy.slice(1) : orderBy;
-          query = query.order(column, { ascending: !isDescending });
-        }
-
-        if (limit) {
-          query = query.limit(limit);
-        }
-
-        const { data, error } = await query;
 
         if (error) throw error;
         return data || [];
@@ -113,11 +107,13 @@ const createEntityWrapper = (tableName) => {
 
     async get(id) {
       try {
-        const { data, error } = await supabase
-          .from(tableName)
-          .select('*')
-          .eq('id', id)
-          .single();
+        const { data, error } = await supabase.functions.invoke('databaseApi', {
+          body: {
+            operation: 'get',
+            table: tableName,
+            id
+          }
+        });
 
         if (error) throw error;
         return data;
