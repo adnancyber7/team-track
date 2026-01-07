@@ -1662,7 +1662,7 @@ const ExcelSheet = memo(({
     }
 
     return { data: compactedData, timers: compactedTimers, rowMapping, priorityModeActive };
-  }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length]);
+  }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length, forceRefresh]);
 
   const displayData = getCompactedView.data;
   const displayTimers = getCompactedView.timers;
@@ -5756,9 +5756,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // trigger instant cross-device update
     pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
+    setForceRefresh((prev) => prev + 1);
   }, [csSheet, username]);
 
   const handleStatusClick = useCallback((r, action) => {
@@ -5776,7 +5776,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         saveCSSheet(newSheet);
         pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
-        toast.success("Timer started");
+        setForceRefresh((prev) => prev + 1);
+        toast.success("Timer started", { duration: 1500 });
       }
       return;
     }
@@ -5800,13 +5801,12 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       const doneCount = timer.doneClicks;
       timer.state = "DONE";
       timer.updatedAt = Date.now();
-      timer.hidden = true; // Hide from agent view
+      timer.hidden = true;
       if (timer.start != null) {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
         timer.start = null;
       }
 
-      // Track in agent's Excel data
       const sheets = loadAgentSheets();
       if (!sheets.agentStats) sheets.agentStats = {};
       if (!sheets.agentStats[username]) sheets.agentStats[username] = { done: [], rejected: [] };
@@ -5818,17 +5818,14 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
 
-      // Check if this AWB was a priority number for this agent
       const rowAwb = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
       const myPriorityNumbers = sheets.agentPriorityMap?.[username] || [];
+      let priorityCleared = false;
 
       if (myPriorityNumbers.includes(rowAwb)) {
-        // Mark this priority number as completed
         sheets.priorityStatus[rowAwb] = 'completed';
 
-        // Check if agent completed ALL their priority numbers
         const allMyPrioritiesCompleted = myPriorityNumbers.every((pNum) => {
-          // Check if this priority number is completed
           for (let i = 0; i < ROWS_COUNT; i++) {
             const checkAwb = String(newSheet.raw[i]?.[COL_AWB] || '').trim();
             if (checkAwb === pNum) {
@@ -5840,12 +5837,13 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         });
 
         if (allMyPrioritiesCompleted) {
-          // Remove this agent from priority mode
           delete sheets.agentPriorityMap[username];
+          priorityCleared = true;
           saveAgentSheets(sheets);
           setAgentSheets(sheets);
+          setPriorityList(sheets);
           setForceRefresh((prev) => prev + 1);
-          toast.success(`✅ All priority AWBs completed! Showing all content now.`, { duration: 5000 });
+          toast.success(`✅ All priority AWBs completed! Showing all data now.`, { duration: 4000 });
           CHANNEL.postMessage({ type: "app:sync" });
         } else {
           saveAgentSheets(sheets);
@@ -5854,11 +5852,11 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         saveAgentSheets(sheets);
       }
 
-      // Update metrics immediately
-      toast.success(`✅ AWB ${awb} marked as DONE (Total Done: ${doneCount})`, { duration: 4000 });
+      toast.success(`✅ AWB ${awb} marked as DONE`, { duration: 2000 });
 
-      // Check if all rows in current region filter are done
       const currentFilter = sheets.agentFilters?.[username]?.region;
+      let regionCleared = false;
+
       if (currentFilter) {
         let allDone = true;
         for (let i = 0; i < ROWS_COUNT; i++) {
@@ -5875,11 +5873,21 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         }
 
         if (allDone) {
+          if (!sheets.agentFilters) sheets.agentFilters = {};
+          if (!sheets.agentFilters[username]) sheets.agentFilters[username] = {};
           sheets.agentFilters[username].region = "";
+          regionCleared = true;
           saveAgentSheets(sheets);
+          setAgentSheets(sheets);
+          setRegionFilter("");
+          setForceRefresh((prev) => prev + 1);
           CHANNEL.postMessage({ type: "app:sync" });
-          toast.success(`All items in ${currentFilter} completed! Filter removed.`);
+          toast.success(`All items in ${currentFilter} completed! Showing all regions now.`, { duration: 3000 });
         }
+      }
+
+      if (priorityCleared || regionCleared) {
+        setTimeout(() => setForceRefresh((prev) => prev + 1), 100);
       }
     } else if (action === 'reject') {
       const rej2 = String(newSheet.raw[r]?.[COL_REJ2] || '').trim();
@@ -5905,17 +5913,14 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
       timer.updatedAt = Date.now();
-      timer.hidden = true; // Hide from agent view after rejection
+      timer.hidden = true;
 
-      // Set STATUS column to REJECT
       newSheet.raw[r][COL_STATUS] = "REJECT";
 
-      // Add agent name to AGENT2 column if empty (for CS team tracking)
       if (!newSheet.raw[r][COL_AGENT2]?.trim()) {
         newSheet.raw[r][COL_AGENT2] = username;
       }
 
-      // Track in agent's Excel data
       const sheets = loadAgentSheets();
       if (!sheets.agentStats) sheets.agentStats = {};
       if (!sheets.agentStats[username]) sheets.agentStats[username] = { done: [], rejected: [] };
@@ -5928,16 +5933,78 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         reason: newSheet.raw[r]?.[COL_REJ2] || newSheet.raw[r]?.[COL_REJ3] || newSheet.raw[r]?.[COL_REJ4] || newSheet.raw[r]?.[COL_REJ5] || '',
         timestamp: new Date().toISOString()
       });
-      saveAgentSheets(sheets);
 
-      // Update metrics immediately
-      toast.error(`❌ AWB ${awb} rejected`);
+      const rowAwb = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
+      const myPriorityNumbers = sheets.agentPriorityMap?.[username] || [];
+      let priorityCleared = false;
 
-      // Set blink for CS sheet when agent rejects
+      if (myPriorityNumbers.includes(rowAwb)) {
+        sheets.priorityStatus[rowAwb] = 'completed';
+
+        const allMyPrioritiesCompleted = myPriorityNumbers.every((pNum) => {
+          for (let i = 0; i < ROWS_COUNT; i++) {
+            const checkAwb = String(newSheet.raw[i]?.[COL_AWB] || '').trim();
+            if (checkAwb === pNum) {
+              const state = newSheet.timers[i]?.state?.toUpperCase() || '';
+              return state === 'DONE' || state === 'REJECTED';
+            }
+          }
+          return false;
+        });
+
+        if (allMyPrioritiesCompleted) {
+          delete sheets.agentPriorityMap[username];
+          priorityCleared = true;
+          saveAgentSheets(sheets);
+          setAgentSheets(sheets);
+          setPriorityList(sheets);
+          setForceRefresh((prev) => prev + 1);
+          toast.success(`✅ All priority AWBs completed! Showing all data now.`, { duration: 4000 });
+          CHANNEL.postMessage({ type: "app:sync" });
+        } else {
+          saveAgentSheets(sheets);
+        }
+      } else {
+        saveAgentSheets(sheets);
+      }
+
+      toast.error(`❌ AWB ${awb} rejected`, { duration: 2000 });
+
+      const currentFilter = sheets.agentFilters?.[username]?.region;
+      let regionCleared = false;
+
+      if (currentFilter) {
+        let allDone = true;
+        for (let i = 0; i < ROWS_COUNT; i++) {
+          const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
+          const rowRegion = String(newSheet.raw[i]?.[COL_REGION] || '').trim().toUpperCase();
+          const rowState = newSheet.timers[i]?.state?.toUpperCase() || '';
+
+          if (rowAgent === username.toLowerCase() && (
+          rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
+          !(rowState === 'DONE' || rowState === 'REJECTED')) {
+            allDone = false;
+            break;
+          }
+        }
+
+        if (allDone) {
+          if (!sheets.agentFilters) sheets.agentFilters = {};
+          if (!sheets.agentFilters[username]) sheets.agentFilters[username] = {};
+          sheets.agentFilters[username].region = "";
+          regionCleared = true;
+          saveAgentSheets(sheets);
+          setAgentSheets(sheets);
+          setRegionFilter("");
+          setForceRefresh((prev) => prev + 1);
+          CHANNEL.postMessage({ type: "app:sync" });
+          toast.success(`All items in ${currentFilter} completed! Showing all regions now.`, { duration: 3000 });
+        }
+      }
+
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
 
-      // Notify CS team about rejection
       CHANNEL.postMessage({
         type: "app:sync",
         rejectionNotification: {
@@ -5947,9 +6014,12 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         }
       });
 
-      // Resume timer
       if (timer.start == null) {
         timer.start = Date.now();
+      }
+
+      if (priorityCleared || regionCleared) {
+        setTimeout(() => setForceRefresh((prev) => prev + 1), 100);
       }
 
       setTimeout(() => {
@@ -5959,15 +6029,15 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           saveCSSheet(updated);
           CHANNEL.postMessage({ type: "app:sync" });
         }
-      }, 5000);
+      }, 2000);
     }
 
     newSheet.timers[r] = timer;
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // trigger instant cross-device update
     pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
+    setForceRefresh((prev) => prev + 1);
   }, [csSheet, username]);
 
   const getAgentMetrics = useMemo(() => {
@@ -6014,7 +6084,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       totalDoneLines,
       totalRejectedLines
     };
-  }, [csSheet, username, agentSheets]);
+  }, [csSheet, username, agentSheets, forceRefresh]);
 
   const metrics = getAgentMetrics;
 
@@ -6083,7 +6153,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       }
     });
     return { raw: result, timers: resultTimers };
-  }, [agentFilters, csSheet]);
+  }, [agentFilters, csSheet, forceRefresh]);
 
   const getBreakDuration = () => {
     if (!onBreak || !breakStart) return 0;
