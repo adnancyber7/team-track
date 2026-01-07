@@ -1566,7 +1566,8 @@ const ExcelSheet = memo(({
   fastEditMode,
   priorityList,
   zoomLevel = 100,
-  filterAgentUsername = ""
+  filterAgentUsername = "",
+  forceRefresh = 0
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -4096,7 +4097,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               blinkRows={csSheet.blinkRows}
               selectedRows={selectedRows}
               onRowSelect={handleRowSelect}
-              fastEditMode={fastEditMode} />
+              fastEditMode={fastEditMode}
+              forceRefresh={forceRefresh} />
 
           </TabsContent>
 
@@ -4400,7 +4402,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   editableCols={ADMIN_EDITABLE_IN_CS}
                   blinkRows={csSheet.blinkRows}
                   regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
-                  filterAgentUsername={selectedAgent} />
+                  filterAgentUsername={selectedAgent}
+                  forceRefresh={forceRefresh} />
 
                 </CardContent>
               </Card>
@@ -5503,7 +5506,8 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
           isAdmin={true}
           agentUsername=""
           editableCols={CS_ALLOCATOR_EDITABLE}
-          blinkRows={csSheet.blinkRows} />
+          blinkRows={csSheet.blinkRows}
+          forceRefresh={forceRefresh} />
 
       </div>
 
@@ -6384,7 +6388,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           blinkRows={csSheet.blinkRows}
           regionFilter={regionFilter}
           priorityList={priorityList}
-          zoomLevel={zoomLevel} />
+          zoomLevel={zoomLevel}
+          forceRefresh={forceRefresh} />
 
 
         {/* Start Reminder Dialog */}
