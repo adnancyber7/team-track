@@ -2503,6 +2503,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Audit logs
   const [auditLogs, setAuditLogs] = useState([]);
   const [liveSessions, setLiveSessions] = useState([]);
+  const [forceRefresh, setForceRefresh] = useState(0);
   const filteredAuditLogs = useMemo(() => {
     const q = (auditSearch || '').toLowerCase().trim();
     if (!q) return auditLogs;
@@ -5178,6 +5179,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
   const [myUploads, setMyUploads] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
   const [rolePerm, setRolePerm] = useState({ cs_allocator: { allowUpload: true, allowClear: true, allowDownload: true } });
+  const [forceRefresh, setForceRefresh] = useState(0);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
