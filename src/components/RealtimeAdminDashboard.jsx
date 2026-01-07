@@ -117,9 +117,9 @@ const RealtimeAdminDashboard = ({
     onTabChange('agents');
   };
 
-  const priorityTasks = Object.entries(agentSheets.priorityAgentMap || {})
+  const priorityTasks = Object.entries(agentSheets?.priorityAgentMap || {})
     .map(([priorityNum, agentName]) => {
-      const status = agentSheets.priorityStatus?.[priorityNum] || 'pending';
+      const status = agentSheets?.priorityStatus?.[priorityNum] || 'pending';
       return { priorityNum, agentName, status };
     })
     .filter(task => task.status !== 'completed');

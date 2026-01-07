@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspens
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
 import { adn7 } from '@/api/adn7Client';
+import ErrorBoundary from '../components/ErrorBoundary';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
@@ -3948,17 +3949,19 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* CS Sheet Tab */}
           <TabsContent value="dashboard" className="mt-4">
-            <Suspense fallback={<div className="text-sm text-black/50 p-6 text-center">Loading Real-time Dashboard…</div>}>
-              <RealtimeAdminDashboard
-                agents={agents}
-                csSheet={csSheet}
-                agentSheets={agentSheets}
-                allAgentMetrics={allAgentMetrics}
-                getAgentStatus={getAgentStatus}
-                setSelectedAgent={setSelectedAgent}
-                onTabChange={setActiveTab}
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div className="text-sm text-black/50 p-6 text-center">Loading Real-time Dashboard…</div>}>
+                <RealtimeAdminDashboard
+                  agents={agents}
+                  csSheet={csSheet}
+                  agentSheets={agentSheets}
+                  allAgentMetrics={allAgentMetrics}
+                  getAgentStatus={getAgentStatus}
+                  setSelectedAgent={setSelectedAgent}
+                  onTabChange={setActiveTab}
+                />
+              </Suspense>
+            </ErrorBoundary>
           </TabsContent>
 
           <TabsContent value="cs-sheet" className="mt-4 space-y-4">
@@ -4015,9 +4018,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       <Download className="w-4 h-4 mr-2" />
                       Download
                     </Button>
-                    <Suspense fallback={<div className="text-xs text-black/50">Loading report…</div>}>
-                      <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
-                    </Suspense>
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="text-xs text-black/50">Loading report…</div>}>
+                        <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
+                      </Suspense>
+                    </ErrorBoundary>
                   </div>
                 </div>
                 
@@ -4097,39 +4102,39 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
-            <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
-              <FreeAnalytics
-                agents={agents}
-                csSheet={csSheet}
-                ROWS_COUNT={ROWS_COUNT}
-                COL_AGENTS={COL_AGENTS}
-                COL_AWB={COL_AWB}
-                COL_LINE={COL_LINE}
-                COL_REJ2={COL_REJ2}
-                COL_REJ3={COL_REJ3}
-                COL_REJ4={COL_REJ4}
-                COL_REJ5={COL_REJ5}
-                COL_REGION={COL_REGION} />
+            <ErrorBoundary>
+              <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
+                <FreeAnalytics
+                  agents={agents}
+                  csSheet={csSheet}
+                  ROWS_COUNT={ROWS_COUNT}
+                  COL_AGENTS={COL_AGENTS}
+                  COL_AWB={COL_AWB}
+                  COL_LINE={COL_LINE}
+                  COL_REJ2={COL_REJ2}
+                  COL_REJ3={COL_REJ3}
+                  COL_REJ4={COL_REJ4}
+                  COL_REJ5={COL_REJ5}
+                  COL_REGION={COL_REGION} />
+              </Suspense>
+            </ErrorBoundary>
 
-            </Suspense>
-
-            
-            <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
-              <AgentPerformanceDashboard
-                csSheet={csSheet}
-                agents={agents}
-                ROWS_COUNT={ROWS_COUNT}
-                COL_AGENTS={COL_AGENTS}
+            <ErrorBoundary>
+              <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
+                <AgentPerformanceDashboard
+                  csSheet={csSheet}
+                  agents={agents}
+                  ROWS_COUNT={ROWS_COUNT}
+                  COL_AGENTS={COL_AGENTS}
                 COL_AWB={COL_AWB}
                 COL_LINE={COL_LINE}
                 COL_REJ2={COL_REJ2}
                 COL_REJ3={COL_REJ3}
                 COL_REJ4={COL_REJ4}
                 COL_REJ5={COL_REJ5} />
+              </Suspense>
+            </ErrorBoundary>
 
-            </Suspense>
-
-            
             <div className="grid md:grid-cols-3 gap-4">
               {/* Create Agent */}
               <Card className="bg-white/95 border-black/10 shadow-lg">
@@ -4706,23 +4711,23 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Reports Tab */}
           <TabsContent value="reports" className="mt-4">
-            <Suspense fallback={<div className="text-sm text-black/50">Loading reports…</div>}>
-              <AdvancedReportingModule
-                csSheet={csSheet}
-                agents={agents}
-                ROWS_COUNT={ROWS_COUNT}
-                COL_AGENTS={COL_AGENTS}
-                COL_AWB={COL_AWB}
-                COL_LINE={COL_LINE}
-                COL_REJ2={COL_REJ2}
-                COL_REJ3={COL_REJ3}
-                COL_REJ4={COL_REJ4}
-                COL_REJ5={COL_REJ5}
-                COL_REGION={COL_REGION}
-                COL_REASON={COL_REASON} />
-
-            </Suspense>
-
+            <ErrorBoundary>
+              <Suspense fallback={<div className="text-sm text-black/50">Loading reports…</div>}>
+                <AdvancedReportingModule
+                  csSheet={csSheet}
+                  agents={agents}
+                  ROWS_COUNT={ROWS_COUNT}
+                  COL_AGENTS={COL_AGENTS}
+                  COL_AWB={COL_AWB}
+                  COL_LINE={COL_LINE}
+                  COL_REJ2={COL_REJ2}
+                  COL_REJ3={COL_REJ3}
+                  COL_REJ4={COL_REJ4}
+                  COL_REJ5={COL_REJ5}
+                  COL_REGION={COL_REGION}
+                  COL_REASON={COL_REASON} />
+              </Suspense>
+            </ErrorBoundary>
           </TabsContent>
 
           {/* Advanced Controls Tab */}

@@ -149,6 +149,16 @@ const createFunctionsWrapper = () => {
 
 const createAuthWrapper = () => {
   return {
+    async getUser() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        return { data };
+      } catch (error) {
+        throw error;
+      }
+    },
+
     async me() {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
@@ -156,6 +166,15 @@ const createAuthWrapper = () => {
         return user;
       } catch (error) {
         return null;
+      }
+    },
+
+    async signOut() {
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('Sign out error:', error);
+        throw error;
       }
     },
 
