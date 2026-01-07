@@ -292,49 +292,13 @@ const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGEN
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="priority" className="w-full">
+        <Tabs defaultValue="breaks" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="breaks">Break Reminders</TabsTrigger>
             <TabsTrigger value="mass">Mass Assignment</TabsTrigger>
             <TabsTrigger value="access">Access Controls</TabsTrigger>
             <TabsTrigger value="users">User Data</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="priority" className="space-y-4">
-            <Card>
-              <CardContent className="p-4 space-y-4">
-                <div>
-                  <Label className="text-sm font-bold mb-2 block">Priority Unlock Threshold</Label>
-                  <p className="text-xs text-gray-600 mb-2">
-                    Set how many priority AWBs an agent must complete before seeing all content (0 = disabled)
-                  </p>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={settings.priorityUnlockCount}
-                    onChange={(e) => handleSettingChange('priorityUnlockCount', parseInt(e.target.value) || 0)}
-                    className="w-40"
-                  />
-                  <Badge className="mt-2 bg-blue-100 text-blue-800">
-                    {settings.priorityUnlockCount === 0 
-                      ? 'All priorities must be completed'
-                      : `Unlock after ${settings.priorityUnlockCount} completed`}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                  <div>
-                    <Label className="font-bold">Auto-Assignment Mode</Label>
-                    <p className="text-xs text-gray-600">Automatically assign new AWBs to available agents</p>
-                  </div>
-                  <Switch
-                    checked={settings.autoAssignEnabled}
-                    onCheckedChange={(checked) => handleSettingChange('autoAssignEnabled', checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="breaks" className="space-y-4">
             <Card>
