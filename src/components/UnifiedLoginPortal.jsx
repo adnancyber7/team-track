@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { adn7 } from '@/api/adn7Client';
+import { base44 as adn7 } from '@/api/base44Client';
 
 export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveState }) {
   const [username, setUsername] = useState("");
@@ -261,56 +261,11 @@ export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveStat
             <p className="text-gray-400 mt-2 text-sm font-medium">Unified Authentication Portal</p>
           </motion.div>
 
-          <AnimatePresence>
-            {maintenance && (
-              <motion.div
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="mb-6"
-              >
-                <Card className="backdrop-blur-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border-2 border-red-400/50 shadow-2xl overflow-hidden">
-                  <div className="relative p-4">
-                    <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 to-transparent pointer-events-none" />
-                    <div className="relative flex items-start gap-3">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          rotate: [0, 10, -10, 0]
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                        className="flex-shrink-0 mt-1"
-                      >
-                        <AlertCircle className="w-6 h-6 text-red-400" />
-                      </motion.div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-red-100 font-bold text-base mb-1.5 flex items-center gap-2">
-                          Maintenance Mode Active
-                          <motion.span
-                            animate={{ opacity: [1, 0.5, 1] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                          >
-                            🔧
-                          </motion.span>
-                        </h3>
-                        <p className="text-red-200 text-sm leading-relaxed">
-                          {banner || 'We are doing some updates in the app. We will get back soon...'}
-                        </p>
-                        <div className="mt-2 text-xs text-red-300/80">
-                          Only administrators can login during this time.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {maintenance && (
+            <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-100/90 text-yellow-900 p-3 text-sm font-semibold shadow">
+              {banner || 'We are doing some updates in the app, We will get back soon...'}
+            </div>
+          )}
           {/* Login Card */}
           <Card className="backdrop-blur-2xl bg-white/10 border-white/20 shadow-2xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />

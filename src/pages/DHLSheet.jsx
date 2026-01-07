@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard, Copy, ClipboardCheck } from 'lucide-react';
-import { adn7 } from '@/api/adn7Client';
-import ErrorBoundary from '../components/ErrorBoundary';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
+import { base44 as adn7 } from '@/api/base44Client';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
+import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
+import FilterBar from '../components/filters/FilterBar';
 const AgentPerformanceDashboard = lazy(() => import('../components/AgentPerformanceDashboard'));
 const AdvancedReportingModule = lazy(() => import('../components/AdvancedReportingModule'));
 const FreeAnalytics = lazy(() => import('../components/analytics/FreeAnalytics'));
@@ -897,56 +898,11 @@ const LoginScreen = ({ onLogin }) => {
       )}
 
       <div className="w-full max-w-md relative z-10">
-        <AnimatePresence>
-          {maintenanceInfo.on && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="mb-6"
-            >
-              <Card className="backdrop-blur-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border-2 border-red-400/50 shadow-2xl overflow-hidden">
-                <div className="relative p-4">
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 to-transparent pointer-events-none" />
-                  <div className="relative flex items-start gap-3">
-                    <motion.div
-                      animate={{
-                        scale: [1, 1.2, 1],
-                        rotate: [0, 10, -10, 0]
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                      className="flex-shrink-0 mt-1"
-                    >
-                      <AlertCircle className="w-6 h-6 text-red-400" />
-                    </motion.div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-red-100 font-bold text-base mb-1.5 flex items-center gap-2">
-                        Maintenance Mode Active
-                        <motion.span
-                          animate={{ opacity: [1, 0.5, 1] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        >
-                          🔧
-                        </motion.span>
-                      </h3>
-                      <p className="text-red-200 text-sm leading-relaxed">
-                        {maintenanceInfo.message || 'We are doing some updates in the app. We will get back soon...'}
-                      </p>
-                      <div className="mt-2 text-xs text-red-300/80">
-                        Only administrators can login during this time.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {maintenanceInfo.on && (
+          <div className="mb-4 p-3 rounded-xl border-2 border-yellow-300 bg-yellow-50 text-yellow-900 text-sm font-semibold shadow">
+            {maintenanceInfo.message || 'We are doing some updates in the app, We will get back soon...'}
+          </div>
+        )}
         {/* Brand Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -1592,8 +1548,7 @@ const ExcelSheet = memo(({
   fastEditMode,
   priorityList,
   zoomLevel = 100,
-  filterAgentUsername = "",
-  forceRefresh = 0
+  filterAgentUsername = ""
 }) => {
   const [activeCell, setActiveCell] = useState({ r: 0, c: 0 });
   const [editingCell, setEditingCell] = useState(null);
@@ -1690,7 +1645,7 @@ const ExcelSheet = memo(({
     }
 
     return { data: compactedData, timers: compactedTimers, rowMapping, priorityModeActive };
-  }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length, forceRefresh]);
+  }, [isAdmin, agentUsername, data, timers, priorityList, regionFilter, columns.length]);
 
   const displayData = getCompactedView.data;
   const displayTimers = getCompactedView.timers;
@@ -2523,13 +2478,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Maintenance settings (mirrors AdminConfig)
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceBanner, setMaintenanceBanner] = useState("");
-  const [isEditingMaintenance, setIsEditingMaintenance] = useState(false);
   // Live active sessions
   const [activeSessions, setActiveSessions] = useState({});
   // Audit logs
   const [auditLogs, setAuditLogs] = useState([]);
   const [liveSessions, setLiveSessions] = useState([]);
-  const [forceRefresh, setForceRefresh] = useState(0);
   const filteredAuditLogs = useMemo(() => {
     const q = (auditSearch || '').toLowerCase().trim();
     if (!q) return auditLogs;
@@ -2585,15 +2538,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   };
   const saveMaintenance = async () => {
     try {
-      setIsEditingMaintenance(false);
-      await adn7.functions.invoke('adminSettingsApi', {
-        action: 'updateSettings',
-        payload: {
-          maintenance_mode: maintenanceMode,
-          banner_message: maintenanceBanner
-        }
+      await adn7.functions.invoke('adminSettingsApi', { 
+        action: 'updateSettings', 
+        payload: { 
+          maintenance_mode: maintenanceMode, 
+          banner_message: maintenanceBanner 
+        } 
       });
-
+      
       // If enabling maintenance, kick all non-admin users
       if (maintenanceMode) {
         try {
@@ -2607,12 +2559,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           if (rows?.[0]) await adn7.entities.AppState.update(rows[0].id, { data: sessionData });
         } catch {}
       }
-
+      
       toast.success(`✅ Maintenance mode ${maintenanceMode ? 'enabled' : 'disabled'}`);
       logAudit('update_maintenance', { maintenance_mode: maintenanceMode, banner_message: maintenanceBanner });
-    } catch (err) {
+    } catch {
       toast.error('Failed to save maintenance settings');
-      setIsEditingMaintenance(false);
     }
   };
 
@@ -2633,7 +2584,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     
     // Poll maintenance mode for real-time updates
     const pollMaintenance = setInterval(async () => {
-      if (isEditingMaintenance) return;
       try {
         const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
         const cfg = (cfgs || [])[0];
@@ -2643,9 +2593,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         }
       } catch {}
     }, 2000);
-
+    
     return () => clearInterval(pollMaintenance);
-  }, [isEditingMaintenance]);
+  }, []);
 
   // Poll live sessions
   useEffect(() => {
@@ -3898,68 +3848,44 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   return (
     <div className="min-h-screen p-4" style={{
       background: `
-        radial-gradient(1000px 600px at 20% 15%, rgba(255,204,0,.25), transparent 70%),
-        radial-gradient(800px 500px at 80% 25%, rgba(59,130,246,.15), transparent 65%),
-        linear-gradient(180deg, #ffffff 0%, #fef3c7 50%, #fef9c3 100%)
+        radial-gradient(900px 500px at 15% 10%, rgba(255,204,0,.55), transparent 60%),
+        radial-gradient(700px 400px at 85% 20%, rgba(255,204,0,.35), transparent 55%),
+        linear-gradient(180deg, #fff 0%, #fff7d1 100%)
       `
     }}>
       <div className="max-w-[1600px] mx-auto space-y-4">
         {/* Top Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card className="bg-gradient-to-r from-white via-white to-gray-50/50 border-gray-200/60 shadow-2xl backdrop-blur-sm">
-            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-black border-none px-4 py-1.5 shadow-lg shadow-yellow-500/30">
-                  <Shield className="w-3 h-3 mr-1.5" />
-                  ADMIN
-                </Badge>
-                <span className="font-bold text-gray-700">Welcome, <span className="text-gray-900">{username}</span></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Button
-                    onClick={onLogout}
-                    variant="outline"
-                    className="font-bold bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 border-red-200 text-red-700 transition-all duration-200 shadow-md"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                </motion.div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <Card className="bg-white/95 border-black/10 shadow-xl">
+          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <Badge className="bg-yellow-400 text-black font-black border-black/10">ADMIN</Badge>
+              <span className="font-bold">Welcome, {username}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => (window.location.href = '/AdminSettings') } variant="outline" className="font-bold">
+                Settings
+              </Button>
+              <Button onClick={onLogout} variant="outline" className="font-bold bg.yellow-400/50 hover:bg-yellow-400/70 border-black/10">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="dashboard">
-          <TabsList className="bg-gradient-to-r from-white via-gray-50 to-white border border-gray-200/80 p-1.5 h-auto flex flex-wrap shadow-lg">
+          <TabsList className="bg-white/80 border border-black/10 p-1 h-auto flex flex-wrap">
             {/* Role-based access guards: hide tabs if role permissions disabled */}
-            <TabsTrigger
-              value="dashboard"
-              className="font-bold transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-black data-[state=active]:shadow-lg"
-            >
+            <TabsTrigger value="dashboard" className="font-bold data-[state=active]:bg-yellow-400/60">
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger
-              value="cs-sheet"
-              className="font-bold transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-black data-[state=active]:shadow-lg"
-            >
+            <TabsTrigger value="cs-sheet" className="font-bold data-[state=active]:bg-yellow-400/60">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Master Sheet
             </TabsTrigger>
-            <TabsTrigger
-              value="agents"
-              className="font-bold transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-black data-[state=active]:shadow-lg"
-            >
+            <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-yellow-400/60">
               <Users className="w-4 h-4 mr-2" />
               Agents ({agents?.length || 0})
             </TabsTrigger>
@@ -4003,26 +3929,30 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* CS Sheet Tab */}
           <TabsContent value="dashboard" className="mt-4">
-            <ErrorBoundary>
-              <Suspense fallback={<div className="text-sm text-black/50 p-6 text-center">Loading Real-time Dashboard…</div>}>
-                <RealtimeAdminDashboard
-                  agents={agents}
-                  csSheet={csSheet}
-                  agentSheets={agentSheets}
-                  allAgentMetrics={allAgentMetrics}
-                  getAgentStatus={getAgentStatus}
-                  setSelectedAgent={setSelectedAgent}
-                  onTabChange={setActiveTab}
-                />
-              </Suspense>
-            </ErrorBoundary>
+            <Suspense fallback={<div className="text-sm text-black/50 p-6 text-center">Loading Real-time Dashboard…</div>}>
+              <RealtimeAdminDashboard
+                agents={agents}
+                csSheet={csSheet}
+                agentSheets={agentSheets}
+                allAgentMetrics={allAgentMetrics}
+                getAgentStatus={getAgentStatus}
+                setSelectedAgent={setSelectedAgent}
+                onTabChange={setActiveTab}
+              />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="cs-sheet" className="mt-4 space-y-4">
-            {/* Master Sheet Controls */}
-            <Card className="bg-gradient-to-br from-white to-gray-50/50 border-gray-200/60 shadow-xl">
+            {/* Analytics & Upload */}
+            <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-4 flex-wrap">
+                <FilterBar
+                  columns={CS_COLUMNS}
+                  initial={csFilters || undefined}
+                  onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
+                  onClear={() => { setCsFilters(null); applyFilters(null); }}
+                />
+                <div className="flex items-center gap-4 flex-wrap mt-3">
                   <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                     <span className="text-sm font-medium">AWB:</span>
@@ -4066,11 +3996,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       <Download className="w-4 h-4 mr-2" />
                       Download
                     </Button>
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="text-xs text-black/50">Loading report…</div>}>
-                        <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Suspense fallback={<div className="text-xs text-black/50">Loading report…</div>}>
+                      <DailyReportDialog csSheet={csSheet} agents={agents} columns={CS_COLUMNS} />
+                    </Suspense>
                   </div>
                 </div>
                 
@@ -4083,140 +4011,49 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
 
 
-            {/* Bulk Actions & Copy Tools */}
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border-blue-200/60 shadow-xl">
+            {/* Bulk Actions */}
+            <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-black px-3 py-1.5 shadow-lg">
-                    <Zap className="w-3 h-3 mr-1" />
-                    BULK ACTIONS
-                  </Badge>
+                  <Badge className="bg-blue-100 text-blue-800 font-black">BULK ACTIONS</Badge>
+                  <Button onClick={handleSelectAll} size="sm" variant="outline" className="font-bold">
+                    <CheckSquare className="w-4 h-4 mr-2" />
+                    Select All
+                  </Button>
+                  <Button onClick={handleDeselectAll} size="sm" variant="outline" className="font-bold">
+                    <Square className="w-4 h-4 mr-2" />
+                    Deselect All
+                  </Button>
+                  <Button
+                    onClick={handleClearSelected}
+                    size="sm"
+                    variant="outline"
+                    className="font-bold text-orange-600 hover:bg-orange-50"
+                    disabled={selectedRows.size === 0}>
 
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={handleSelectAll}
-                      size="sm"
-                      variant="outline"
-                      className="font-bold bg-white hover:bg-blue-50 border-blue-200 transition-all duration-200 shadow-sm"
-                    >
-                      <CheckSquare className="w-4 h-4 mr-2" />
-                      Select All
-                    </Button>
-                  </motion.div>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear Selected ({selectedRows.size})
+                  </Button>
+                  <Button
+                    onClick={handleDeleteSelected}
+                    size="sm"
+                    variant="outline"
+                    className="font-bold text-red-600 hover:bg-red-50"
+                    disabled={selectedRows.size === 0}>
 
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={handleDeselectAll}
-                      size="sm"
-                      variant="outline"
-                      className="font-bold bg-white hover:bg-gray-50 border-gray-200 transition-all duration-200 shadow-sm"
-                    >
-                      <Square className="w-4 h-4 mr-2" />
-                      Deselect All
-                    </Button>
-                  </motion.div>
-
-                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={() => {
-                        const selected = csSheet.rows.filter(r => csSheet.selectedRows?.includes(r[COL_AWB]));
-                        if (selected.length === 0) {
-                          toast.error('No rows selected!');
-                          return;
-                        }
-                        const text = selected.map(r => r.join('\t')).join('\n');
-                        navigator.clipboard.writeText(text);
-                        toast.success(`✅ Copied ${selected.length} selected row${selected.length > 1 ? 's' : ''} to clipboard!`);
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="font-bold bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-green-300 text-green-700 transition-all duration-200 shadow-md"
-                      disabled={!csSheet.selectedRows || csSheet.selectedRows.length === 0}
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Selected ({csSheet.selectedRows?.length || 0})
-                    </Button>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={() => {
-                        const text = csSheet.rows.map(r => r.join('\t')).join('\n');
-                        navigator.clipboard.writeText(text);
-                        toast.success(`✅ Copied all ${csSheet.rows.length} rows to clipboard!`);
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="font-bold bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-300 text-purple-700 transition-all duration-200 shadow-md"
-                    >
-                      <ClipboardCheck className="w-4 h-4 mr-2" />
-                      Copy All Rows ({csSheet.rows.length})
-                    </Button>
-                  </motion.div>
-
-                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={handleClearSelected}
-                      size="sm"
-                      variant="outline"
-                      className="font-bold bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-700 transition-all duration-200 shadow-sm"
-                      disabled={selectedRows.size === 0}>
-
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Clear Selected ({selectedRows.size})
-                    </Button>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={handleDeleteSelected}
-                      size="sm"
-                      variant="outline"
-                      className="font-bold bg-red-50 hover:bg-red-100 border-red-300 text-red-700 transition-all duration-200 shadow-sm"
-                      disabled={selectedRows.size === 0}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Delete Selected ({selectedRows.size})
-                    </Button>
-                  </motion.div>
-
+                    <X className="w-4 h-4 mr-2" />
+                    Delete Selected ({selectedRows.size})
+                  </Button>
                   <div className="ml-auto flex items-center gap-2">
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Button
-                        onClick={() => setFastEditMode(!fastEditMode)}
-                        size="sm"
-                        variant={fastEditMode ? "default" : "outline"}
-                        className={`font-bold transition-all duration-300 shadow-md ${fastEditMode ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-green-500/50' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
-                      >
-                        <Zap className={`w-4 h-4 mr-2 ${fastEditMode ? 'animate-pulse' : ''}`} />
-                        Fast Edit Mode {fastEditMode ? 'ON' : 'OFF'}
-                      </Button>
-                    </motion.div>
+                    <Button
+                      onClick={() => setFastEditMode(!fastEditMode)}
+                      size="sm"
+                      variant={fastEditMode ? "default" : "outline"}
+                      className={`font-bold ${fastEditMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}>
+
+                      <Zap className="w-4 h-4 mr-2" />
+                      Fast Edit Mode {fastEditMode ? 'ON' : 'OFF'}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -4235,46 +4072,45 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               blinkRows={csSheet.blinkRows}
               selectedRows={selectedRows}
               onRowSelect={handleRowSelect}
-              fastEditMode={fastEditMode}
-              forceRefresh={forceRefresh} />
+              fastEditMode={fastEditMode} />
 
           </TabsContent>
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
-            <ErrorBoundary>
-              <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
-                <FreeAnalytics
-                  agents={agents}
-                  csSheet={csSheet}
-                  ROWS_COUNT={ROWS_COUNT}
-                  COL_AGENTS={COL_AGENTS}
-                  COL_AWB={COL_AWB}
-                  COL_LINE={COL_LINE}
-                  COL_REJ2={COL_REJ2}
-                  COL_REJ3={COL_REJ3}
-                  COL_REJ4={COL_REJ4}
-                  COL_REJ5={COL_REJ5}
-                  COL_REGION={COL_REGION} />
-              </Suspense>
-            </ErrorBoundary>
+            <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
+              <FreeAnalytics
+                agents={agents}
+                csSheet={csSheet}
+                ROWS_COUNT={ROWS_COUNT}
+                COL_AGENTS={COL_AGENTS}
+                COL_AWB={COL_AWB}
+                COL_LINE={COL_LINE}
+                COL_REJ2={COL_REJ2}
+                COL_REJ3={COL_REJ3}
+                COL_REJ4={COL_REJ4}
+                COL_REJ5={COL_REJ5}
+                COL_REGION={COL_REGION} />
 
-            <ErrorBoundary>
-              <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
-                <AgentPerformanceDashboard
-                  csSheet={csSheet}
-                  agents={agents}
-                  ROWS_COUNT={ROWS_COUNT}
-                  COL_AGENTS={COL_AGENTS}
+            </Suspense>
+
+            
+            <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
+              <AgentPerformanceDashboard
+                csSheet={csSheet}
+                agents={agents}
+                ROWS_COUNT={ROWS_COUNT}
+                COL_AGENTS={COL_AGENTS}
                 COL_AWB={COL_AWB}
                 COL_LINE={COL_LINE}
                 COL_REJ2={COL_REJ2}
                 COL_REJ3={COL_REJ3}
                 COL_REJ4={COL_REJ4}
                 COL_REJ5={COL_REJ5} />
-              </Suspense>
-            </ErrorBoundary>
 
+            </Suspense>
+
+            
             <div className="grid md:grid-cols-3 gap-4">
               {/* Create Agent */}
               <Card className="bg-white/95 border-black/10 shadow-lg">
@@ -4540,8 +4376,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                   editableCols={ADMIN_EDITABLE_IN_CS}
                   blinkRows={csSheet.blinkRows}
                   regionFilter={agentSheets.agentFilters?.[selectedAgent]?.region || ""}
-                  filterAgentUsername={selectedAgent}
-                  forceRefresh={forceRefresh} />
+                  filterAgentUsername={selectedAgent} />
 
                 </CardContent>
               </Card>
@@ -4852,23 +4687,23 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Reports Tab */}
           <TabsContent value="reports" className="mt-4">
-            <ErrorBoundary>
-              <Suspense fallback={<div className="text-sm text-black/50">Loading reports…</div>}>
-                <AdvancedReportingModule
-                  csSheet={csSheet}
-                  agents={agents}
-                  ROWS_COUNT={ROWS_COUNT}
-                  COL_AGENTS={COL_AGENTS}
-                  COL_AWB={COL_AWB}
-                  COL_LINE={COL_LINE}
-                  COL_REJ2={COL_REJ2}
-                  COL_REJ3={COL_REJ3}
-                  COL_REJ4={COL_REJ4}
-                  COL_REJ5={COL_REJ5}
-                  COL_REGION={COL_REGION}
-                  COL_REASON={COL_REASON} />
-              </Suspense>
-            </ErrorBoundary>
+            <Suspense fallback={<div className="text-sm text-black/50">Loading reports…</div>}>
+              <AdvancedReportingModule
+                csSheet={csSheet}
+                agents={agents}
+                ROWS_COUNT={ROWS_COUNT}
+                COL_AGENTS={COL_AGENTS}
+                COL_AWB={COL_AWB}
+                COL_LINE={COL_LINE}
+                COL_REJ2={COL_REJ2}
+                COL_REJ3={COL_REJ3}
+                COL_REJ4={COL_REJ4}
+                COL_REJ5={COL_REJ5}
+                COL_REGION={COL_REGION}
+                COL_REASON={COL_REASON} />
+
+            </Suspense>
+
           </TabsContent>
 
           {/* Advanced Controls Tab */}
@@ -4896,60 +4731,43 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className={`p-4 rounded-lg border-2 transition-colors ${maintenanceMode ? 'bg-red-50 border-red-300' : 'bg-yellow-50 border-yellow-300'}`}>
+                <div className="p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <Label className="font-bold text-lg">Enable Maintenance Mode</Label>
                       <p className="text-sm text-gray-600 mt-1">
-                        Immediately logs out all Agents and CS users. Shows custom banner on login screen.
+                        Disables Agent and CS logins. Shows banner on login screen.
                       </p>
                     </div>
-                    <Switch
-                      checked={maintenanceMode}
-                      onCheckedChange={(checked) => {
-                        setMaintenanceMode(checked);
-                        setIsEditingMaintenance(true);
-                      }}
+                    <Switch 
+                      checked={maintenanceMode} 
+                      onCheckedChange={setMaintenanceMode}
                       className="scale-125"
                     />
                   </div>
-
+                  
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold">Custom Banner Message</Label>
+                    <Label className="text-sm font-bold">Banner Message</Label>
                     <Textarea
                       value={maintenanceBanner}
-                      onChange={(e) => {
-                        setMaintenanceBanner(e.target.value);
-                        setIsEditingMaintenance(true);
-                      }}
+                      onChange={(e) => setMaintenanceBanner(e.target.value)}
                       placeholder="We are doing some updates in the app, We will get back soon..."
                       className="min-h-[80px]"
                     />
-                    <p className="text-xs text-gray-500">This message will be displayed on the authentication portal</p>
                   </div>
 
                   {maintenanceMode && (
-                    <div className="mt-3 p-4 bg-red-100 border-2 border-red-400 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 flex-shrink-0 mt-0.5">
-                          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                          <path d="M12 9v4"/>
-                          <path d="M12 17h.01"/>
-                        </svg>
-                        <div className="flex-1">
-                          <p className="text-sm text-red-800 font-bold">Critical Warning</p>
-                          <p className="text-xs text-red-700 mt-1">All Agents and CS Team members will be immediately logged out when you click Save. Admin access remains active.</p>
-                        </div>
-                      </div>
+                    <div className="mt-3 p-3 bg-red-50 border border-red-300 rounded text-sm text-red-700 font-semibold">
+                      ⚠️ Warning: All non-admin users will be immediately logged out when you save.
                     </div>
                   )}
 
-                  <Button
-                    onClick={saveMaintenance}
-                    className={`w-full mt-3 text-white font-bold transition-colors ${maintenanceMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                  <Button 
+                    onClick={saveMaintenance} 
+                    className="w-full mt-3 bg-orange-600 hover:bg-orange-700 text-white font-bold"
                   >
                     <Save className="w-4 h-4 mr-2" />
-                    {maintenanceMode ? 'Enable Maintenance & Logout Users' : 'Save Maintenance Settings'}
+                    Save Maintenance Settings
                   </Button>
                 </div>
 
@@ -5316,7 +5134,6 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
   const [myUploads, setMyUploads] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
   const [rolePerm, setRolePerm] = useState({ cs_allocator: { allowUpload: true, allowClear: true, allowDownload: true } });
-  const [forceRefresh, setForceRefresh] = useState(0);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -5335,30 +5152,6 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
       } catch {}
     })();
   }, []);
-
-  // Real-time maintenance mode check - auto logout CS allocator
-  useEffect(() => {
-    let stopped = false;
-    const checkMaintenance = async () => {
-      try {
-        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
-        const cfg = (cfgs || [])[0];
-        if (!stopped && cfg && cfg.maintenance_mode === true) {
-          toast.error(cfg.banner_message || 'Maintenance mode activated. You have been logged out.');
-          setTimeout(() => {
-            onLogout();
-          }, 1500);
-        }
-      } catch {}
-    };
-
-    checkMaintenance();
-    const interval = setInterval(checkMaintenance, 2000);
-    return () => {
-      stopped = true;
-      clearInterval(interval);
-    };
-  }, [onLogout]);
 
   // Cross-device pull loop (CS Allocator) - DISABLED (long-poll primary)
   useEffect(() => {
@@ -5669,8 +5462,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
           isAdmin={true}
           agentUsername=""
           editableCols={CS_ALLOCATOR_EDITABLE}
-          blinkRows={csSheet.blinkRows}
-          forceRefresh={forceRefresh} />
+          blinkRows={csSheet.blinkRows} />
 
       </div>
 
@@ -5742,30 +5534,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       } catch {}
     })();
   }, []);
-
-  // Real-time maintenance mode check - auto logout agent
-  useEffect(() => {
-    let stopped = false;
-    const checkMaintenance = async () => {
-      try {
-        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
-        const cfg = (cfgs || [])[0];
-        if (!stopped && cfg && cfg.maintenance_mode === true) {
-          toast.error(cfg.banner_message || 'Maintenance mode activated. You have been logged out.');
-          setTimeout(() => {
-            onLogout();
-          }, 1500);
-        }
-      } catch {}
-    };
-
-    checkMaintenance();
-    const interval = setInterval(checkMaintenance, 2000);
-    return () => {
-      stopped = true;
-      clearInterval(interval);
-    };
-  }, [onLogout]);
 
   // Cross-device pull loop (agent) - DISABLED (long-poll primary, this is fallback)
   useEffect(() => {
@@ -5952,9 +5720,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    // trigger instant cross-device update
     pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
-    setForceRefresh((prev) => prev + 1);
   }, [csSheet, username]);
 
   const handleStatusClick = useCallback((r, action) => {
@@ -5972,8 +5740,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         saveCSSheet(newSheet);
         pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
-        setForceRefresh((prev) => prev + 1);
-        toast.success("Timer started", { duration: 1500 });
+        toast.success("Timer started");
       }
       return;
     }
@@ -5997,12 +5764,13 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       const doneCount = timer.doneClicks;
       timer.state = "DONE";
       timer.updatedAt = Date.now();
-      timer.hidden = true;
+      timer.hidden = true; // Hide from agent view
       if (timer.start != null) {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
         timer.start = null;
       }
 
+      // Track in agent's Excel data
       const sheets = loadAgentSheets();
       if (!sheets.agentStats) sheets.agentStats = {};
       if (!sheets.agentStats[username]) sheets.agentStats[username] = { done: [], rejected: [] };
@@ -6014,14 +5782,17 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         timestamp: new Date().toISOString()
       });
 
+      // Check if this AWB was a priority number for this agent
       const rowAwb = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
       const myPriorityNumbers = sheets.agentPriorityMap?.[username] || [];
-      let priorityCleared = false;
 
       if (myPriorityNumbers.includes(rowAwb)) {
+        // Mark this priority number as completed
         sheets.priorityStatus[rowAwb] = 'completed';
 
+        // Check if agent completed ALL their priority numbers
         const allMyPrioritiesCompleted = myPriorityNumbers.every((pNum) => {
+          // Check if this priority number is completed
           for (let i = 0; i < ROWS_COUNT; i++) {
             const checkAwb = String(newSheet.raw[i]?.[COL_AWB] || '').trim();
             if (checkAwb === pNum) {
@@ -6033,13 +5804,12 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         });
 
         if (allMyPrioritiesCompleted) {
+          // Remove this agent from priority mode
           delete sheets.agentPriorityMap[username];
-          priorityCleared = true;
           saveAgentSheets(sheets);
           setAgentSheets(sheets);
-          setPriorityList(sheets);
           setForceRefresh((prev) => prev + 1);
-          toast.success(`✅ All priority AWBs completed! Showing all data now.`, { duration: 4000 });
+          toast.success(`✅ All priority AWBs completed! Showing all content now.`, { duration: 5000 });
           CHANNEL.postMessage({ type: "app:sync" });
         } else {
           saveAgentSheets(sheets);
@@ -6048,11 +5818,11 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         saveAgentSheets(sheets);
       }
 
-      toast.success(`✅ AWB ${awb} marked as DONE`, { duration: 2000 });
+      // Update metrics immediately
+      toast.success(`✅ AWB ${awb} marked as DONE (Total Done: ${doneCount})`, { duration: 4000 });
 
+      // Check if all rows in current region filter are done
       const currentFilter = sheets.agentFilters?.[username]?.region;
-      let regionCleared = false;
-
       if (currentFilter) {
         let allDone = true;
         for (let i = 0; i < ROWS_COUNT; i++) {
@@ -6069,21 +5839,11 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         }
 
         if (allDone) {
-          if (!sheets.agentFilters) sheets.agentFilters = {};
-          if (!sheets.agentFilters[username]) sheets.agentFilters[username] = {};
           sheets.agentFilters[username].region = "";
-          regionCleared = true;
           saveAgentSheets(sheets);
-          setAgentSheets(sheets);
-          setRegionFilter("");
-          setForceRefresh((prev) => prev + 1);
           CHANNEL.postMessage({ type: "app:sync" });
-          toast.success(`All items in ${currentFilter} completed! Showing all regions now.`, { duration: 3000 });
+          toast.success(`All items in ${currentFilter} completed! Filter removed.`);
         }
-      }
-
-      if (priorityCleared || regionCleared) {
-        setTimeout(() => setForceRefresh((prev) => prev + 1), 100);
       }
     } else if (action === 'reject') {
       const rej2 = String(newSheet.raw[r]?.[COL_REJ2] || '').trim();
@@ -6109,14 +5869,17 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
       timer.updatedAt = Date.now();
-      timer.hidden = true;
+      timer.hidden = true; // Hide from agent view after rejection
 
+      // Set STATUS column to REJECT
       newSheet.raw[r][COL_STATUS] = "REJECT";
 
+      // Add agent name to AGENT2 column if empty (for CS team tracking)
       if (!newSheet.raw[r][COL_AGENT2]?.trim()) {
         newSheet.raw[r][COL_AGENT2] = username;
       }
 
+      // Track in agent's Excel data
       const sheets = loadAgentSheets();
       if (!sheets.agentStats) sheets.agentStats = {};
       if (!sheets.agentStats[username]) sheets.agentStats[username] = { done: [], rejected: [] };
@@ -6129,78 +5892,16 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         reason: newSheet.raw[r]?.[COL_REJ2] || newSheet.raw[r]?.[COL_REJ3] || newSheet.raw[r]?.[COL_REJ4] || newSheet.raw[r]?.[COL_REJ5] || '',
         timestamp: new Date().toISOString()
       });
+      saveAgentSheets(sheets);
 
-      const rowAwb = String(newSheet.raw[r]?.[COL_AWB] || '').trim();
-      const myPriorityNumbers = sheets.agentPriorityMap?.[username] || [];
-      let priorityCleared = false;
+      // Update metrics immediately
+      toast.error(`❌ AWB ${awb} rejected`);
 
-      if (myPriorityNumbers.includes(rowAwb)) {
-        sheets.priorityStatus[rowAwb] = 'completed';
-
-        const allMyPrioritiesCompleted = myPriorityNumbers.every((pNum) => {
-          for (let i = 0; i < ROWS_COUNT; i++) {
-            const checkAwb = String(newSheet.raw[i]?.[COL_AWB] || '').trim();
-            if (checkAwb === pNum) {
-              const state = newSheet.timers[i]?.state?.toUpperCase() || '';
-              return state === 'DONE' || state === 'REJECTED';
-            }
-          }
-          return false;
-        });
-
-        if (allMyPrioritiesCompleted) {
-          delete sheets.agentPriorityMap[username];
-          priorityCleared = true;
-          saveAgentSheets(sheets);
-          setAgentSheets(sheets);
-          setPriorityList(sheets);
-          setForceRefresh((prev) => prev + 1);
-          toast.success(`✅ All priority AWBs completed! Showing all data now.`, { duration: 4000 });
-          CHANNEL.postMessage({ type: "app:sync" });
-        } else {
-          saveAgentSheets(sheets);
-        }
-      } else {
-        saveAgentSheets(sheets);
-      }
-
-      toast.error(`❌ AWB ${awb} rejected`, { duration: 2000 });
-
-      const currentFilter = sheets.agentFilters?.[username]?.region;
-      let regionCleared = false;
-
-      if (currentFilter) {
-        let allDone = true;
-        for (let i = 0; i < ROWS_COUNT; i++) {
-          const rowAgent = String(newSheet.raw[i]?.[COL_AGENTS] || '').trim().toLowerCase();
-          const rowRegion = String(newSheet.raw[i]?.[COL_REGION] || '').trim().toUpperCase();
-          const rowState = newSheet.timers[i]?.state?.toUpperCase() || '';
-
-          if (rowAgent === username.toLowerCase() && (
-          rowRegion === currentFilter.toUpperCase() || rowRegion.includes(currentFilter.toUpperCase())) &&
-          !(rowState === 'DONE' || rowState === 'REJECTED')) {
-            allDone = false;
-            break;
-          }
-        }
-
-        if (allDone) {
-          if (!sheets.agentFilters) sheets.agentFilters = {};
-          if (!sheets.agentFilters[username]) sheets.agentFilters[username] = {};
-          sheets.agentFilters[username].region = "";
-          regionCleared = true;
-          saveAgentSheets(sheets);
-          setAgentSheets(sheets);
-          setRegionFilter("");
-          setForceRefresh((prev) => prev + 1);
-          CHANNEL.postMessage({ type: "app:sync" });
-          toast.success(`All items in ${currentFilter} completed! Showing all regions now.`, { duration: 3000 });
-        }
-      }
-
+      // Set blink for CS sheet when agent rejects
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
 
+      // Notify CS team about rejection
       CHANNEL.postMessage({
         type: "app:sync",
         rejectionNotification: {
@@ -6210,12 +5911,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         }
       });
 
+      // Resume timer
       if (timer.start == null) {
         timer.start = Date.now();
-      }
-
-      if (priorityCleared || regionCleared) {
-        setTimeout(() => setForceRefresh((prev) => prev + 1), 100);
       }
 
       setTimeout(() => {
@@ -6225,15 +5923,15 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           saveCSSheet(updated);
           CHANNEL.postMessage({ type: "app:sync" });
         }
-      }, 2000);
+      }, 5000);
     }
 
     newSheet.timers[r] = timer;
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
+    // trigger instant cross-device update
     pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
-    setForceRefresh((prev) => prev + 1);
   }, [csSheet, username]);
 
   const getAgentMetrics = useMemo(() => {
@@ -6280,7 +5978,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       totalDoneLines,
       totalRejectedLines
     };
-  }, [csSheet, username, agentSheets, forceRefresh]);
+  }, [csSheet, username, agentSheets]);
 
   const metrics = getAgentMetrics;
 
@@ -6349,7 +6047,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       }
     });
     return { raw: result, timers: resultTimers };
-  }, [agentFilters, csSheet, forceRefresh]);
+  }, [agentFilters, csSheet]);
 
   const getBreakDuration = () => {
     if (!onBreak || !breakStart) return 0;
@@ -6575,8 +6273,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           blinkRows={csSheet.blinkRows}
           regionFilter={regionFilter}
           priorityList={priorityList}
-          zoomLevel={zoomLevel}
-          forceRefresh={forceRefresh} />
+          zoomLevel={zoomLevel} />
 
 
         {/* Start Reminder Dialog */}

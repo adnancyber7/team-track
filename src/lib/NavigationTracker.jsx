@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { adn7 } from '@/api/adn7Client';
+import { base44 } from '@/api/base44Client';
 import { pagesConfig } from '@/pages.config';
 
 export default function NavigationTracker() {
@@ -32,10 +32,7 @@ export default function NavigationTracker() {
         }
 
         if (isAuthenticated && pageName) {
-            adn7.from('activity_logs').insert({
-                page_name: pageName,
-                timestamp: new Date().toISOString()
-            }).catch(() => {
+            base44.appLogs.logUserInApp(pageName).catch(() => {
                 // Silently fail - logging shouldn't break the app
             });
         }

@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { MapContainer, TileLayer, Circle, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useRealtimeTable } from '@/lib/RealtimeContext';
+import { base44 as adn7 } from '@/api/base44Client';
 import { Users, Clock, Zap, CheckCircle2, AlertTriangle, Eye, Wifi, WifiOff, MapPin, Activity, Coffee } from 'lucide-react';
 
 const RealtimeAdminDashboard = ({
@@ -17,9 +17,23 @@ const RealtimeAdminDashboard = ({
   setSelectedAgent,
   onTabChange,
 }) => {
-  const fullAgents = useRealtimeTable('AgentUser');
+  const [fullAgents, setFullAgents] = useState([]);
   const [agentLocations, setAgentLocations] = useState([]);
   const [recentEvents, setRecentEvents] = useState([]);
+
+  // Load full agent records (to get optional lat/lng set by admin)
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      try {
+        const list = await adn7.entities.AgentUser.list();
+        if (!stop) setFullAgents(list || []);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => { stop = true; clearInterval(id); };
+  }, []);
 
   // Extract locations from known fields: lat/lng | latitude/longitude | location.lat/lng
   useEffect(() => {
@@ -103,9 +117,9 @@ const RealtimeAdminDashboard = ({
     onTabChange('agents');
   };
 
-  const priorityTasks = Object.entries(agentSheets?.priorityAgentMap || {})
+  const priorityTasks = Object.entries(agentSheets.priorityAgentMap || {})
     .map(([priorityNum, agentName]) => {
-      const status = agentSheets?.priorityStatus?.[priorityNum] || 'pending';
+      const status = agentSheets.priorityStatus?.[priorityNum] || 'pending';
       return { priorityNum, agentName, status };
     })
     .filter(task => task.status !== 'completed');
