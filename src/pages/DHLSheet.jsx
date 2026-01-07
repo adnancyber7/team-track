@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard, Copy, ClipboardCheck } from 'lucide-react';
 import { adn7 } from '@/api/adn7Client';
 import ErrorBoundary from '../components/ErrorBoundary';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
-import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
-import FilterBar from '../components/filters/FilterBar';
 const AgentPerformanceDashboard = lazy(() => import('../components/AgentPerformanceDashboard'));
 const AdvancedReportingModule = lazy(() => import('../components/AdvancedReportingModule'));
 const FreeAnalytics = lazy(() => import('../components/analytics/FreeAnalytics'));
@@ -3900,42 +3898,68 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   return (
     <div className="min-h-screen p-4" style={{
       background: `
-        radial-gradient(900px 500px at 15% 10%, rgba(255,204,0,.55), transparent 60%),
-        radial-gradient(700px 400px at 85% 20%, rgba(255,204,0,.35), transparent 55%),
-        linear-gradient(180deg, #fff 0%, #fff7d1 100%)
+        radial-gradient(1000px 600px at 20% 15%, rgba(255,204,0,.25), transparent 70%),
+        radial-gradient(800px 500px at 80% 25%, rgba(59,130,246,.15), transparent 65%),
+        linear-gradient(180deg, #ffffff 0%, #fef3c7 50%, #fef9c3 100%)
       `
     }}>
       <div className="max-w-[1600px] mx-auto space-y-4">
         {/* Top Bar */}
-        <Card className="bg-white/95 border-black/10 shadow-xl">
-          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <Badge className="bg-yellow-400 text-black font-black border-black/10">ADMIN</Badge>
-              <span className="font-bold">Welcome, {username}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              
-              <Button onClick={onLogout} variant="outline" className="font-bold bg.yellow-400/50 hover:bg-yellow-400/70 border-black/10">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="bg-gradient-to-r from-white via-white to-gray-50/50 border-gray-200/60 shadow-2xl backdrop-blur-sm">
+            <CardContent className="p-4 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-black font-black border-none px-4 py-1.5 shadow-lg shadow-yellow-500/30">
+                  <Shield className="w-3 h-3 mr-1.5" />
+                  ADMIN
+                </Badge>
+                <span className="font-bold text-gray-700">Welcome, <span className="text-gray-900">{username}</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    onClick={onLogout}
+                    variant="outline"
+                    className="font-bold bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 border-red-200 text-red-700 transition-all duration-200 shadow-md"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </motion.div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="dashboard">
-          <TabsList className="bg-white/80 border border-black/10 p-1 h-auto flex flex-wrap">
+          <TabsList className="bg-gradient-to-r from-white via-gray-50 to-white border border-gray-200/80 p-1.5 h-auto flex flex-wrap shadow-lg">
             {/* Role-based access guards: hide tabs if role permissions disabled */}
-            <TabsTrigger value="dashboard" className="font-bold data-[state=active]:bg-yellow-400/60">
+            <TabsTrigger
+              value="dashboard"
+              className="font-bold transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-black data-[state=active]:shadow-lg"
+            >
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="cs-sheet" className="font-bold data-[state=active]:bg-yellow-400/60">
+            <TabsTrigger
+              value="cs-sheet"
+              className="font-bold transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-black data-[state=active]:shadow-lg"
+            >
               <FileSpreadsheet className="w-4 h-4 mr-2" />
               Master Sheet
             </TabsTrigger>
-            <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-yellow-400/60">
+            <TabsTrigger
+              value="agents"
+              className="font-bold transition-all duration-200 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-black data-[state=active]:shadow-lg"
+            >
               <Users className="w-4 h-4 mr-2" />
               Agents ({agents?.length || 0})
             </TabsTrigger>
@@ -3995,16 +4019,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           </TabsContent>
 
           <TabsContent value="cs-sheet" className="mt-4 space-y-4">
-            {/* Analytics & Upload */}
-            <Card className="bg-white/95 border-black/10 shadow-lg">
+            {/* Master Sheet Controls */}
+            <Card className="bg-gradient-to-br from-white to-gray-50/50 border-gray-200/60 shadow-xl">
               <CardContent className="p-4 space-y-3">
-                <FilterBar
-                  columns={CS_COLUMNS}
-                  initial={csFilters || undefined}
-                  onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
-                  onClear={() => { setCsFilters(null); applyFilters(null); }}
-                />
-                <div className="flex items-center gap-4 flex-wrap mt-3">
+                <div className="flex items-center gap-4 flex-wrap">
                   <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                     <span className="text-sm font-medium">AWB:</span>
@@ -4065,49 +4083,140 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
 
 
-            {/* Bulk Actions */}
-            <Card className="bg-white/95 border-black/10 shadow-lg">
+            {/* Bulk Actions & Copy Tools */}
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border-blue-200/60 shadow-xl">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Badge className="bg-blue-100 text-blue-800 font-black">BULK ACTIONS</Badge>
-                  <Button onClick={handleSelectAll} size="sm" variant="outline" className="font-bold">
-                    <CheckSquare className="w-4 h-4 mr-2" />
-                    Select All
-                  </Button>
-                  <Button onClick={handleDeselectAll} size="sm" variant="outline" className="font-bold">
-                    <Square className="w-4 h-4 mr-2" />
-                    Deselect All
-                  </Button>
-                  <Button
-                    onClick={handleClearSelected}
-                    size="sm"
-                    variant="outline"
-                    className="font-bold text-orange-600 hover:bg-orange-50"
-                    disabled={selectedRows.size === 0}>
+                  <Badge className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-black px-3 py-1.5 shadow-lg">
+                    <Zap className="w-3 h-3 mr-1" />
+                    BULK ACTIONS
+                  </Badge>
 
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Clear Selected ({selectedRows.size})
-                  </Button>
-                  <Button
-                    onClick={handleDeleteSelected}
-                    size="sm"
-                    variant="outline"
-                    className="font-bold text-red-600 hover:bg-red-50"
-                    disabled={selectedRows.size === 0}>
-
-                    <X className="w-4 h-4 mr-2" />
-                    Delete Selected ({selectedRows.size})
-                  </Button>
-                  <div className="ml-auto flex items-center gap-2">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <Button
-                      onClick={() => setFastEditMode(!fastEditMode)}
+                      onClick={handleSelectAll}
                       size="sm"
-                      variant={fastEditMode ? "default" : "outline"}
-                      className={`font-bold ${fastEditMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}>
-
-                      <Zap className="w-4 h-4 mr-2" />
-                      Fast Edit Mode {fastEditMode ? 'ON' : 'OFF'}
+                      variant="outline"
+                      className="font-bold bg-white hover:bg-blue-50 border-blue-200 transition-all duration-200 shadow-sm"
+                    >
+                      <CheckSquare className="w-4 h-4 mr-2" />
+                      Select All
                     </Button>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      onClick={handleDeselectAll}
+                      size="sm"
+                      variant="outline"
+                      className="font-bold bg-white hover:bg-gray-50 border-gray-200 transition-all duration-200 shadow-sm"
+                    >
+                      <Square className="w-4 h-4 mr-2" />
+                      Deselect All
+                    </Button>
+                  </motion.div>
+
+                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      onClick={() => {
+                        const selected = csSheet.rows.filter(r => csSheet.selectedRows?.includes(r[COL_AWB]));
+                        if (selected.length === 0) {
+                          toast.error('No rows selected!');
+                          return;
+                        }
+                        const text = selected.map(r => r.join('\t')).join('\n');
+                        navigator.clipboard.writeText(text);
+                        toast.success(`✅ Copied ${selected.length} selected row${selected.length > 1 ? 's' : ''} to clipboard!`);
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="font-bold bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-green-300 text-green-700 transition-all duration-200 shadow-md"
+                      disabled={!csSheet.selectedRows || csSheet.selectedRows.length === 0}
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy Selected ({csSheet.selectedRows?.length || 0})
+                    </Button>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      onClick={() => {
+                        const text = csSheet.rows.map(r => r.join('\t')).join('\n');
+                        navigator.clipboard.writeText(text);
+                        toast.success(`✅ Copied all ${csSheet.rows.length} rows to clipboard!`);
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="font-bold bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-300 text-purple-700 transition-all duration-200 shadow-md"
+                    >
+                      <ClipboardCheck className="w-4 h-4 mr-2" />
+                      Copy All Rows ({csSheet.rows.length})
+                    </Button>
+                  </motion.div>
+
+                  <div className="h-6 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      onClick={handleClearSelected}
+                      size="sm"
+                      variant="outline"
+                      className="font-bold bg-orange-50 hover:bg-orange-100 border-orange-300 text-orange-700 transition-all duration-200 shadow-sm"
+                      disabled={selectedRows.size === 0}>
+
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear Selected ({selectedRows.size})
+                    </Button>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      onClick={handleDeleteSelected}
+                      size="sm"
+                      variant="outline"
+                      className="font-bold bg-red-50 hover:bg-red-100 border-red-300 text-red-700 transition-all duration-200 shadow-sm"
+                      disabled={selectedRows.size === 0}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Delete Selected ({selectedRows.size})
+                    </Button>
+                  </motion.div>
+
+                  <div className="ml-auto flex items-center gap-2">
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Button
+                        onClick={() => setFastEditMode(!fastEditMode)}
+                        size="sm"
+                        variant={fastEditMode ? "default" : "outline"}
+                        className={`font-bold transition-all duration-300 shadow-md ${fastEditMode ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-green-500/50' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
+                      >
+                        <Zap className={`w-4 h-4 mr-2 ${fastEditMode ? 'animate-pulse' : ''}`} />
+                        Fast Edit Mode {fastEditMode ? 'ON' : 'OFF'}
+                      </Button>
+                    </motion.div>
                   </div>
                 </div>
               </CardContent>
