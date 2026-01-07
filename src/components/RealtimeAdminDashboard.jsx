@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { MapContainer, TileLayer, Circle, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { base44 as adn7 } from '@/api/base44Client';
+import { adn7 } from '@/api/adn7Client';
 import { Users, Clock, Zap, CheckCircle2, AlertTriangle, Eye, Wifi, WifiOff, MapPin, Activity, Coffee } from 'lucide-react';
 
 const RealtimeAdminDashboard = ({

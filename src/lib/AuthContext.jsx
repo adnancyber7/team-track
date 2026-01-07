@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { adn7 } from '@/api/adn7Client';
 import { appParams } from '@/lib/app-params';
 
 const AuthContext = createContext();
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      const { data: { user: currentUser } } = await adn7.auth.getUser();
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
@@ -66,22 +66,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    
+
+    await adn7.auth.signOut();
+
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
-    } else {
-      // Just remove the token without redirect
-      base44.auth.logout();
+      window.location.href = '/';
     }
   };
 
   const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.href = '/';
   };
 
   return (

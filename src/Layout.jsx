@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { adn7 } from '@/api/adn7Client';
 
 export default function Layout({ children, currentPageName }) {
   // Force HTTPS in production
@@ -23,7 +23,7 @@ export default function Layout({ children, currentPageName }) {
     let stopped = false;
     const fetchCfg = async () => {
       try {
-        const cfgs = await base44.entities.AdminConfig.filter({ config_key: 'main' });
+        const { data: cfgs } = await adn7.from('admin_config').select('*').eq('config_key', 'main');
         const cfg = (cfgs || [])[0];
         if (!stopped && cfg) {
           setMaintenance(!!cfg.maintenance_mode);

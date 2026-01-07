@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
-import { base44 as adn7 } from '@/api/base44Client';
+import { adn7 } from '@/api/adn7Client';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';

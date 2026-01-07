@@ -1,3 +1,3 @@
 import { db } from './supabaseClient';
 
-export const base44 = db;
+export const adn7 = db;

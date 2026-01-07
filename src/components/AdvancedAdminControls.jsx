@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Settings, Clock, Users, Zap, Shield, Megaphone, Download } from 'lucide-react';
 import { toast } from "sonner";
-import { base44 as adn7 } from '@/api/base44Client';
+import { adn7 } from '@/api/adn7Client';
 
 const AdvancedAdminControls = ({ agents, csSheet, onUpdate, ROWS_COUNT, COL_AGENTS, COL_AWB }) => { // Access Controls synced to backend
   const [settings, setSettings] = useState(() => {

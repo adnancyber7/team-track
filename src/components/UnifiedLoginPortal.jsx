@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { base44 as adn7 } from '@/api/base44Client';
+import { adn7 } from '@/api/adn7Client';
 
 export default function UnifiedLoginPortal({ onLoginSuccess, loadState, saveState }) {
   const [username, setUsername] = useState("");

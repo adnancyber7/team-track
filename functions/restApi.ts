@@ -1,12 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClient } from 'npm:@supabase/supabase-js@2.89.0';
 
-// Central REST API for LAN access - supports all CRUD operations
-// Access via http://[SERVER_IP]:PORT/restApi
 Deno.serve(async (req) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Role, X-Username',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Role, X-Username, X-Client-Info, Apikey',
   };
 
   if (req.method === 'OPTIONS') {
@@ -14,7 +12,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const base44 = createClientFromRequest(req);
+    const adn7 = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
     const url = new URL(req.url);
     const path = url.pathname.replace('/restApi', '') || '/';
     const method = req.method;
@@ -33,8 +34,7 @@ Deno.serve(async (req) => {
     if (path === '/auth/login' && method === 'POST') {
       const { role, username, password } = body;
 
-      // Check maintenance mode
-      const cfgs = await base44.asServiceRole.entities.AdminConfig.filter({ config_key: 'main' });
+      const { data: cfgs } = await adn7.from('admin_config').select('*').eq('config_key', 'main');
       const cfg = cfgs?.[0];
       
       if (cfg?.maintenance_mode && role !== 'admin') {
@@ -52,19 +52,19 @@ Deno.serve(async (req) => {
           user: valid ? { username, role: 'admin' } : null 
         }, { headers: corsHeaders });
       } else if (role === 'agent') {
-        const agents = await base44.asServiceRole.entities.AgentUser.filter({ username, password });
+        const { data: agents } = await adn7.from('agent_users').select('*').eq('username', username).eq('password', password);
         const agent = agents?.[0];
         const valid = agent && agent.is_active !== false;
-        return Response.json({ 
-          success: valid, 
-          user: valid ? { username: agent.username, role: 'agent', email: agent.email } : null 
+        return Response.json({
+          success: valid,
+          user: valid ? { username: agent.username, role: 'agent', email: agent.email } : null
         }, { headers: corsHeaders });
       } else if (role === 'cs_allocator') {
-        const csUsers = await base44.asServiceRole.entities.CSUser.filter({ username, password });
+        const { data: csUsers } = await adn7.from('cs_users').select('*').eq('username', username).eq('password', password);
         const valid = csUsers?.[0] && csUsers[0].is_active !== false;
-        return Response.json({ 
-          success: valid, 
-          user: valid ? { username, role: 'cs_allocator' } : null 
+        return Response.json({
+          success: valid,
+          user: valid ? { username, role: 'cs_allocator' } : null
         }, { headers: corsHeaders });
       }
 
@@ -75,10 +75,12 @@ Deno.serve(async (req) => {
     if (path === '/auth/logout' && method === 'POST') {
       const { instanceId } = body;
       if (instanceId) {
-        const rows = await base44.asServiceRole.entities.AppState.filter({ state_key: 'active_sessions' });
-        const data = rows?.[0]?.data || {};
-        delete data[instanceId];
-        if (rows?.[0]) await base44.asServiceRole.entities.AppState.update(rows[0].id, { data });
+        const { data: rows } = await adn7.from('app_state').select('*').eq('state_key', 'active_sessions');
+        const sessionData = rows?.[0]?.data || {};
+        delete sessionData[instanceId];
+        if (rows?.[0]) {
+          await adn7.from('app_state').update({ data: sessionData }).eq('id', rows[0].id);
+        }
       }
       return Response.json({ success: true }, { headers: corsHeaders });
     }
@@ -86,8 +88,9 @@ Deno.serve(async (req) => {
     // ============================================================================
     // ADMIN ROUTES (require admin auth)
     // ============================================================================
-    
-    const user = await base44.auth.me();
+
+    const authHeader = req.headers.get('Authorization');
+    const user = authHeader ? { role: req.headers.get('X-Role'), username: req.headers.get('X-Username') } : null;
     
     // GET /admin/users - List all users
     if (path === '/admin/users' && method === 'GET') {
@@ -95,16 +98,16 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
       }
       
-      const [agents, csUsers, admins] = await Promise.all([
-        base44.asServiceRole.entities.AgentUser.list(),
-        base44.asServiceRole.entities.CSUser.list(),
-        base44.asServiceRole.entities.AdminConfig.filter({ config_key: 'main' })
+      const [agentsRes, csUsersRes, adminsRes] = await Promise.all([
+        adn7.from('agent_users').select('*'),
+        adn7.from('cs_users').select('*'),
+        adn7.from('admin_config').select('*').eq('config_key', 'main')
       ]);
 
-      return Response.json({ 
-        agents: agents || [], 
-        cs_users: csUsers || [],
-        admin: admins?.[0] || null
+      return Response.json({
+        agents: agentsRes.data || [],
+        cs_users: csUsersRes.data || [],
+        admin: adminsRes.data?.[0] || null
       }, { headers: corsHeaders });
     }
 
@@ -115,11 +118,11 @@ Deno.serve(async (req) => {
       }
 
       const { userType, username, password } = body;
-      
+
       if (userType === 'agent') {
-        await base44.asServiceRole.entities.AgentUser.create({ username, password, is_active: true });
+        await adn7.from('agent_users').insert({ username, password, is_active: true });
       } else if (userType === 'cs') {
-        await base44.asServiceRole.entities.CSUser.create({ username, password, is_active: true });
+        await adn7.from('cs_users').insert({ username, password, is_active: true });
       }
 
       return Response.json({ success: true }, { headers: corsHeaders });
@@ -133,11 +136,11 @@ Deno.serve(async (req) => {
 
       const id = path.split('/')[3];
       const userType = url.searchParams.get('type');
-      
+
       if (userType === 'agent') {
-        await base44.asServiceRole.entities.AgentUser.delete(id);
+        await adn7.from('agent_users').delete().eq('id', id);
       } else if (userType === 'cs') {
-        await base44.asServiceRole.entities.CSUser.delete(id);
+        await adn7.from('cs_users').delete().eq('id', id);
       }
 
       return Response.json({ success: true }, { headers: corsHeaders });
@@ -153,7 +156,7 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
       }
 
-      const rows = await base44.asServiceRole.entities.AppState.filter({ state_key: 'cs_sheet' });
+      const { data: rows } = await adn7.from('app_state').select('*').eq('state_key', 'cs_sheet');
       const csSheet = rows?.[0]?.data || { raw: [], timers: [] };
       
       // Filter for this agent only
