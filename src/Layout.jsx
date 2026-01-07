@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '@/api/supabaseClient';
+import { useRealtimeQuery } from '@/lib/RealtimeContext';
 
 export default function Layout({ children, currentPageName }) {
   // Force HTTPS in production
@@ -18,23 +18,16 @@ export default function Layout({ children, currentPageName }) {
   const [banner, setBanner] = useState('');
   const [session, setSession] = useState({ role: null, username: null });
 
-  // Poll admin config for maintenance/banner - fast updates
+  const adminConfig = useRealtimeQuery('AdminConfig', (data) =>
+    data.find(cfg => cfg.config_key === 'main')
+  );
+
   useEffect(() => {
-    let stopped = false;
-    const fetchCfg = async () => {
-      try {
-        const cfgs = await db.entities.AdminConfig.filter({ config_key: 'main' });
-        const cfg = (cfgs || [])[0];
-        if (!stopped && cfg) {
-          setMaintenance(!!cfg.maintenance_mode);
-          setBanner(String(cfg.banner_message || '').trim());
-        }
-      } catch {}
-    };
-    fetchCfg();
-    const id = setInterval(fetchCfg, 1000);
-    return () => { stopped = true; clearInterval(id); };
-  }, []);
+    if (adminConfig) {
+      setMaintenance(!!adminConfig.maintenance_mode);
+      setBanner(String(adminConfig.banner_message || '').trim());
+    }
+  }, [adminConfig]);
 
   // Read session (shared) for maintenance enforcement
   useEffect(() => {
