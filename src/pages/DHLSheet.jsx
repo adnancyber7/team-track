@@ -899,28 +899,56 @@ const LoginScreen = ({ onLogin }) => {
       )}
 
       <div className="w-full max-w-md relative z-10">
-        {maintenanceInfo.on && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 rounded-xl border-2 border-yellow-400 bg-gradient-to-r from-yellow-50 to-orange-50 shadow-lg">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-600">
-                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                  <path d="M12 9v4"/>
-                  <path d="M12 17h.01"/>
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-yellow-900 font-bold text-base mb-1">Maintenance Mode Active</h3>
-                <p className="text-yellow-800 text-sm leading-relaxed">
-                  {maintenanceInfo.message || 'We are doing some updates in the app, We will get back soon...'}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {maintenanceInfo.on && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="mb-6"
+            >
+              <Card className="backdrop-blur-2xl bg-gradient-to-r from-red-500/20 to-orange-500/20 border-2 border-red-400/50 shadow-2xl overflow-hidden">
+                <div className="relative p-4">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-400/10 to-transparent pointer-events-none" />
+                  <div className="relative flex items-start gap-3">
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 10, -10, 0]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      className="flex-shrink-0 mt-1"
+                    >
+                      <AlertCircle className="w-6 h-6 text-red-400" />
+                    </motion.div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-red-100 font-bold text-base mb-1.5 flex items-center gap-2">
+                        Maintenance Mode Active
+                        <motion.span
+                          animate={{ opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          🔧
+                        </motion.span>
+                      </h3>
+                      <p className="text-red-200 text-sm leading-relaxed">
+                        {maintenanceInfo.message || 'We are doing some updates in the app. We will get back soon...'}
+                      </p>
+                      <div className="mt-2 text-xs text-red-300/80">
+                        Only administrators can login during this time.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Brand Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -5199,6 +5227,30 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     })();
   }, []);
 
+  // Real-time maintenance mode check - auto logout CS allocator
+  useEffect(() => {
+    let stopped = false;
+    const checkMaintenance = async () => {
+      try {
+        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
+        const cfg = (cfgs || [])[0];
+        if (!stopped && cfg && cfg.maintenance_mode === true) {
+          toast.error(cfg.banner_message || 'Maintenance mode activated. You have been logged out.');
+          setTimeout(() => {
+            onLogout();
+          }, 1500);
+        }
+      } catch {}
+    };
+
+    checkMaintenance();
+    const interval = setInterval(checkMaintenance, 2000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
+  }, [onLogout]);
+
   // Cross-device pull loop (CS Allocator) - DISABLED (long-poll primary)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -5581,6 +5633,30 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       } catch {}
     })();
   }, []);
+
+  // Real-time maintenance mode check - auto logout agent
+  useEffect(() => {
+    let stopped = false;
+    const checkMaintenance = async () => {
+      try {
+        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
+        const cfg = (cfgs || [])[0];
+        if (!stopped && cfg && cfg.maintenance_mode === true) {
+          toast.error(cfg.banner_message || 'Maintenance mode activated. You have been logged out.');
+          setTimeout(() => {
+            onLogout();
+          }, 1500);
+        }
+      } catch {}
+    };
+
+    checkMaintenance();
+    const interval = setInterval(checkMaintenance, 2000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
+  }, [onLogout]);
 
   // Cross-device pull loop (agent) - DISABLED (long-poll primary, this is fallback)
   useEffect(() => {
