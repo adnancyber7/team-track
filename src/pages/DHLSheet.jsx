@@ -2993,16 +2993,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setCreatingAgent(true);
     
     try {
-      // Create in DATABASE - this persists globally
-      const created = await adn7.entities.AgentUser.create({
-        username,
-        password,
-        full_name: '',
-        email: '',
-        region: '',
-        notes: '',
-        is_active: true
+      // Use backend API with service role to bypass RLS
+      const response = await adn7.functions.invoke('adminSettingsApi', {
+        action: 'createAgent',
+        payload: { username, password }
       });
+      
+      if (response.data.error) {
+        toast.error(response.data.error);
+        return;
+      }
       
       // Immediately reload from database
       const serverAgents = await adn7.entities.AgentUser.list();
@@ -3043,10 +3043,15 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       onConfirm: async () => {
         setDeletingUser(username);
         try {
-          // Delete from DATABASE
-          const matches = await adn7.entities.AgentUser.filter({ username });
-          if (matches && matches[0]) {
-            await adn7.entities.AgentUser.delete(matches[0].id);
+          // Use backend API with service role to bypass RLS
+          const response = await adn7.functions.invoke('adminSettingsApi', {
+            action: 'deleteAgent',
+            payload: { username }
+          });
+          
+          if (response.data.error) {
+            toast.error(response.data.error);
+            return;
           }
           
           // Reload from database
@@ -3106,12 +3111,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setCreatingCS(true);
     
     try {
-      // Create in DATABASE - this persists globally
-      await adn7.entities.CSUser.create({
-        username,
-        password,
-        is_active: true
+      // Use backend API with service role to bypass RLS
+      const response = await adn7.functions.invoke('adminSettingsApi', {
+        action: 'createCS',
+        payload: { username, password }
       });
+      
+      if (response.data.error) {
+        toast.error(response.data.error);
+        return;
+      }
       
       // Immediately reload from database
       const serverCS = await adn7.entities.CSUser.list();
@@ -3148,10 +3157,15 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       onConfirm: async () => {
         setDeletingUser(username);
         try {
-          // Delete from DATABASE
-          const matches = await adn7.entities.CSUser.filter({ username });
-          if (matches && matches[0]) {
-            await adn7.entities.CSUser.delete(matches[0].id);
+          // Use backend API with service role to bypass RLS
+          const response = await adn7.functions.invoke('adminSettingsApi', {
+            action: 'deleteCS',
+            payload: { username }
+          });
+          
+          if (response.data.error) {
+            toast.error(response.data.error);
+            return;
           }
           
           // Reload from database
