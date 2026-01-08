@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       case 'createAgent': {
         const check = await ensureAdminUser(adn7);
         if (check.error) return check.res;
-        const { username, password, full_name, email, region, notes } = payload;
+        const { username, password } = payload;
         if (!username || !password) return json({ error: 'username and password required' }, { status: 400 });
         if (String(password).length < 4) return json({ error: 'Password must be at least 4 characters' }, { status: 400 });
         
@@ -126,10 +126,10 @@ Deno.serve(async (req) => {
           username, 
           password,
           is_active: true,
-          full_name: full_name || '',
-          email: email || '',
-          region: region || '',
-          notes: notes || ''
+          full_name: '',
+          email: '',
+          region: '',
+          notes: ''
         });
         
         // Verify creation

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard, Mail } from 'lucide-react';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
 import { base44 as adn7 } from '@/api/base44Client';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
@@ -2521,10 +2521,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [newAgentUser, setNewAgentUser] = useState("");
   const [newAgentPass, setNewAgentPass] = useState("");
-  const [newAgentFullName, setNewAgentFullName] = useState("");
-  const [newAgentEmail, setNewAgentEmail] = useState("");
-  const [newAgentRegion, setNewAgentRegion] = useState("");
-  const [newAgentNotes, setNewAgentNotes] = useState("");
   const [newAdminUser, setNewAdminUser] = useState("");
   const [newAdminPass, setNewAdminPass] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
@@ -3024,14 +3020,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       // Use backend API for atomic transaction with confirmation
       const response = await adn7.functions.invoke('adminSettingsApi', {
         action: 'createAgent',
-        payload: { 
-          username, 
-          password,
-          full_name: String(newAgentFullName || '').trim(),
-          email: String(newAgentEmail || '').trim(),
-          region: String(newAgentRegion || '').trim(),
-          notes: String(newAgentNotes || '').trim()
-        }
+        payload: { username, password }
       });
       
       console.log('[CREATE AGENT] Backend response:', response.data);
@@ -3090,10 +3079,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       
       setNewAgentUser('');
       setNewAgentPass('');
-      setNewAgentFullName('');
-      setNewAgentEmail('');
-      setNewAgentRegion('');
-      setNewAgentNotes('');
       
       // Sync to other devices
       await notifyUsersSync();
@@ -4396,55 +4381,23 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <Label className="text-xs text-black/60">Agent Username *</Label>
+                    <Label className="text-xs text-black/60">Agent Username</Label>
                     <Input
                       value={newAgentUser}
                       onChange={(e) => setNewAgentUser(e.target.value)}
                       placeholder="e.g. agent01"
                       className="mt-1" />
+
                   </div>
                   <div>
-                    <Label className="text-xs text-black/60">Agent Password *</Label>
+                    <Label className="text-xs text-black/60">Agent Password</Label>
                     <Input
                       type="password"
                       value={newAgentPass}
                       onChange={(e) => setNewAgentPass(e.target.value)}
                       placeholder="Min 4 characters"
                       className="mt-1" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">Full Name</Label>
-                    <Input
-                      value={newAgentFullName}
-                      onChange={(e) => setNewAgentFullName(e.target.value)}
-                      placeholder="e.g. John Doe"
-                      className="mt-1" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">Email</Label>
-                    <Input
-                      type="email"
-                      value={newAgentEmail}
-                      onChange={(e) => setNewAgentEmail(e.target.value)}
-                      placeholder="e.g. agent@company.com"
-                      className="mt-1" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">Region</Label>
-                    <Input
-                      value={newAgentRegion}
-                      onChange={(e) => setNewAgentRegion(e.target.value)}
-                      placeholder="e.g. DXB, AUH"
-                      className="mt-1" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">Notes</Label>
-                    <Textarea
-                      value={newAgentNotes}
-                      onChange={(e) => setNewAgentNotes(e.target.value)}
-                      placeholder="Optional notes about this agent"
-                      className="mt-1"
-                      rows={2} />
+
                   </div>
                   <Button 
                     onClick={createAgent} 
@@ -4561,13 +4514,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                         Math.floor((Date.now() - agentBreak.start) / 1000 / 60) : 0;
 
                         return (
-                          <div key={agent.username} className="p-3 rounded-lg bg-gray-50 border">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2 flex-wrap">
+                          <div key={agent.username} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
                                   <div className="font-bold">{agent.username}</div>
-                                  {agent.region && (
-                                    <Badge variant="outline" className="text-xs">{agent.region}</Badge>
-                                  )}
                                   {/* Live status badge + dot */}
                                   {(() => {
                                   const status = getAgentStatus(agent.username);
@@ -4584,50 +4534,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                                 <Badge className={`${breakType.color} text-[10px]`}>{breakType.label}</Badge>
                                 }
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setSelectedAgent(agent.username)}
-                                  className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => downloadAgentData(agent.username)}
-                                  className="font-bold">
-                                    <Download className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => deleteAgent(agent.username)}
-                                  disabled={deletingUser === agent.username}
-                                  className="font-bold text-red-600 hover:bg-red-50">
-                                    {deletingUser === agent.username ? (
-                                      <RefreshCw className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="w-4 h-4" />
-                                    )}
-                                  </Button>
+                                <div className="text-xs text-black/50">
+                                  Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
                                 </div>
                               </div>
-                              {(agent.full_name || agent.email) && (
-                                <div className="text-xs space-y-1 text-black/60 mb-2">
-                                  {agent.full_name && <div className="font-medium">{agent.full_name}</div>}
-                                  {agent.email && <div className="flex items-center gap-1">
-                                    <Mail className="w-3 h-3" />
-                                    {agent.email}
-                                  </div>}
-                                </div>
-                              )}
-                              <div className="text-xs text-black/50 border-t pt-2">
-                                Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
-                              </div>
-                              {agent.notes && (
-                                <div className="text-xs text-black/50 mt-2 pt-2 border-t italic">{agent.notes}</div>
-                              )}
                               <div className="flex items-center gap-2">
                                 <Button
                                 size="sm"
