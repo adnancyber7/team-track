@@ -101,10 +101,9 @@ COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3,
 COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
+// CRITICAL: Only session is stored in localStorage - users stored in DATABASE only
 const DEFAULT_STATE = {
   admin: { username: "admin", password: "admin123", email: "" },
-  agents: [],
-  csAllocators: [{ username: "cs1", password: "cs123" }],
   session: { role: null, username: null }
 };
 
@@ -133,6 +132,7 @@ const parseLineSum = (lineVal) => {
   return nums.reduce((a, b) => a + b, 0);
 };
 
+// CRITICAL: Only loads admin + session from localStorage - NEVER loads users
 const loadState = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -142,18 +142,21 @@ const loadState = () => {
     }
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") throw new Error("Bad");
-    if (!parsed.admin) throw new Error("Bad");
-    if (!Array.isArray(parsed.agents)) parsed.agents = [];
-    if (!Array.isArray(parsed.csAllocators)) parsed.csAllocators = [];
+    if (!parsed.admin) parsed.admin = DEFAULT_STATE.admin;
     if (!parsed.session) parsed.session = { role: null, username: null };
-    return parsed;
+    // NEVER load agents/csAllocators from localStorage
+    return { admin: parsed.admin, session: parsed.session };
   } catch {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STATE));
     return deepCopy(DEFAULT_STATE);
   }
 };
 
-const saveState = (s) => localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+// CRITICAL: Only saves admin + session - NEVER saves users to localStorage
+const saveState = (s) => {
+  const toSave = { admin: s.admin, session: s.session };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+};
 
 const loadCSSheet = () => {
   try {
@@ -647,11 +650,10 @@ const LoginScreen = ({ onLogin }) => {
       setError("Please enter admin username and password.");
       return;
     }
-    // Check global access controls and admin creds in backend
+    // Check database admin credentials FIRST
     try {
       const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
       const cfg = (cfgs || [])[0];
-      // Allow admin login even if maintenance is ON (so admin can manage settings)
       if (cfg && cfg.allow_admin_login === false) {
         setError("Admin logins are disabled.");
         return;
@@ -666,7 +668,7 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Fallback to localStorage admin
+    // Fallback to localStorage admin only if database not configured
     if (adminUser === state.admin.username && adminPass === state.admin.password) {
       state.session = { role: "admin", username: adminUser };
       saveState(state);
@@ -696,7 +698,7 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Try backend auth first
+    // ONLY authenticate against database - NO localStorage fallback
     try {
       const res = await adn7.entities.AgentUser.filter({ username: agentUser, password: agentPass });
       const found = (res || [])[0];
@@ -711,15 +713,7 @@ const LoginScreen = ({ onLogin }) => {
         return;
       }
     } catch (e) {
-
-      // ignore and fallback to local
-    }
-    // Fallback to local list (for offline/static hosts)
-    const localMatch = (state.agents || []).find((a) => (a.username || "").trim().toLowerCase() === agentUser.trim().toLowerCase() && a.password === agentPass);
-    if (localMatch) {
-      state.session = { role: "agent", username: localMatch.username };
-      saveState(state);
-      onLogin("agent", localMatch.username);
+      setError("Database error. Please try again.");
       return;
     }
 
@@ -746,26 +740,22 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Try backend auth first
+    // ONLY authenticate against database - NO localStorage fallback
     try {
       const res = await adn7.entities.CSUser.filter({ username: csUser, password: csPass });
       const found = (res || [])[0];
       if (found) {
+        if (found.is_active === false) {
+          setError("This CS user is inactive.");
+          return;
+        }
         state.session = { role: "cs_allocator", username: csUser };
         saveState(state);
         onLogin("cs_allocator", csUser);
         return;
       }
     } catch (e) {
-
-      // ignore and fallback to local
-    }
-    // Fallback to local list
-    const localMatch = (state.csAllocators || []).find((u) => (u.username || "").trim().toLowerCase() === csUser.trim().toLowerCase() && u.password === csPass);
-    if (localMatch) {
-      state.session = { role: "cs_allocator", username: localMatch.username };
-      saveState(state);
-      onLogin("cs_allocator", localMatch.username);
+      setError("Database error. Please try again.");
       return;
     }
 
