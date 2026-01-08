@@ -2761,9 +2761,33 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Users sync DISABLED - only refresh on explicit create/delete
+  // Periodic refresh from database to ensure consistency
   useEffect(() => {
-    return () => {};
+    const interval = setInterval(async () => {
+      try {
+        const [serverAgents, serverCS] = await Promise.all([
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()
+        ]);
+        setAgents((serverAgents || []).map((a) => ({ 
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          full_name: a.full_name,
+          email: a.email,
+          region: a.region,
+          notes: a.notes,
+          is_active: a.is_active
+        })));
+        setCSAllocators((serverCS || []).map((a) => ({ 
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          is_active: a.is_active
+        })));
+      } catch {}
+    }, 120000); // Every 2 minutes
+    return () => clearInterval(interval);
   }, []);
 
   // Long-poll DISABLED - use BroadcastChannel + periodic sync only
