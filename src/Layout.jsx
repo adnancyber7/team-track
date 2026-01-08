@@ -32,7 +32,7 @@ export default function Layout({ children, currentPageName }) {
       } catch {}
     };
     fetchCfg();
-    const id = setInterval(fetchCfg, 20000);
+    const id = setInterval(fetchCfg, 60000);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 

@@ -188,11 +188,11 @@ const loadCSSheet = () => {
   }
 };
 
-// Ultra-aggressive batching with 5s minimum interval
+// Maximum batching - 15s minimum interval
 let saveTimeout = null;
 let pendingBackendSync = null;
 let lastSyncTime = 0;
-const MIN_SYNC_INTERVAL = 5000; // Minimum 5s between backend syncs
+const MIN_SYNC_INTERVAL = 15000; // Minimum 15s between backend syncs
 
 const saveCSSheet = (data) => {
   const optimizedData = {
@@ -206,7 +206,7 @@ const saveCSSheet = (data) => {
   if (pendingBackendSync) clearTimeout(pendingBackendSync);
   
   const timeSinceLastSync = Date.now() - lastSyncTime;
-  const delay = Math.max(MIN_SYNC_INTERVAL - timeSinceLastSync, 1000);
+  const delay = Math.max(MIN_SYNC_INTERVAL - timeSinceLastSync, 2000);
   
   pendingBackendSync = setTimeout(() => {
     lastSyncTime = Date.now();
@@ -237,7 +237,7 @@ let lastRemoteUpdates = { cs: 0, agents: 0, users: 0 };
 const requestCache = new Map();
 const requestQueue = [];
 let isProcessingQueue = false;
-const MIN_REQUEST_INTERVAL = 500; // Min 500ms between ANY requests
+const MIN_REQUEST_INTERVAL = 2000; // Min 2s between ANY requests
 let lastRequestTime = 0;
 
 const rateLimitedRequest = async (fn) => {
@@ -280,7 +280,7 @@ const cachedRequest = async (fn, ttl, ...args) => {
   }
   const result = await rateLimitedRequest(() => fn(...args));
   requestCache.set(key, { data: result, time: Date.now() });
-  setTimeout(() => requestCache.delete(key), ttl + 1000);
+  setTimeout(() => requestCache.delete(key), ttl + 5000);
   return result;
 };
 
@@ -288,7 +288,7 @@ const pushAppState = async (stateKey, payload) => {
   try {
     const rows = await cachedRequest(
       async (key) => await adn7.entities.AppState.filter({ state_key: key }),
-      5000,
+      10000,
       stateKey
     );
     await rateLimitedRequest(async () => {
@@ -304,7 +304,7 @@ const pushAppState = async (stateKey, payload) => {
   }
 };
 
-// Heavily batched push with 3s minimum interval
+// Maximum batching - 10s minimum interval
 let lastPushTime = 0;
 let pendingPush = null;
 const pushCSImmediate = async (data) => { 
@@ -314,7 +314,7 @@ const pushCSImmediate = async (data) => {
   if (pendingPush) clearTimeout(pendingPush);
   
   const timeSinceLast = Date.now() - lastPushTime;
-  const delay = Math.max(3000 - timeSinceLast, 1000);
+  const delay = Math.max(10000 - timeSinceLast, 2000);
   
   pendingPush = setTimeout(() => {
     lastPushTime = Date.now();
@@ -325,7 +325,7 @@ const pullAppState = async (stateKey) => {
   try {
     const rows = await cachedRequest(
       async (key) => await adn7.entities.AppState.filter({ state_key: key }),
-      5000,
+      10000,
       stateKey
     );
     return (rows && rows[0]) || null;
@@ -637,7 +637,7 @@ const LoginScreen = ({ onLogin }) => {
       } catch {}
     };
     fetchCfg();
-    const id = setInterval(fetchCfg, 20000);
+    const id = setInterval(fetchCfg, 60000);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2771,7 +2771,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Minimal periodic sync - 30s interval
+  // Minimal periodic sync - 60s interval only
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -2786,7 +2786,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       } catch {}
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -6385,7 +6385,7 @@ export default function DHLSheet() {
 
   useEffect(() => {
     if (!session.role) return;
-    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 30000);
+    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 60000);
     checkKickAndLogout(handleLogout);
     const onBeforeUnload = () => { markSessionLogout(); };
     window.addEventListener('beforeunload', onBeforeUnload);
