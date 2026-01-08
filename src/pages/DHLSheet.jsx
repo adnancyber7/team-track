@@ -3857,7 +3857,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               <span className="font-bold">Welcome, {username}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={() => (window.location.href = '/AdminSettings') } variant="outline" className="font-bold">
+              <Button onClick={() => setActiveTab('settings')} variant="outline" className="font-bold">
                 Settings
               </Button>
               <Button onClick={onLogout} variant="outline" className="font-bold bg.yellow-400/50 hover:bg-yellow-400/70 border-black/10">
