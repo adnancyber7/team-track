@@ -19,7 +19,7 @@ export default function UserManagementHub({ onUpdate }) {
   const [editDialog, setEditDialog] = useState({ open: false, user: null, type: null });
   const [editForm, setEditForm] = useState({ username: '', password: '' });
 
-  // Real-time polling - INSTANT updates
+  // Real-time polling - optimized to prevent rate limits
   useEffect(() => {
     let mounted = true;
 
@@ -39,12 +39,28 @@ export default function UserManagementHub({ onUpdate }) {
     };
 
     loadUsers();
-    const interval = setInterval(loadUsers, 500); // 500ms for INSTANT updates
+    const interval = setInterval(loadUsers, 3000); // 3s to prevent rate limits
 
     return () => {
       mounted = false;
       clearInterval(interval);
     };
+  }, []);
+
+  // Initialize default CS user on mount
+  useEffect(() => {
+    const initDefaultCS = async () => {
+      try {
+        const existing = await base44.entities.CSUser.filter({ username: 'cs01' });
+        if (!existing || existing.length === 0) {
+          await base44.functions.invoke('adminSettingsApi', {
+            action: 'createCS',
+            payload: { username: 'cs01', password: 'cs01' }
+          });
+        }
+      } catch {}
+    };
+    initDefaultCS();
   }, []);
 
   const notifySync = async () => {
@@ -183,15 +199,15 @@ export default function UserManagementHub({ onUpdate }) {
   };
 
   return (
-    <Card className="w-full border-2 border-purple-300 bg-gradient-to-br from-purple-50 via-white to-pink-50 shadow-2xl">
+    <Card className="w-full border-2 border-yellow-300 bg-gradient-to-br from-yellow-50 via-white to-amber-50 shadow-2xl">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 shadow-lg">
               <Users className="w-6 h-6 text-white" />
             </div>
             <div>
-              <div className="text-xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <div className="text-xl font-black bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent">
                 User Management Hub
               </div>
               <div className="text-xs text-gray-500 font-normal">
@@ -200,10 +216,10 @@ export default function UserManagementHub({ onUpdate }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="bg-purple-100 text-purple-800 font-bold">
+            <Badge className="bg-yellow-100 text-yellow-800 font-bold">
               {agents.length} Agents
             </Badge>
-            <Badge className="bg-blue-100 text-blue-800 font-bold">
+            <Badge className="bg-amber-100 text-amber-800 font-bold">
               {csUsers.length} CS
             </Badge>
           </div>
@@ -211,12 +227,12 @@ export default function UserManagementHub({ onUpdate }) {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="agents" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-purple-100">
-            <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+          <TabsList className="grid w-full grid-cols-2 bg-yellow-100">
+            <TabsTrigger value="agents" className="font-bold data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
               <Users className="w-4 h-4 mr-2" />
               Agents
             </TabsTrigger>
-            <TabsTrigger value="cs" className="font-bold data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <TabsTrigger value="cs" className="font-bold data-[state=active]:bg-amber-500 data-[state=active]:text-black">
               <Shield className="w-4 h-4 mr-2" />
               CS Team
             </TabsTrigger>
@@ -225,22 +241,21 @@ export default function UserManagementHub({ onUpdate }) {
           {/* Agents Tab */}
           <TabsContent value="agents" className="space-y-4 mt-4">
             {/* Bulk Create */}
-            <Card className="border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="font-bold text-purple-900 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-600" />
-                      Quick Setup: Create 30 Default Agents
-                    </Label>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Creates agent01 to agent30 with default passwords (pass01-pass30). You can edit them later.
-                    </p>
-                  </div>
+            {/* Bulk Create + Individual Create */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50">
+                <CardContent className="p-4">
+                  <Label className="font-bold text-yellow-900 flex items-center gap-2 mb-3">
+                    <Sparkles className="w-4 h-4 text-yellow-600" />
+                    Quick: Create 30 Agents
+                  </Label>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Creates agent01-agent30 (pass01-pass30)
+                  </p>
                   <Button
                     onClick={createBulkAgents}
                     disabled={bulkCreating}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-black shadow-lg">
+                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-black shadow-lg">
                     {bulkCreating ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -253,15 +268,67 @@ export default function UserManagementHub({ onUpdate }) {
                       </>
                     )}
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50">
+                <CardContent className="p-4">
+                  <Label className="font-bold text-amber-900 flex items-center gap-2 mb-3">
+                    <UserPlus className="w-4 h-4 text-amber-600" />
+                    Create Individual
+                  </Label>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Create single agent or CS user manually
+                  </p>
+                  <Button
+                    onClick={async () => {
+                      const username = prompt('Enter username:');
+                      const password = prompt('Enter password (min 4 chars):');
+                      const type = confirm('Agent (OK) or CS User (Cancel)') ? 'agent' : 'cs';
+                      
+                      if (!username || !password || password.length < 4) {
+                        toast.error('Invalid username or password');
+                        return;
+                      }
+
+                      try {
+                        const action = type === 'agent' ? 'createAgent' : 'createCS';
+                        const response = await base44.functions.invoke('adminSettingsApi', {
+                          action,
+                          payload: { username, password }
+                        });
+
+                        if (response.data.error) {
+                          toast.error(response.data.error);
+                          return;
+                        }
+
+                        const [agentData, csData] = await Promise.all([
+                          base44.entities.AgentUser.list(),
+                          base44.entities.CSUser.list()
+                        ]);
+                        setAgents(agentData || []);
+                        setCSUsers(csData || []);
+                        await notifySync();
+                        toast.success(`✅ ${type === 'agent' ? 'Agent' : 'CS user'} created`);
+                        if (onUpdate) onUpdate();
+                      } catch (e) {
+                        toast.error('Failed: ' + e.message);
+                      }
+                    }}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-black shadow-lg">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Create User
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Agents List */}
             <Card>
               <CardContent className="p-4">
                 <Label className="font-bold text-lg mb-3 block flex items-center gap-2">
-                  <Users className="w-5 h-5 text-purple-600" />
+                  <Users className="w-5 h-5 text-yellow-600" />
                   Agent Profiles ({agents.length})
                 </Label>
                 <ScrollArea className="h-[400px] pr-4">
@@ -275,11 +342,11 @@ export default function UserManagementHub({ onUpdate }) {
                       {agents.map((agent) => (
                         <div
                           key={agent.id}
-                          className="p-3 rounded-lg border-2 border-purple-200 bg-gradient-to-br from-white to-purple-50 hover:border-purple-400 transition-all hover:shadow-lg"
+                          className="p-3 rounded-lg border-2 border-yellow-200 bg-gradient-to-br from-white to-yellow-50 hover:border-yellow-400 transition-all hover:shadow-lg"
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center text-white font-bold text-sm">
                                 {agent.username.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -308,7 +375,7 @@ export default function UserManagementHub({ onUpdate }) {
                               onClick={() => openEditDialog(agent, 'agent')}
                               size="sm"
                               variant="outline"
-                              className="flex-1 font-bold text-purple-600 hover:bg-purple-50"
+                              className="flex-1 font-bold text-yellow-700 hover:bg-yellow-50"
                             >
                               <Edit2 className="w-3 h-3 mr-1" />
                               Edit
@@ -336,9 +403,18 @@ export default function UserManagementHub({ onUpdate }) {
             <Card>
               <CardContent className="p-4">
                 <Label className="font-bold text-lg mb-3 block flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-blue-600" />
+                  <Shield className="w-5 h-5 text-amber-600" />
                   CS Team Profiles ({csUsers.length})
                 </Label>
+                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm text-green-800">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="font-bold">Default CS Profile: cs01 (password: cs01)</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    This permanent profile is always available. You can edit username/password below.
+                  </p>
+                </div>
                 <ScrollArea className="h-[400px] pr-4">
                   {csUsers.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
@@ -350,11 +426,11 @@ export default function UserManagementHub({ onUpdate }) {
                       {csUsers.map((cs) => (
                         <div
                           key={cs.id}
-                          className="p-3 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 hover:border-blue-400 transition-all hover:shadow-lg"
+                          className="p-3 rounded-lg border-2 border-amber-200 bg-gradient-to-br from-white to-amber-50 hover:border-amber-400 transition-all hover:shadow-lg"
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
                                 {cs.username.charAt(0).toUpperCase()}
                               </div>
                               <div>
@@ -371,7 +447,7 @@ export default function UserManagementHub({ onUpdate }) {
                               onClick={() => openEditDialog(cs, 'cs')}
                               size="sm"
                               variant="outline"
-                              className="flex-1 font-bold text-blue-600 hover:bg-blue-50"
+                              className="flex-1 font-bold text-amber-700 hover:bg-amber-50"
                             >
                               <Edit2 className="w-3 h-3 mr-1" />
                               Edit
@@ -396,7 +472,7 @@ export default function UserManagementHub({ onUpdate }) {
         </Tabs>
 
         {/* Global Status */}
-        <div className="mt-4 pt-4 border-t border-purple-200">
+        <div className="mt-4 pt-4 border-t border-yellow-200">
           <div className="flex items-center justify-between text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -450,7 +526,7 @@ export default function UserManagementHub({ onUpdate }) {
               <Button
                 onClick={saveEdit}
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold"
+                className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-bold"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

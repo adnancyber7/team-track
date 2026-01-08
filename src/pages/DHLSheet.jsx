@@ -2600,7 +2600,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // INSTANT session monitoring - ultra-fast polling
+  // Session monitoring - optimized polling
   useEffect(() => {
     let stopped = false;
     const load = async () => {
@@ -2612,7 +2612,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       } catch {}
     };
     load();
-    const id = setInterval(load, 500); // 500ms for instant session updates
+    const id = setInterval(load, 5000); // 5s for session monitoring
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2697,7 +2697,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // INSTANT user sync - ultra-fast polling for real-time user updates
+  // User sync - optimized polling to prevent rate limits
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -2722,7 +2722,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           is_active: a.is_active
         })));
       } catch {}
-    }, 500); // Poll every 500ms for INSTANT user updates
+    }, 3000); // Poll every 3s to prevent rate limits
     return () => clearInterval(interval);
   }, []);
 
@@ -2731,7 +2731,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // ULTRA-FAST periodic sync - 500ms interval for INSTANT real-time updates
+  // Fast periodic sync - optimized to prevent rate limits
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -2746,7 +2746,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       } catch {}
-    }, 500); // Poll every 500ms for INSTANT updates globally
+    }, 2000); // Poll every 2s - balanced for updates & rate limits
     return () => clearInterval(interval);
   }, []);
 
