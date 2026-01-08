@@ -2850,11 +2850,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         } else if (breakInfo.status === 'ended') {
           toast.info(`${breakInfo.agent} ended break`, { duration: 3000 });
         }
-        // Update break status in real-time
         setCSSheet(loadCSSheet());
       }
       if (ev?.data?.agentLogout) {
-        // Keep displaying last known break; no action needed other than refresh
         setCSSheet(loadCSSheet());
       }
       if (ev?.data?.priorityUnlocked) {
@@ -2864,8 +2862,31 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       if (ev?.data?.type === "app:sync") {
         setCSSheet(loadCSSheet());
         setAgentSheets(loadAgentSheets());
-        const state = loadState();
-        setAgents(state.agents || []);
+        // Refresh users from database
+        (async () => {
+          try {
+            const [serverAgents, serverCS] = await Promise.all([
+              adn7.entities.AgentUser.list(),
+              adn7.entities.CSUser.list()
+            ]);
+            setAgents((serverAgents || []).map((a) => ({ 
+              id: a.id,
+              username: a.username, 
+              password: a.password,
+              full_name: a.full_name,
+              email: a.email,
+              region: a.region,
+              notes: a.notes,
+              is_active: a.is_active
+            })));
+            setCSAllocators((serverCS || []).map((a) => ({ 
+              id: a.id,
+              username: a.username, 
+              password: a.password,
+              is_active: a.is_active
+            })));
+          } catch {}
+        })();
       }
     };
     CHANNEL.addEventListener('message', handleSync);
