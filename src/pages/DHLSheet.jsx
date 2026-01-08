@@ -188,21 +188,25 @@ const loadCSSheet = () => {
   }
 };
 
-// Debounced save to reduce localStorage writes
+// Optimized save with immediate localStorage + batched backend sync
 let saveTimeout = null;
+let pendingBackendSync = null;
 const saveCSSheet = (data) => {
-  if (saveTimeout) clearTimeout(saveTimeout);
+  // Immediate localStorage for UI responsiveness
+  const optimizedData = {
+    ...data,
+    raw: data.raw,
+    timers: data.timers
+  };
+  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
 
-  saveTimeout = setTimeout(() => {
-    const optimizedData = {
-      ...data,
-      raw: data.raw,
-      timers: data.timers
-    };
-    localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
-    // Cross-device sync
+  // Batch backend syncs to reduce API calls
+  if (saveTimeout) clearTimeout(saveTimeout);
+  if (pendingBackendSync) clearTimeout(pendingBackendSync);
+  
+  pendingBackendSync = setTimeout(() => {
     pushAppState('cs_sheet', optimizedData);
-  }, 250);
+  }, 100);
 };
 
 const loadAgentSheets = () => {
@@ -2721,7 +2725,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {stopped = true;clearInterval(id);};
   }, []);
 
-  // Realtime long-poll subscription for instant cross-panel updates (server authoritative)
+  // Optimized realtime long-poll with instant UI updates
   useEffect(() => {
     let cancelled = false;
     let last = { cs: lastRemoteUpdates.cs || 0, agents: lastRemoteUpdates.agents || 0, users: lastRemoteUpdates.users || 0 };
@@ -2731,7 +2735,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         const csRec = await pullAppState('cs_sheet');
         if (csRec) {
           localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
-          setCSSheet(loadCSSheet());
+          const freshData = loadCSSheet();
+          setCSSheet(freshData);
           lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
           CHANNEL.postMessage({ type: 'app:sync' });
         }
@@ -2744,14 +2749,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           CHANNEL.postMessage({ type: 'app:sync' });
         }
       } else if (key === 'users_sync') {
-        try {
-          const [serverAgents, serverCS] = await Promise.all([
-            adn7.entities.AgentUser.list(),
-            adn7.entities.CSUser.list()
-          ]);
-          setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
-          setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
-        } catch {}
+        const [serverAgents, serverCS] = await Promise.all([
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()
+        ]);
+        setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
+        setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
       }
     };
 
@@ -2765,12 +2768,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           });
           const changes = data?.changes || [];
           const now = data?.now || {};
-          for (const k of changes) {
-            await applyChange(k);
-          }
+          
+          // Process all changes in parallel for speed
+          await Promise.all(changes.map(k => applyChange(k)));
+          
           last = { cs: now.cs || last.cs, agents: now.agents || last.agents, users: now.users || last.users };
         } catch {
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 800));
         }
       }
     };
@@ -3946,13 +3950,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             {/* Analytics & Upload */}
             <Card className="bg-white/95 border-black/10 shadow-lg">
               <CardContent className="p-4 space-y-3">
-                <FilterBar
-                  columns={CS_COLUMNS}
-                  initial={csFilters || undefined}
-                  onApply={(f) => { setCsFilters(f); applyFilters({ ...activeFilters, ...f }); }}
-                  onClear={() => { setCsFilters(null); applyFilters(null); }}
-                />
-                <div className="flex items-center gap-4 flex-wrap mt-3">
+                <div className="flex items-center gap-4 flex-wrap">
                   <Badge className="bg-yellow-400 text-black font-black px-3 py-1">MASTER SHEET VIEW</Badge>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black/10">
                     <span className="text-sm font-medium">AWB:</span>
@@ -3971,6 +3969,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <span className="font-mono font-bold text-red-800">{csMetrics.rej}</span>
                   </div>
                   <div className="ml-auto flex items-center gap-2">
+                    <Button
+                      onClick={() => {
+                        const allAwbs = [];
+                        for (let r = 0; r < ROWS_COUNT; r++) {
+                          const awb = String(csSheet.raw[r]?.[COL_AWB] || '').trim();
+                          if (awb && /^\d{10}$/.test(awb)) allAwbs.push(awb);
+                        }
+                        navigator.clipboard.writeText(allAwbs.join('\n'));
+                        toast.success(`📋 Copied ${allAwbs.length} AWBs`);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="font-bold bg-purple-50 hover:bg-purple-100">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                      Copy All AWBs
+                    </Button>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -5172,7 +5186,7 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Realtime long-poll subscription for CS Allocator
+  // Optimized long-poll for CS
   useEffect(() => {
     let cancelled = false;
     let last = { cs: lastRemoteUpdates.cs || 0 };
@@ -5191,14 +5205,15 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
             const csRec = await pullAppState('cs_sheet');
             if (csRec) {
               localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
-              setCSSheet(loadCSSheet());
+              const freshData = loadCSSheet();
+              setCSSheet(freshData);
               lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
               CHANNEL.postMessage({ type: 'app:sync' });
             }
           }
           last = { cs: now.cs || last.cs };
         } catch {
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 800));
         }
       }
     };
@@ -5564,7 +5579,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Realtime long-poll subscription for Agent
+  // Optimized long-poll for Agent with instant updates
   useEffect(() => {
     let cancelled = false;
     let last = { cs: lastRemoteUpdates.cs || 0, agents: lastRemoteUpdates.agents || 0 };
@@ -5579,27 +5594,32 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           });
           const changes = data?.changes || [];
           const now = data?.now || {};
-          if (changes.includes('cs_sheet')) {
-            const csRec = await pullAppState('cs_sheet');
-            if (csRec) {
-              localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
-              setCSSheet(loadCSSheet());
-              lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
-              CHANNEL.postMessage({ type: 'app:sync' });
+          
+          // Process changes in parallel
+          await Promise.all(changes.map(async (change) => {
+            if (change === 'cs_sheet') {
+              const csRec = await pullAppState('cs_sheet');
+              if (csRec) {
+                localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
+                const freshData = loadCSSheet();
+                setCSSheet(freshData);
+                lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
+                CHANNEL.postMessage({ type: 'app:sync' });
+              }
+            } else if (change === 'agent_sheets') {
+              const aRec = await pullAppState('agent_sheets');
+              if (aRec) {
+                localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
+                setAgentSheets(loadAgentSheets());
+                lastRemoteUpdates.agents = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '') || Date.now();
+                CHANNEL.postMessage({ type: 'app:sync' });
+              }
             }
-          }
-          if (changes.includes('agent_sheets')) {
-            const aRec = await pullAppState('agent_sheets');
-            if (aRec) {
-              localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
-              setAgentSheets(loadAgentSheets());
-              lastRemoteUpdates.agents = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '') || Date.now();
-              CHANNEL.postMessage({ type: 'app:sync' });
-            }
-          }
+          }));
+          
           last = { cs: now.cs || last.cs, agents: now.agents || last.agents };
         } catch {
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 800));
         }
       }
     };
@@ -5764,11 +5784,16 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       const doneCount = timer.doneClicks;
       timer.state = "DONE";
       timer.updatedAt = Date.now();
-      timer.hidden = true; // Hide from agent view
+      timer.hidden = true;
       if (timer.start != null) {
         timer.elapsed = (timer.elapsed || 0) + (Date.now() - timer.start);
         timer.start = null;
       }
+      
+      // Instant state update first
+      newSheet.timers[r] = timer;
+      setCSSheet(newSheet);
+      localStorage.setItem(CS_SHEET_KEY, JSON.stringify(newSheet));
 
       // Track in agent's Excel data
       const sheets = loadAgentSheets();
@@ -5818,8 +5843,13 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         saveAgentSheets(sheets);
       }
 
-      // Update metrics immediately
+      // Persist and sync
+      saveCSSheet(newSheet);
+      pushCSImmediate(newSheet);
+      CHANNEL.postMessage({ type: "app:sync" });
+      
       toast.success(`✅ AWB ${awb} marked as DONE (Total Done: ${doneCount})`, { duration: 4000 });
+      return;
 
       // Check if all rows in current region filter are done
       const currentFilter = sheets.agentFilters?.[username]?.region;
@@ -5869,15 +5899,16 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       timer.rejClicks = (timer.rejClicks || 0) + 1;
       timer.state = "REJECTED";
       timer.updatedAt = Date.now();
-      timer.hidden = true; // Hide from agent view after rejection
-
-      // Set STATUS column to REJECT
+      timer.hidden = true;
       newSheet.raw[r][COL_STATUS] = "REJECT";
-
-      // Add agent name to AGENT2 column if empty (for CS team tracking)
       if (!newSheet.raw[r][COL_AGENT2]?.trim()) {
         newSheet.raw[r][COL_AGENT2] = username;
       }
+      
+      // Instant state update first
+      newSheet.timers[r] = timer;
+      setCSSheet(newSheet);
+      localStorage.setItem(CS_SHEET_KEY, JSON.stringify(newSheet));
 
       // Track in agent's Excel data
       const sheets = loadAgentSheets();
@@ -5894,28 +5925,19 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       });
       saveAgentSheets(sheets);
 
-      // Update metrics immediately
-      toast.error(`❌ AWB ${awb} rejected`);
-
-      // Set blink for CS sheet when agent rejects
       if (!newSheet.blinkRows) newSheet.blinkRows = {};
       newSheet.blinkRows[r] = true;
-
-      // Notify CS team about rejection
+      
+      // Persist and sync
+      saveCSSheet(newSheet);
+      pushCSImmediate(newSheet);
       CHANNEL.postMessage({
         type: "app:sync",
-        rejectionNotification: {
-          agent: username,
-          awb: awb,
-          timestamp: new Date().toISOString()
-        }
+        rejectionNotification: { agent: username, awb: awb, timestamp: new Date().toISOString() }
       });
-
-      // Resume timer
-      if (timer.start == null) {
-        timer.start = Date.now();
-      }
-
+      
+      toast.error(`❌ AWB ${awb} rejected`);
+      
       setTimeout(() => {
         const updated = loadCSSheet();
         if (updated.blinkRows) {
@@ -5924,14 +5946,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
           CHANNEL.postMessage({ type: "app:sync" });
         }
       }, 5000);
+      return;
     }
-
-    newSheet.timers[r] = timer;
-    setCSSheet(newSheet);
-    saveCSSheet(newSheet);
-    // trigger instant cross-device update
-    pushCSImmediate(newSheet);
-    CHANNEL.postMessage({ type: "app:sync" });
   }, [csSheet, username]);
 
   const getAgentMetrics = useMemo(() => {
