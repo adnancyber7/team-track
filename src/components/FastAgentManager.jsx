@@ -14,32 +14,40 @@ export default function FastAgentManager({ onUpdate }) {
   const [newPassword, setNewPassword] = useState('');
   const [operations, setOperations] = useState(new Set());
 
-  // Fast polling for users_sync changes
+  // Fast polling for user_profiles changes from AppState
   useEffect(() => {
     let mounted = true;
-    let lastSync = Date.now();
+    let lastSync = 0;
 
-    const loadAgents = async () => {
+    const loadAgents = () => {
+      const raw = localStorage.getItem('DHL_LOGIN_DEMO_V1');
       try {
-        const data = await base44.entities.AgentUser.list();
-        if (mounted) setAgents(data || []);
-      } catch (e) {
-        console.error('Failed to load agents:', e);
+        const state = JSON.parse(raw || '{}');
+        if (mounted) setAgents(state.agents || []);
+      } catch {
+        if (mounted) setAgents([]);
       }
     };
 
     const checkSync = async () => {
       try {
-        const rows = await base44.entities.AppState.filter({ state_key: 'users_sync' });
-        const currentSync = rows?.[0]?.data?.ts || 0;
+        const rows = await base44.entities.AppState.filter({ state_key: 'user_profiles' });
+        const rec = rows?.[0];
+        const currentSync = rec?.data?.ts || 0;
         if (currentSync > lastSync) {
           lastSync = currentSync;
-          await loadAgents();
+          // Pull from AppState to localStorage
+          const state = JSON.parse(localStorage.getItem('DHL_LOGIN_DEMO_V1') || '{}');
+          state.agents = rec.data.agents || [];
+          state.csAllocators = rec.data.csAllocators || [];
+          localStorage.setItem('DHL_LOGIN_DEMO_V1', JSON.stringify(state));
+          loadAgents();
         }
       } catch {}
     };
 
     loadAgents();
+    checkSync();
     const interval = setInterval(checkSync, 1000); // Poll every second
 
     return () => {
@@ -75,24 +83,50 @@ export default function FastAgentManager({ onUpdate }) {
     setNewPassword('');
 
     try {
-      const res = await base44.functions.invoke('adminSettingsApi', {
-        action: 'createAgent',
-        payload: { username: newUsername, password: newPassword }
-      });
-
-      if (res.data?.success) {
-        // Remove optimistic, add real
-        setAgents(prev => prev.filter(a => a.id !== tempId));
-        
-        // Reload to get fresh data
-        const data = await base44.entities.AgentUser.list();
-        setAgents(data || []);
-        
-        toast.success(`Agent ${newUsername} created`);
-        if (onUpdate) onUpdate();
-      } else {
-        throw new Error(res.data?.error || 'Creation failed');
+      // Direct localStorage creation
+      const state = JSON.parse(localStorage.getItem('DHL_LOGIN_DEMO_V1') || '{}');
+      if (!state.agents) state.agents = [];
+      
+      // Check duplicates
+      if (state.agents.find(a => a.username.toLowerCase() === newUsername.toLowerCase())) {
+        throw new Error('Agent already exists');
       }
+      
+      const newAgent = {
+        id: `agent_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        username: newUsername,
+        password: newPassword,
+        full_name: '',
+        email: '',
+        region: '',
+        notes: '',
+        is_active: true,
+        created_date: new Date().toISOString()
+      };
+      
+      state.agents.push(newAgent);
+      localStorage.setItem('DHL_LOGIN_DEMO_V1', JSON.stringify(state));
+      
+      // Sync to AppState for cross-computer
+      const rows = await base44.entities.AppState.filter({ state_key: 'user_profiles' });
+      const syncData = {
+        agents: state.agents,
+        csAllocators: state.csAllocators || [],
+        ts: Date.now()
+      };
+      
+      if (rows && rows[0]) {
+        await base44.entities.AppState.update(rows[0].id, { data: syncData });
+      } else {
+        await base44.entities.AppState.create({ state_key: 'user_profiles', data: syncData });
+      }
+      
+      // Remove optimistic, reload from localStorage
+      setAgents(prev => prev.filter(a => a.id !== tempId));
+      setAgents(state.agents);
+      
+      toast.success(`Agent ${newUsername} created`);
+      if (onUpdate) onUpdate();
     } catch (e) {
       // Revert optimistic update
       setAgents(prev => prev.filter(a => a.id !== tempId));
@@ -116,21 +150,32 @@ export default function FastAgentManager({ onUpdate }) {
     setAgents(prev => prev.filter(a => a.id !== agentId));
 
     try {
-      const res = await base44.functions.invoke('adminSettingsApi', {
-        action: 'deleteAgent',
-        payload: { username: agent.username }
-      });
-
-      if (res.data?.success) {
-        toast.success(`Agent ${agent.username} deleted`);
-        if (onUpdate) onUpdate();
+      // Direct localStorage deletion
+      const state = JSON.parse(localStorage.getItem('DHL_LOGIN_DEMO_V1') || '{}');
+      state.agents = (state.agents || []).filter(a => a.username !== agent.username);
+      localStorage.setItem('DHL_LOGIN_DEMO_V1', JSON.stringify(state));
+      
+      // Sync to AppState for cross-computer
+      const rows = await base44.entities.AppState.filter({ state_key: 'user_profiles' });
+      const syncData = {
+        agents: state.agents,
+        csAllocators: state.csAllocators || [],
+        ts: Date.now()
+      };
+      
+      if (rows && rows[0]) {
+        await base44.entities.AppState.update(rows[0].id, { data: syncData });
       } else {
-        throw new Error(res.data?.error || 'Deletion failed');
+        await base44.entities.AppState.create({ state_key: 'user_profiles', data: syncData });
       }
+      
+      setAgents(state.agents);
+      toast.success(`Agent ${agent.username} deleted`);
+      if (onUpdate) onUpdate();
     } catch (e) {
-      // Revert optimistic delete - reload
-      const data = await base44.entities.AgentUser.list();
-      setAgents(data || []);
+      // Revert optimistic delete - reload from localStorage
+      const state = JSON.parse(localStorage.getItem('DHL_LOGIN_DEMO_V1') || '{}');
+      setAgents(state.agents || []);
       toast.error(e.message || 'Failed to delete agent');
     } finally {
       setOperations(prev => {
