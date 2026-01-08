@@ -4155,37 +4155,41 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               }}
             />
 
-            <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
-              <FreeAnalytics
-                agents={agents}
-                csSheet={csSheet}
-                ROWS_COUNT={ROWS_COUNT}
-                COL_AGENTS={COL_AGENTS}
-                COL_AWB={COL_AWB}
-                COL_LINE={COL_LINE}
-                COL_REJ2={COL_REJ2}
-                COL_REJ3={COL_REJ3}
-                COL_REJ4={COL_REJ4}
-                COL_REJ5={COL_REJ5}
-                COL_REGION={COL_REGION} />
+            {agents.length > 0 && (
+              <>
+                <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
+                  <FreeAnalytics
+                    agents={agents}
+                    csSheet={csSheet}
+                    ROWS_COUNT={ROWS_COUNT}
+                    COL_AGENTS={COL_AGENTS}
+                    COL_AWB={COL_AWB}
+                    COL_LINE={COL_LINE}
+                    COL_REJ2={COL_REJ2}
+                    COL_REJ3={COL_REJ3}
+                    COL_REJ4={COL_REJ4}
+                    COL_REJ5={COL_REJ5}
+                    COL_REGION={COL_REGION} />
 
-            </Suspense>
+                </Suspense>
 
-            
-            <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
-              <AgentPerformanceDashboard
-                csSheet={csSheet}
-                agents={agents}
-                ROWS_COUNT={ROWS_COUNT}
-                COL_AGENTS={COL_AGENTS}
-                COL_AWB={COL_AWB}
-                COL_LINE={COL_LINE}
-                COL_REJ2={COL_REJ2}
-                COL_REJ3={COL_REJ3}
-                COL_REJ4={COL_REJ4}
-                COL_REJ5={COL_REJ5} />
+                
+                <Suspense fallback={<div className="text-sm text-black/50">Loading performance dashboard…</div>}>
+                  <AgentPerformanceDashboard
+                    csSheet={csSheet}
+                    agents={agents}
+                    ROWS_COUNT={ROWS_COUNT}
+                    COL_AGENTS={COL_AGENTS}
+                    COL_AWB={COL_AWB}
+                    COL_LINE={COL_LINE}
+                    COL_REJ2={COL_REJ2}
+                    COL_REJ3={COL_REJ3}
+                    COL_REJ4={COL_REJ4}
+                    COL_REJ5={COL_REJ5} />
 
-            </Suspense>
+                </Suspense>
+              </>
+            )}
 
             
             <div className="grid md:grid-cols-3 gap-4">
