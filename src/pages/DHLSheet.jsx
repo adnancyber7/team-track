@@ -2729,10 +2729,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     // ALWAYS load agents/CS from DATABASE - this ensures persistence
     (async () => {
       try {
+        console.log('[ADMIN MOUNT] Loading users from database...');
         const [serverAgents, serverCS] = await Promise.all([
           adn7.entities.AgentUser.list(),
           adn7.entities.CSUser.list()
         ]);
+        console.log('[ADMIN MOUNT] Loaded:', serverAgents?.length, 'agents,', serverCS?.length, 'CS users');
         setAgents((serverAgents || []).map((a) => ({ 
           id: a.id,
           username: a.username, 
@@ -2750,7 +2752,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           is_active: a.is_active
         })));
       } catch (e) {
-        // On error, set empty arrays - never use localStorage
+        console.error('[ADMIN MOUNT] Failed to load users:', e);
+        toast.error('⚠️ Failed to load users from database: ' + (e.message || 'Unknown error'));
         setAgents([]);
         setCSAllocators([]);
       }
@@ -2993,6 +2996,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const username = String(newAgentUser || '').trim();
     const password = String(newAgentPass || '');
     
+    console.log('[CREATE AGENT] Starting creation:', { username, passwordLength: password.length });
+    
     if (!username || !password) { 
       toast.error('Username and password required'); 
       return; 
@@ -3001,30 +3006,62 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       toast.error('Password must be at least 4 characters'); 
       return; 
     }
-    if (creatingAgent) return;
+    if (creatingAgent) {
+      console.log('[CREATE AGENT] Already creating, skipping');
+      return;
+    }
 
     setCreatingAgent(true);
+    toast.info('Creating agent profile...');
+    
     try {
+      console.log('[CREATE AGENT] Calling backend API...');
+      
       // Use backend API for atomic transaction with confirmation
       const response = await adn7.functions.invoke('adminSettingsApi', {
         action: 'createAgent',
         payload: { username, password }
       });
       
+      console.log('[CREATE AGENT] Backend response:', response.data);
+      
       // Check for errors in response
       if (response.data?.error) {
-        toast.error(response.data.error);
+        console.error('[CREATE AGENT] Backend error:', response.data.error);
+        toast.error('❌ Backend error: ' + response.data.error);
         return;
       }
       
-      // Wait for database confirmation - reload from database
-      const serverAgents = await adn7.entities.AgentUser.list();
-      const created = serverAgents.find(a => a.username === username);
+      if (!response.data?.success) {
+        console.error('[CREATE AGENT] No success flag in response');
+        toast.error('❌ Creation failed - no success confirmation from backend');
+        return;
+      }
+      
+      console.log('[CREATE AGENT] Verifying in database...');
+      
+      // Wait for database confirmation - reload from database with retry
+      let serverAgents = null;
+      let created = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 500)); // Wait 500ms between retries
+        serverAgents = await adn7.entities.AgentUser.list();
+        created = serverAgents.find(a => a.username === username);
+        if (created) {
+          console.log('[CREATE AGENT] Found in database on attempt', attempt + 1);
+          break;
+        }
+        console.log('[CREATE AGENT] Not found on attempt', attempt + 1, ', retrying...');
+      }
       
       if (!created) {
-        toast.error('Profile creation failed - not found in database');
+        console.error('[CREATE AGENT] CRITICAL: Profile not found in database after 3 attempts');
+        console.log('[CREATE AGENT] Available users:', serverAgents?.map(a => a.username));
+        toast.error('❌ CRITICAL: Profile created but not found in database. Contact support.');
         return;
       }
+      
+      console.log('[CREATE AGENT] Successfully verified:', created);
       
       // Update UI with complete database records
       setAgents((serverAgents || []).map((a) => ({ 
@@ -3038,6 +3075,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         is_active: a.is_active
       })));
       
+      console.log('[CREATE AGENT] UI updated with', serverAgents.length, 'agents');
+      
       setNewAgentUser('');
       setNewAgentPass('');
       
@@ -3046,14 +3085,16 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       CHANNEL.postMessage({ type: 'app:sync' });
       await logAudit('create_agent', { username });
       
-      toast.success(`✅ Agent "${username}" created and verified in database`);
+      toast.success(`✅ Agent "${username}" created successfully! Total agents: ${serverAgents.length}`);
     } catch (e) {
+      console.error('[CREATE AGENT] Exception:', e);
       const msg = e?.response?.data?.error || e?.message || String(e);
-      toast.error('Failed to create agent: ' + msg);
+      toast.error('❌ Failed to create agent: ' + msg);
       
       // Always reload from database on error
       try {
         const list = await adn7.entities.AgentUser.list();
+        console.log('[CREATE AGENT] Reloaded after error:', list?.length, 'agents');
         setAgents((list || []).map((a) => ({ 
           id: a.id,
           username: a.username, 
@@ -3064,9 +3105,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           notes: a.notes,
           is_active: a.is_active
         })));
-      } catch {}
+      } catch (reloadErr) {
+        console.error('[CREATE AGENT] Failed to reload:', reloadErr);
+      }
     } finally {
       setCreatingAgent(false);
+      console.log('[CREATE AGENT] Completed');
     }
   };
 
@@ -3163,6 +3207,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const username = String(newCSUser || '').trim();
     const password = String(newCSPass || '');
     
+    console.log('[CREATE CS] Starting creation:', { username, passwordLength: password.length });
+    
     if (!username || !password) { 
       toast.error('Username and password required'); 
       return; 
@@ -3171,30 +3217,62 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       toast.error('Password must be at least 4 characters'); 
       return; 
     }
-    if (creatingCS) return;
+    if (creatingCS) {
+      console.log('[CREATE CS] Already creating, skipping');
+      return;
+    }
 
     setCreatingCS(true);
+    toast.info('Creating CS profile...');
+    
     try {
+      console.log('[CREATE CS] Calling backend API...');
+      
       // Use backend API for atomic transaction with confirmation
       const response = await adn7.functions.invoke('adminSettingsApi', {
         action: 'createCS',
         payload: { username, password }
       });
       
+      console.log('[CREATE CS] Backend response:', response.data);
+      
       // Check for errors in response
       if (response.data?.error) {
-        toast.error(response.data.error);
+        console.error('[CREATE CS] Backend error:', response.data.error);
+        toast.error('❌ Backend error: ' + response.data.error);
         return;
       }
       
-      // Wait for database confirmation - reload from database
-      const serverCS = await adn7.entities.CSUser.list();
-      const created = serverCS.find(a => a.username === username);
+      if (!response.data?.success) {
+        console.error('[CREATE CS] No success flag in response');
+        toast.error('❌ Creation failed - no success confirmation from backend');
+        return;
+      }
+      
+      console.log('[CREATE CS] Verifying in database...');
+      
+      // Wait for database confirmation - reload from database with retry
+      let serverCS = null;
+      let created = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 500)); // Wait 500ms between retries
+        serverCS = await adn7.entities.CSUser.list();
+        created = serverCS.find(a => a.username === username);
+        if (created) {
+          console.log('[CREATE CS] Found in database on attempt', attempt + 1);
+          break;
+        }
+        console.log('[CREATE CS] Not found on attempt', attempt + 1, ', retrying...');
+      }
       
       if (!created) {
-        toast.error('Profile creation failed - not found in database');
+        console.error('[CREATE CS] CRITICAL: Profile not found in database after 3 attempts');
+        console.log('[CREATE CS] Available users:', serverCS?.map(a => a.username));
+        toast.error('❌ CRITICAL: Profile created but not found in database. Contact support.');
         return;
       }
+      
+      console.log('[CREATE CS] Successfully verified:', created);
       
       // Update UI with complete database records
       setCSAllocators((serverCS || []).map((a) => ({ 
@@ -3204,6 +3282,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
         is_active: a.is_active
       })));
       
+      console.log('[CREATE CS] UI updated with', serverCS.length, 'CS users');
+      
       setNewCSUser('');
       setNewCSPass('');
       
@@ -3212,23 +3292,28 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       CHANNEL.postMessage({ type: 'app:sync' });
       await logAudit('create_cs_allocator', { username });
       
-      toast.success(`✅ CS Allocator "${username}" created and verified in database`);
+      toast.success(`✅ CS Allocator "${username}" created successfully! Total CS users: ${serverCS.length}`);
     } catch (e) {
+      console.error('[CREATE CS] Exception:', e);
       const msg = e?.response?.data?.error || e?.message || String(e);
-      toast.error('Failed to create CS allocator: ' + msg);
+      toast.error('❌ Failed to create CS allocator: ' + msg);
       
       // Always reload from database on error
       try {
         const list = await adn7.entities.CSUser.list();
+        console.log('[CREATE CS] Reloaded after error:', list?.length, 'CS users');
         setCSAllocators((list || []).map((a) => ({ 
           id: a.id,
           username: a.username, 
           password: a.password,
           is_active: a.is_active
         })));
-      } catch {}
+      } catch (reloadErr) {
+        console.error('[CREATE CS] Failed to reload:', reloadErr);
+      }
     } finally {
       setCreatingCS(false);
+      console.log('[CREATE CS] Completed');
     }
   };
 
@@ -4384,9 +4469,41 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[200px]">
-                    {agents.length === 0 ?
-                    <p className="text-sm text-black/50 text-center py-8">No agents created yet</p> :
-
+                    {agents.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-black/50 mb-2">No agents created yet</p>
+                        <Button 
+                          onClick={async () => {
+                            console.log('[DEBUG] Manual reload triggered');
+                            try {
+                              const list = await adn7.entities.AgentUser.list();
+                              console.log('[DEBUG] Database contains:', list?.length, 'agents');
+                              console.log('[DEBUG] Agent usernames:', list?.map(a => a.username));
+                              setAgents((list || []).map((a) => ({ 
+                                id: a.id,
+                                username: a.username, 
+                                password: a.password,
+                                full_name: a.full_name,
+                                email: a.email,
+                                region: a.region,
+                                notes: a.notes,
+                                is_active: a.is_active
+                              })));
+                              toast.success(`Reloaded: ${list?.length || 0} agents found`);
+                            } catch (e) {
+                              console.error('[DEBUG] Reload failed:', e);
+                              toast.error('Reload failed: ' + e.message);
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="font-bold"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Reload from Database
+                        </Button>
+                      </div>
+                    ) : (
                     <div className="space-y-2">
                         {agents.map((agent) => {
                         const metrics = allAgentMetrics[agent.username.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
@@ -4453,7 +4570,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
                       })}
                       </div>
-                    }
+                    )}
                   </ScrollArea>
                 </CardContent>
               </Card>
