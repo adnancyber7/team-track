@@ -49,7 +49,7 @@ export default function RealtimeStatsMonitor({ onUpdate }) {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 3000); // Poll every 3s to prevent rate limits
+    const interval = setInterval(fetchStats, 500); // Poll every 500ms for instant updates
 
     return () => {
       mounted = false;
