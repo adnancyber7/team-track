@@ -79,7 +79,7 @@ export default function FastAgentManager({ onUpdate }) {
       const data = await base44.entities.AgentUser.list();
       setAgents(data || []);
       
-      // Notify other devices via real-time broadcast
+      // Notify other devices
       const rows = await base44.entities.AppState.filter({ state_key: 'users_sync' });
       const syncData = { ts: Date.now() };
       if (rows && rows[0]) {
@@ -87,7 +87,6 @@ export default function FastAgentManager({ onUpdate }) {
       } else {
         await base44.entities.AppState.create({ state_key: 'users_sync', data: syncData });
       }
-      realtimeBroadcast({ type: 'users_sync' });
       
       toast.success(`Agent ${newUsername} created globally`);
       if (onUpdate) onUpdate();
@@ -124,7 +123,7 @@ export default function FastAgentManager({ onUpdate }) {
       const data = await base44.entities.AgentUser.list();
       setAgents(data || []);
       
-      // Notify other devices via real-time broadcast
+      // Notify other devices
       const rows = await base44.entities.AppState.filter({ state_key: 'users_sync' });
       const syncData = { ts: Date.now() };
       if (rows && rows[0]) {
@@ -132,7 +131,6 @@ export default function FastAgentManager({ onUpdate }) {
       } else {
         await base44.entities.AppState.create({ state_key: 'users_sync', data: syncData });
       }
-      realtimeBroadcast({ type: 'users_sync' });
       
       toast.success(`Agent ${agent.username} deleted globally`);
       if (onUpdate) onUpdate();

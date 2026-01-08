@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard, Wifi, WifiOff } from 'lucide-react';
+import { Download, LogOut, Users, Settings, FileSpreadsheet, Eye, X, ChevronDown, ChevronUp, RefreshCw, Filter, Plus, Trash2, Save, AlertCircle, CheckCircle2, Clock, Zap, Upload, Coffee, UtensilsCrossed, Droplet, Moon, Play, Pause, Square, CheckSquare, Shield, Lock, User, EyeOff, KeyRound, Sparkles, Loader2, LayoutDashboard } from 'lucide-react';
 import { base44 as adn7 } from '@/api/base44Client';
-import { useRealtimeSync } from '../components/RealtimeSync';
 const DailyReportDialog = lazy(() => import('../components/DailyReportDialog'));
 const RealtimeAdminDashboard = lazy(() => import('../components/RealtimeAdminDashboard'));
 import AdvancedFilterPanel from '../components/AdvancedFilterPanel';
@@ -2520,48 +2519,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [agentSheets, setAgentSheets] = useState(loadAgentSheets);
   const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
-  
-  // Real-time WebSocket sync
-  const { broadcast: realtimeBroadcast, isConnected: wsConnected } = useRealtimeSync((message) => {
-    console.log('[Admin] Realtime event:', message.type);
-    
-    if (message.type === 'sheet_update' || message.type === 'agent_action') {
-      setCSSheet(loadCSSheet());
-      setAgentSheets(loadAgentSheets());
-    }
-    
-    if (message.type === 'users_sync') {
-      (async () => {
-        const [serverAgents, serverCS] = await Promise.all([
-          adn7.entities.AgentUser.list(),
-          adn7.entities.CSUser.list()
-        ]);
-        setAgents((serverAgents || []).map((a) => ({ 
-          id: a.id, username: a.username, password: a.password,
-          full_name: a.full_name, email: a.email, region: a.region,
-          notes: a.notes, is_active: a.is_active
-        })));
-        setCSAllocators((serverCS || []).map((a) => ({ 
-          id: a.id, username: a.username, password: a.password, is_active: a.is_active
-        })));
-      })();
-    }
-    
-    if (message.type === 'upload_notification') {
-      toast.success(`🔔 CS Upload: ${message.data.csUser} uploaded ${message.data.filename}`, { duration: 8000 });
-      const sheets = loadAgentSheets();
-      setCSUploads(sheets.csUploads || []);
-    }
-    
-    if (message.type === 'break_update') {
-      const breakLabel = BREAK_TYPES.find((b) => b.id === message.data.breakType)?.label || 'Break';
-      if (message.data.status === 'started') {
-        toast.info(`${message.data.agent} started ${breakLabel}`, { duration: 3000 });
-      } else {
-        toast.info(`${message.data.agent} ended break`, { duration: 3000 });
-      }
-    }
-  }, []);
   const [newAgentUser, setNewAgentUser] = useState("");
   const [newAgentPass, setNewAgentPass] = useState("");
   const [newAdminUser, setNewAdminUser] = useState("");
@@ -2804,10 +2761,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Fallback polling ONLY if WebSocket fails (backup mechanism)
+  // Fast polling for database changes - cross-computer sync
   useEffect(() => {
-    if (wsConnected) return; // Skip if WebSocket is active
-    
     const interval = setInterval(async () => {
       try {
         const [serverAgents, serverCS] = await Promise.all([
@@ -2815,17 +2770,25 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           adn7.entities.CSUser.list()
         ]);
         setAgents((serverAgents || []).map((a) => ({ 
-          id: a.id, username: a.username, password: a.password,
-          full_name: a.full_name, email: a.email, region: a.region,
-          notes: a.notes, is_active: a.is_active
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          full_name: a.full_name,
+          email: a.email,
+          region: a.region,
+          notes: a.notes,
+          is_active: a.is_active
         })));
         setCSAllocators((serverCS || []).map((a) => ({ 
-          id: a.id, username: a.username, password: a.password, is_active: a.is_active
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          is_active: a.is_active
         })));
       } catch {}
-    }, 5000);
+    }, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
-  }, [wsConnected]);
+  }, []);
 
   // Long-poll DISABLED - use BroadcastChannel + periodic sync only
   useEffect(() => {
@@ -2983,8 +2946,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // REAL-TIME: Instant multi-device broadcast
-    realtimeBroadcast({ type: 'sheet_update', data: { row: r, col: c, value: newValue } });
+    // trigger instant cross-device update
     pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
@@ -3064,7 +3026,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       })));
       
       await notifyUsersSync();
-      realtimeBroadcast({ type: 'users_sync' });
       CHANNEL.postMessage({ type: 'app:sync' });
       
       setNewAgentUser('');
@@ -3125,7 +3086,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             notifyUsersSync()
           ]);
           
-          realtimeBroadcast({ type: 'users_sync' });
           CHANNEL.postMessage({ type: 'app:sync' });
           toast.success(`✅ Agent "${username}" deleted globally`);
         } catch (e) {
@@ -3171,7 +3131,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       })));
       
       await notifyUsersSync();
-      realtimeBroadcast({ type: 'users_sync' });
       CHANNEL.postMessage({ type: 'app:sync' });
       
       setNewCSUser('');
@@ -3225,7 +3184,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           } catch {}
           
           await notifyUsersSync();
-          realtimeBroadcast({ type: 'users_sync' });
           CHANNEL.postMessage({ type: 'app:sync' });
           toast.success(`✅ CS "${username}" deleted globally`);
         } catch (e) {
@@ -3555,8 +3513,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
       setCSSheet(newSheet);
       saveCSSheet(newSheet);
-      // REAL-TIME: Broadcast sheet update
-      realtimeBroadcast({ type: 'sheet_update', data: { action: 'upload', rowsAdded, duplicatesSkipped } });
       pushCSImmediate(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`Uploaded ${rowsAdded} rows successfully${duplicatesSkipped ? ", skipped " + duplicatesSkipped + " duplicates" : ''}`);
@@ -3951,17 +3907,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             <div className="flex items-center gap-3">
               <Badge className="bg-yellow-400 text-black font-black border-black/10">ADMIN</Badge>
               <span className="font-bold">Welcome, {username}</span>
-              {wsConnected ? (
-                <Badge className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
-                  <Wifi className="w-3 h-3" />
-                  Live
-                </Badge>
-              ) : (
-                <Badge className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1">
-                  <WifiOff className="w-3 h-3" />
-                  Reconnecting...
-                </Badge>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <Button onClick={() => setActiveTab('settings')} variant="outline" className="font-bold">
@@ -5331,16 +5276,6 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
   const [myUploads, setMyUploads] = useState([]);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
   const [rolePerm, setRolePerm] = useState({ cs_allocator: { allowUpload: true, allowClear: true, allowDownload: true } });
-  
-  // Real-time WebSocket sync
-  const { broadcast: realtimeBroadcast, isConnected: wsConnected } = useRealtimeSync((message) => {
-    if (message.type === 'sheet_update' || message.type === 'agent_action') {
-      setCSSheet(loadCSSheet());
-    }
-    if (message.type === 'rejection_notification') {
-      toast.error(`🚨 New Rejection: ${message.data.agent} rejected AWB ${message.data.awb}`, { duration: 8000 });
-    }
-  }, []);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -5493,8 +5428,6 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
       sheets.csUploads.unshift(uploadLog);
       saveAgentSheets(sheets);
 
-      // REAL-TIME: Broadcast upload notification
-      realtimeBroadcast({ type: 'upload_notification', data: uploadLog });
       CHANNEL.postMessage({ type: "app:sync", uploadNotification: uploadLog });
       toast.success(`✅ File uploaded successfully. Admin notified.`);
       try { await adn7.entities.AuditLog.create({ action: 'cs_upload', actor_username: username, actor_role: 'cs_allocator', target_type: 'file', target_identifier: file.name, timestamp: Date.now() }); } catch {}
@@ -5542,17 +5475,6 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
               <div className="flex items-center gap-3">
                 <Badge className="bg-blue-400 text-white font-black border-blue-500">CS TEAM</Badge>
                 <span className="font-bold">Welcome, {username}</span>
-                {wsConnected ? (
-                  <Badge className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
-                    <Wifi className="w-3 h-3" />
-                    Live
-                  </Badge>
-                ) : (
-                  <Badge className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1">
-                    <WifiOff className="w-3 h-3" />
-                    Reconnecting...
-                  </Badge>
-                )}
                 {myUploads.length > 0 &&
                 <div className="flex items-center gap-2">
                     <Badge className="bg-blue-100 text-blue-800">
@@ -5679,34 +5601,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
   const [pendingRejectRow, setPendingRejectRow] = useState(null);
   const [missingRejectLabel, setMissingRejectLabel] = useState(null);
   const [forceRefresh, setForceRefresh] = useState(0);
-  
-  // Real-time WebSocket sync
-  const { broadcast: realtimeBroadcast, isConnected: wsConnected } = useRealtimeSync((message) => {
-    if (message.type === 'sheet_update' || message.type === 'agent_action') {
-      const updated = loadCSSheet();
-      setCSSheet(updated);
-      const sheets = loadAgentSheets();
-      setAgentSheets(sheets);
-      setPriorityList(sheets);
-      setForceRefresh((prev) => prev + 1);
-      
-      // Update break status
-      const agentBreak = updated.agentBreaks?.[username];
-      if (agentBreak?.active && agentBreak?.start) {
-        if (!onBreak) {
-          setOnBreak(true);
-          setBreakType(agentBreak.type);
-          setBreakStart(agentBreak.start);
-        }
-      } else {
-        if (onBreak) {
-          setOnBreak(false);
-          setBreakType(null);
-          setBreakStart(null);
-        }
-      }
-    }
-  }, [username, onBreak]);
 
   useEffect(() => {
     const sheets = loadAgentSheets();
@@ -5774,13 +5668,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // REAL-TIME: Instant break status broadcast
-    realtimeBroadcast({ 
-      type: 'break_update', 
-      data: { agent: username, status: isEndingBreak ? 'ended' : 'started', breakType: type }
-    });
     pushCSImmediate(newSheet);
 
+    // Send break update notification immediately
     CHANNEL.postMessage({
       type: "app:sync",
       breakUpdate: {
@@ -5865,8 +5755,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // REAL-TIME: Instant agent action broadcast
-    realtimeBroadcast({ type: 'agent_action', data: { agent: username, row: r, col: c, value: newValue } });
+    // trigger instant cross-device update
     pushCSImmediate(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   }, [csSheet, username]);
@@ -5884,8 +5773,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         newSheet.timers[r] = timer;
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
-        // REAL-TIME: Broadcast start action
-        realtimeBroadcast({ type: 'agent_action', data: { agent: username, action: 'start', row: r, awb: csSheet.raw[r]?.[COL_AWB] } });
         pushCSImmediate(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("Timer started");
@@ -5973,8 +5860,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
       // Persist and sync
       saveCSSheet(newSheet);
-      // REAL-TIME: Broadcast DONE action
-      realtimeBroadcast({ type: 'agent_action', data: { agent: username, action: 'done', row: r, awb, doneCount } });
       pushCSImmediate(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
       
@@ -6060,11 +5945,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       
       // Persist and sync
       saveCSSheet(newSheet);
-      // REAL-TIME: Broadcast REJECT action
-      realtimeBroadcast({ 
-        type: 'rejection_notification', 
-        data: { agent: username, awb, timestamp: new Date().toISOString() }
-      });
       pushCSImmediate(newSheet);
       CHANNEL.postMessage({
         type: "app:sync",
@@ -6221,17 +6101,6 @@ const AgentDashboard = memo(({ username, onLogout }) => {
               <div className="flex items-center gap-3">
                 <Badge className="bg-yellow-400 text-black font-black border-black/10">AGENT</Badge>
                 <span className="font-bold">Welcome, {username}</span>
-                {wsConnected ? (
-                  <Badge className="bg-green-100 text-green-800 border-green-300 flex items-center gap-1">
-                    <Wifi className="w-3 h-3" />
-                    Live
-                  </Badge>
-                ) : (
-                  <Badge className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1">
-                    <WifiOff className="w-3 h-3" />
-                    Reconnecting...
-                  </Badge>
-                )}
                 {onBreak &&
                 <Badge className="bg-orange-400 text-white font-black border-orange-500 animate-pulse">
                     ON BREAK • {getBreakDuration()}m
