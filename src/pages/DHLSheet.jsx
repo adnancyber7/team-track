@@ -231,18 +231,41 @@ const saveAgentSheets = (data) => {
   pushAppState('agent_sheets', data);
 };
 
-// --- Cross-device sync helpers ---
+// --- Rate limit protection with request cache ---
 let lastRemoteUpdates = { cs: 0, agents: 0, users: 0 };
+const requestCache = new Map();
+const requestQueue = [];
+let isProcessingQueue = false;
+
+const getCacheKey = (fn, ...args) => `${fn.name}_${JSON.stringify(args)}`;
+
+const cachedRequest = async (fn, ttl, ...args) => {
+  const key = getCacheKey(fn, ...args);
+  const cached = requestCache.get(key);
+  if (cached && Date.now() - cached.time < ttl) {
+    return cached.data;
+  }
+  const result = await fn(...args);
+  requestCache.set(key, { data: result, time: Date.now() });
+  setTimeout(() => requestCache.delete(key), ttl + 1000);
+  return result;
+};
+
 const pushAppState = async (stateKey, payload) => {
   try {
-    const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
+    const rows = await cachedRequest(
+      async (key) => await adn7.entities.AppState.filter({ state_key: key }),
+      3000,
+      stateKey
+    );
     if (rows && rows[0]) {
       await adn7.entities.AppState.update(rows[0].id, { data: payload });
     } else {
       await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
     }
+    requestCache.delete(getCacheKey(adn7.entities.AppState.filter, { state_key: stateKey }));
   } catch (e) {
-    // ignore network/backend issues silently
+    // ignore
   }
 };
 
@@ -265,7 +288,11 @@ const pushCSImmediate = async (data) => {
 };
 const pullAppState = async (stateKey) => {
   try {
-    const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
+    const rows = await cachedRequest(
+      async (key) => await adn7.entities.AppState.filter({ state_key: key }),
+      2000,
+      stateKey
+    );
     return (rows && rows[0]) || null;
   } catch {
     return null;
@@ -575,7 +602,7 @@ const LoginScreen = ({ onLogin }) => {
       } catch {}
     };
     fetchCfg();
-    const id = setInterval(fetchCfg, 5000);
+    const id = setInterval(fetchCfg, 10000);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2608,19 +2635,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       await loadAudit();
     })();
     
-    // Poll maintenance mode - reduced frequency
-    const pollMaintenance = setInterval(async () => {
-      try {
-        const cfgs = await adn7.entities.AdminConfig.filter({ config_key: 'main' });
-        const cfg = (cfgs || [])[0];
-        if (cfg) {
-          setMaintenanceMode(!!cfg.maintenance_mode);
-          setMaintenanceBanner(String(cfg.banner_message || '').trim());
-        }
-      } catch {}
-    }, 5000);
-    
-    return () => clearInterval(pollMaintenance);
+    // Removed auto-poll - only check on tab activation
+    return () => {};
   }, []);
 
   // Poll live sessions
@@ -2639,19 +2655,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
-  // Poll active sessions - optimized frequency
+  // Poll active sessions DISABLED - use BroadcastChannel
   useEffect(() => {
-    let stopped = false;
-    const load = async () => {
-      try {
-        const rec = await pullAppState('active_sessions');
-        const data = rec?.data || {};
-        if (!stopped) setActiveSessions(data);
-      } catch {}
-    };
-    load();
-    const id = setInterval(load, 5000);
-    return () => { stopped = true; clearInterval(id); };
+    return () => {};
   }, []);
 
   // Precompute metrics for all agents in one pass for performance
@@ -2720,96 +2726,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Users sync - reduced frequency to avoid rate limits
+  // Users sync DISABLED - only refresh on explicit create/delete
   useEffect(() => {
-    let stopped = false;
-    let lastUsersTs = 0;
-    const refreshLists = async () => {
+    return () => {};
+  }, []);
+
+  // Long-poll DISABLED - use BroadcastChannel + periodic sync only
+  useEffect(() => {
+    return () => {};
+  }, []);
+
+  // Simple periodic sync for admin
+  useEffect(() => {
+    const interval = setInterval(async () => {
       try {
-        const rec = await pullAppState('users_sync');
-        const t = Date.parse(rec?.updated_date || rec?.updatedAt || rec?.updated_at || '');
-        if (t && t > lastUsersTs) {
-          lastUsersTs = t;
-          const [serverAgents, serverCS] = await Promise.all([
-          adn7.entities.AgentUser.list(),
-          adn7.entities.CSUser.list()]
-          );
-          if (!stopped) {
-            setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
-            setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
-          }
-        }
-      } catch {}
-    };
-    const id = setInterval(refreshLists, 10000);
-    refreshLists();
-    return () => {stopped = true;clearInterval(id);};
-  }, []);
-
-  // Long-poll with exponential backoff to prevent rate limits
-  useEffect(() => {
-    let cancelled = false;
-    let last = { cs: lastRemoteUpdates.cs || 0, agents: lastRemoteUpdates.agents || 0, users: lastRemoteUpdates.users || 0 };
-    let retryDelay = 2000;
-
-    const applyChange = async (key) => {
-      if (key === 'cs_sheet') {
-        const csRec = await pullAppState('cs_sheet');
-        if (csRec) {
-          localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
-          const freshData = loadCSSheet();
-          setCSSheet(freshData);
-          lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
-          CHANNEL.postMessage({ type: 'app:sync' });
-        }
-      } else if (key === 'agent_sheets') {
-        const aRec = await pullAppState('agent_sheets');
-        if (aRec) {
-          localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
-          setAgentSheets(loadAgentSheets());
-          lastRemoteUpdates.agents = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '') || Date.now();
-          CHANNEL.postMessage({ type: 'app:sync' });
-        }
-      } else if (key === 'users_sync') {
-        const [serverAgents, serverCS] = await Promise.all([
-          adn7.entities.AgentUser.list(),
-          adn7.entities.CSUser.list()
-        ]);
-        setAgents((serverAgents || []).map((a) => ({ username: a.username, password: a.password })));
-        setCSAllocators((serverCS || []).map((a) => ({ username: a.username, password: a.password })));
-      }
-    };
-
-    const loop = async () => {
-      while (!cancelled) {
-        try {
-          const { data } = await adn7.functions.invoke('eventsLongPoll', {
-            last_cs: last.cs || 0,
-            last_agents: last.agents || 0,
-            last_users: last.users || 0
-          });
-          const changes = data?.changes || [];
-          const now = data?.now || {};
-          
-          await Promise.all(changes.map(k => applyChange(k)));
-          
-          last = { cs: now.cs || last.cs, agents: now.agents || last.agents, users: now.users || last.users };
-          retryDelay = 2000; // Reset on success
-        } catch {
-          retryDelay = Math.min(retryDelay * 1.5, 10000); // Exponential backoff, max 10s
-          await new Promise(r => setTimeout(r, retryDelay));
-        }
-      }
-    };
-
-    loop();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Fallback sync - much slower to avoid rate limits
-  useEffect(() => {
-    const interval = setInterval(() => {
-      (async () => {
         const csRec = await pullAppState('cs_sheet');
         if (csRec) {
           const t = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '');
@@ -2820,8 +2750,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             CHANNEL.postMessage({ type: 'app:sync' });
           }
         }
-      })();
-    }, 30000);
+      } catch {}
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -3040,11 +2970,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       logAudit('create_agent', { username });
       toast.success(`✅ Agent "${username}" created`);
       
-      // Verify with fresh data
-      setTimeout(async () => {
-        const list = await adn7.entities.AgentUser.list();
-        setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
-      }, 500);
+      // No verification needed - optimistic update is sufficient
     } catch (e) {
       // Rollback optimistic update
       const list = await adn7.entities.AgentUser.list();
@@ -3141,11 +3067,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       logAudit('create_cs_allocator', { username });
       toast.success(`✅ CS Allocator "${username}" created`);
       
-      // Verify with fresh data
-      setTimeout(async () => {
-        const list = await adn7.entities.CSUser.list();
-        setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
-      }, 500);
+      // No verification needed - optimistic update is sufficient
     } catch (e) {
       // Rollback optimistic update
       const list = await adn7.entities.CSUser.list();
@@ -5260,43 +5182,9 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Long-poll with backoff for CS
+  // Long-poll DISABLED - BroadcastChannel handles sync
   useEffect(() => {
-    let cancelled = false;
-    let last = { cs: lastRemoteUpdates.cs || 0 };
-    let retryDelay = 2000;
-
-    const loop = async () => {
-      while (!cancelled) {
-        try {
-          const { data } = await adn7.functions.invoke('eventsLongPoll', {
-            last_cs: last.cs || 0,
-            last_agents: 0,
-            last_users: 0
-          });
-          const changes = data?.changes || [];
-          const now = data?.now || {};
-          if (changes.includes('cs_sheet')) {
-            const csRec = await pullAppState('cs_sheet');
-            if (csRec) {
-              localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
-              const freshData = loadCSSheet();
-              setCSSheet(freshData);
-              lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
-              CHANNEL.postMessage({ type: 'app:sync' });
-            }
-          }
-          last = { cs: now.cs || last.cs };
-          retryDelay = 2000;
-        } catch {
-          retryDelay = Math.min(retryDelay * 1.5, 10000);
-          await new Promise(r => setTimeout(r, retryDelay));
-        }
-      }
-    };
-
-    loop();
-    return () => { cancelled = true; };
+    return () => {};
   }, []);
 
   useEffect(() => {
@@ -5632,55 +5520,9 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Long-poll for Agent with backoff
+  // Long-poll DISABLED - BroadcastChannel handles sync
   useEffect(() => {
-    let cancelled = false;
-    let last = { cs: lastRemoteUpdates.cs || 0, agents: lastRemoteUpdates.agents || 0 };
-    let retryDelay = 2000;
-
-    const loop = async () => {
-      while (!cancelled) {
-        try {
-          const { data } = await adn7.functions.invoke('eventsLongPoll', {
-            last_cs: last.cs || 0,
-            last_agents: last.agents || 0,
-            last_users: 0
-          });
-          const changes = data?.changes || [];
-          const now = data?.now || {};
-          
-          await Promise.all(changes.map(async (change) => {
-            if (change === 'cs_sheet') {
-              const csRec = await pullAppState('cs_sheet');
-              if (csRec) {
-                localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
-                const freshData = loadCSSheet();
-                setCSSheet(freshData);
-                lastRemoteUpdates.cs = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '') || Date.now();
-                CHANNEL.postMessage({ type: 'app:sync' });
-              }
-            } else if (change === 'agent_sheets') {
-              const aRec = await pullAppState('agent_sheets');
-              if (aRec) {
-                localStorage.setItem(APP_STORE_KEY, JSON.stringify(aRec.data));
-                setAgentSheets(loadAgentSheets());
-                lastRemoteUpdates.agents = Date.parse(aRec.updated_date || aRec.updatedAt || aRec.updated_at || '') || Date.now();
-                CHANNEL.postMessage({ type: 'app:sync' });
-              }
-            }
-          }));
-          
-          last = { cs: now.cs || last.cs, agents: now.agents || last.agents };
-          retryDelay = 2000;
-        } catch {
-          retryDelay = Math.min(retryDelay * 1.5, 10000);
-          await new Promise(r => setTimeout(r, retryDelay));
-        }
-      }
-    };
-
-    loop();
-    return () => { cancelled = true; };
+    return () => {};
   }, []);
 
   const handleBreakToggle = useCallback((type) => {
@@ -6508,7 +6350,7 @@ export default function DHLSheet() {
 
   useEffect(() => {
     if (!session.role) return;
-    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 5000);
+    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 15000);
     checkKickAndLogout(handleLogout);
     const onBeforeUnload = () => { markSessionLogout(); };
     window.addEventListener('beforeunload', onBeforeUnload);
