@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Lightbulb, XCircle, Users, TrendingUp, AlertTriangle, BarChart2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
-// Free, built-in analytics (no external AI). Optimized single-pass computation.
+// Free built-in analytics (no external AI) - Optimized single-pass computation
 export default function FreeAnalytics({
   agents,
   csSheet,
