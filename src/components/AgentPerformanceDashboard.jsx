@@ -398,6 +398,6 @@ const AgentPerformanceDashboard = ({ csSheet, agents, ROWS_COUNT, COL_AGENTS, CO
       </CardContent>
     </Card>
   );
-};
+  };
 
-export default AgentPerformanceDashboard;
+  export default AgentPerformanceDashboard;
