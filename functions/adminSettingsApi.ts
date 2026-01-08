@@ -253,6 +253,41 @@ Deno.serve(async (req) => {
       case 'sendOtp': {
         const { email } = payload;
         if (!email) return json({ error: 'email required' }, { status: 400 });
+        
+        // SECURITY: Rate limiting - max 3 requests per 10 minutes per email
+        const rateLimitKey = `otp_rate_${String(email).toLowerCase()}`;
+        let rateLimitData = null;
+        try {
+          const rows = await adn7.asServiceRole.entities.AppState.filter({ state_key: rateLimitKey });
+          rateLimitData = rows?.[0];
+        } catch {}
+        
+        const now = Date.now();
+        const lastRequest = rateLimitData?.data?.lastRequest || 0;
+        const requestCount = rateLimitData?.data?.count || 0;
+        
+        // Check rate limit
+        if (now - lastRequest < 600000 && requestCount >= 3) {
+          return json({ 
+            error: 'Rate limit exceeded. Please wait 10 minutes before requesting another OTP.' 
+          }, { status: 429 });
+        }
+        
+        // Update rate limit counter
+        const newCount = (now - lastRequest < 600000) ? requestCount + 1 : 1;
+        try {
+          if (rateLimitData) {
+            await adn7.asServiceRole.entities.AppState.update(rateLimitData.id, { 
+              data: { lastRequest: now, count: newCount } 
+            });
+          } else {
+            await adn7.asServiceRole.entities.AppState.create({ 
+              state_key: rateLimitKey, 
+              data: { lastRequest: now, count: newCount } 
+            });
+          }
+        } catch {}
+        
         const cfg = await getOrCreateAdminConfig(adn7);
         const configured = (cfg.admin_email || '').trim().toLowerCase();
         if (!configured) return json({ error: 'Recovery email not configured' }, { status: 400 });
