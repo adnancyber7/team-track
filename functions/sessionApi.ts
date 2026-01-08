@@ -61,8 +61,14 @@ Deno.serve(async (req) => {
       return Response.json({ valid: false }, { headers: corsHeaders });
     }
 
-    // Get active sessions count
+    // Get active sessions count - SECURED
     if (action === 'getActiveSessions') {
+      // SECURITY: Require admin authentication
+      const user = await base44.auth.me();
+      if (!user || user.role !== 'admin') {
+        return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403, headers: corsHeaders });
+      }
+      
       const rows = await base44.asServiceRole.entities.AppState.filter({ state_key: 'active_sessions' });
       const data = rows?.[0]?.data || {};
       const sessions = Object.values(data).filter(s => s && !s.kick);

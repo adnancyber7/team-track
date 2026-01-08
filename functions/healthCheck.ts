@@ -14,6 +14,15 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     
+    // SECURITY: Require admin authentication
+    const user = await base44.auth.me();
+    if (!user || user.role !== 'admin') {
+      return Response.json(
+        { error: 'Forbidden: Admin access required' },
+        { status: 403, headers: corsHeaders }
+      );
+    }
+    
     // Check database connectivity
     const dbCheck = await base44.asServiceRole.entities.AdminConfig.filter({ config_key: 'main' });
     
