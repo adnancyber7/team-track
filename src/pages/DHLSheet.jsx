@@ -3020,7 +3020,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       // Use backend API for atomic transaction with confirmation
       const response = await adn7.functions.invoke('adminSettingsApi', {
         action: 'createAgent',
-        payload: { username, password }
+        payload: { 
+          username, 
+          password,
+          full_name: String(newAgentFullName || '').trim(),
+          email: String(newAgentEmail || '').trim(),
+          region: String(newAgentRegion || '').trim(),
+          notes: String(newAgentNotes || '').trim()
+        }
       });
       
       console.log('[CREATE AGENT] Backend response:', response.data);
@@ -3079,6 +3086,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       
       setNewAgentUser('');
       setNewAgentPass('');
+      setNewAgentFullName('');
+      setNewAgentEmail('');
+      setNewAgentRegion('');
+      setNewAgentNotes('');
       
       // Sync to other devices
       await notifyUsersSync();
