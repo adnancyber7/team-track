@@ -188,11 +188,11 @@ const loadCSSheet = () => {
   }
 };
 
-// Optimized save with aggressive batching to prevent rate limits
+// Ultra-aggressive batching with 5s minimum interval
 let saveTimeout = null;
 let pendingBackendSync = null;
 let lastSyncTime = 0;
-const MIN_SYNC_INTERVAL = 2000; // Minimum 2s between backend syncs
+const MIN_SYNC_INTERVAL = 5000; // Minimum 5s between backend syncs
 
 const saveCSSheet = (data) => {
   const optimizedData = {
@@ -201,11 +201,12 @@ const saveCSSheet = (data) => {
     timers: data.timers
   };
   localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
+  CHANNEL.postMessage({ type: 'app:sync' });
 
   if (pendingBackendSync) clearTimeout(pendingBackendSync);
   
   const timeSinceLastSync = Date.now() - lastSyncTime;
-  const delay = timeSinceLastSync < MIN_SYNC_INTERVAL ? MIN_SYNC_INTERVAL : 500;
+  const delay = Math.max(MIN_SYNC_INTERVAL - timeSinceLastSync, 1000);
   
   pendingBackendSync = setTimeout(() => {
     lastSyncTime = Date.now();
@@ -231,11 +232,43 @@ const saveAgentSheets = (data) => {
   pushAppState('agent_sheets', data);
 };
 
-// --- Rate limit protection with request cache ---
+// --- Global rate limiter with queue ---
 let lastRemoteUpdates = { cs: 0, agents: 0, users: 0 };
 const requestCache = new Map();
 const requestQueue = [];
 let isProcessingQueue = false;
+const MIN_REQUEST_INTERVAL = 500; // Min 500ms between ANY requests
+let lastRequestTime = 0;
+
+const rateLimitedRequest = async (fn) => {
+  return new Promise((resolve, reject) => {
+    requestQueue.push({ fn, resolve, reject });
+    processQueue();
+  });
+};
+
+const processQueue = async () => {
+  if (isProcessingQueue || requestQueue.length === 0) return;
+  isProcessingQueue = true;
+  
+  while (requestQueue.length > 0) {
+    const timeSinceLast = Date.now() - lastRequestTime;
+    if (timeSinceLast < MIN_REQUEST_INTERVAL) {
+      await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL - timeSinceLast));
+    }
+    
+    const { fn, resolve, reject } = requestQueue.shift();
+    try {
+      lastRequestTime = Date.now();
+      const result = await fn();
+      resolve(result);
+    } catch (e) {
+      reject(e);
+    }
+  }
+  
+  isProcessingQueue = false;
+};
 
 const getCacheKey = (fn, ...args) => `${fn.name}_${JSON.stringify(args)}`;
 
@@ -245,7 +278,7 @@ const cachedRequest = async (fn, ttl, ...args) => {
   if (cached && Date.now() - cached.time < ttl) {
     return cached.data;
   }
-  const result = await fn(...args);
+  const result = await rateLimitedRequest(() => fn(...args));
   requestCache.set(key, { data: result, time: Date.now() });
   setTimeout(() => requestCache.delete(key), ttl + 1000);
   return result;
@@ -255,42 +288,44 @@ const pushAppState = async (stateKey, payload) => {
   try {
     const rows = await cachedRequest(
       async (key) => await adn7.entities.AppState.filter({ state_key: key }),
-      3000,
+      5000,
       stateKey
     );
-    if (rows && rows[0]) {
-      await adn7.entities.AppState.update(rows[0].id, { data: payload });
-    } else {
-      await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
-    }
+    await rateLimitedRequest(async () => {
+      if (rows && rows[0]) {
+        await adn7.entities.AppState.update(rows[0].id, { data: payload });
+      } else {
+        await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
+      }
+    });
     requestCache.delete(getCacheKey(adn7.entities.AppState.filter, { state_key: stateKey }));
   } catch (e) {
     // ignore
   }
 };
 
-// Batched cs_sheet push to prevent rate limits
+// Heavily batched push with 3s minimum interval
 let lastPushTime = 0;
 let pendingPush = null;
 const pushCSImmediate = async (data) => { 
+  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(data));
+  CHANNEL.postMessage({ type: 'app:sync' });
+  
   if (pendingPush) clearTimeout(pendingPush);
   
   const timeSinceLast = Date.now() - lastPushTime;
-  if (timeSinceLast < 1000) {
-    pendingPush = setTimeout(() => {
-      lastPushTime = Date.now();
-      pushAppState('cs_sheet', data).catch(() => {});
-    }, 1000 - timeSinceLast);
-  } else {
+  const delay = Math.max(3000 - timeSinceLast, 1000);
+  
+  pendingPush = setTimeout(() => {
     lastPushTime = Date.now();
     pushAppState('cs_sheet', data).catch(() => {});
-  }
+  }, delay);
 };
 const pullAppState = async (stateKey) => {
   try {
     const rows = await cachedRequest(
       async (key) => await adn7.entities.AppState.filter({ state_key: key }),
-      2000,
+      5000,
       stateKey
     );
     return (rows && rows[0]) || null;
@@ -602,7 +637,7 @@ const LoginScreen = ({ onLogin }) => {
       } catch {}
     };
     fetchCfg();
-    const id = setInterval(fetchCfg, 10000);
+    const id = setInterval(fetchCfg, 20000);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2736,7 +2771,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Simple periodic sync for admin
+  // Minimal periodic sync - 30s interval
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -2751,7 +2786,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       } catch {}
-    }, 15000);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -6350,7 +6385,7 @@ export default function DHLSheet() {
 
   useEffect(() => {
     if (!session.role) return;
-    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 15000);
+    const id = setInterval(() => { markSessionHeartbeat(); checkKickAndLogout(handleLogout); }, 30000);
     checkKickAndLogout(handleLogout);
     const onBeforeUnload = () => { markSessionLogout(); };
     window.addEventListener('beforeunload', onBeforeUnload);
