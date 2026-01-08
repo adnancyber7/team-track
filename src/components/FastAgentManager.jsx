@@ -14,7 +14,7 @@ export default function FastAgentManager({ onUpdate }) {
   const [newPassword, setNewPassword] = useState('');
   const [operations, setOperations] = useState(new Set());
 
-  // Fast polling for database changes
+  // INSTANT polling for database changes - REAL-TIME
   useEffect(() => {
     let mounted = true;
 
@@ -28,7 +28,7 @@ export default function FastAgentManager({ onUpdate }) {
     };
 
     loadAgents();
-    const interval = setInterval(loadAgents, 2000); // Poll every 2 seconds
+    const interval = setInterval(loadAgents, 500); // Poll every 500ms for INSTANT updates
 
     return () => {
       mounted = false;

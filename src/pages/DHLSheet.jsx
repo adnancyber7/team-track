@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import CellEditorDialog from '../components/CellEditorDialog';
 import FastAgentManager from '../components/FastAgentManager';
+import RealtimeStatsMonitor from '../components/RealtimeStatsMonitor';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -191,38 +192,40 @@ const loadCSSheet = () => {
   }
 };
 
-// Real-time sync - instant updates for critical actions
-let saveTimeout = null;
-let pendingBackendSync = null;
-let lastSyncTime = 0;
-const MIN_SYNC_INTERVAL = 3000; // Reduced to 3s for faster sync
-
+// INSTANT REAL-TIME SYNC - NO DELAYS
 const saveCSSheet = (data) => {
   const optimizedData = {
     ...data,
     raw: data.raw,
-    timers: data.timers
+    timers: data.timers,
+    lastUpdate: Date.now()
   };
   localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
-  CHANNEL.postMessage({ type: 'app:sync' });
-
-  if (pendingBackendSync) clearTimeout(pendingBackendSync);
-  
-  const timeSinceLastSync = Date.now() - lastSyncTime;
-  const delay = Math.max(MIN_SYNC_INTERVAL - timeSinceLastSync, 1000);
-  
-  pendingBackendSync = setTimeout(() => {
-    lastSyncTime = Date.now();
-    pushAppState('cs_sheet', optimizedData);
-  }, delay);
+  CHANNEL.postMessage({ type: 'app:sync', instant: true });
 };
 
-// Instant push for critical actions (bypasses rate limiting)
+// Instant push for critical actions - IMMEDIATE backend write
 const pushCSInstant = async (data) => {
-  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(data));
-  CHANNEL.postMessage({ type: 'app:sync' });
-  // Immediate backend push
-  pushAppState('cs_sheet', data).catch(() => {});
+  const optimizedData = {
+    ...data,
+    raw: data.raw,
+    timers: data.timers,
+    lastUpdate: Date.now()
+  };
+  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(optimizedData));
+  CHANNEL.postMessage({ type: 'app:sync', instant: true });
+  
+  // IMMEDIATE database write - no delays
+  try {
+    const rows = await adn7.entities.AppState.filter({ state_key: 'cs_sheet' });
+    if (rows && rows[0]) {
+      await adn7.entities.AppState.update(rows[0].id, { data: optimizedData });
+    } else {
+      await adn7.entities.AppState.create({ state_key: 'cs_sheet', data: optimizedData });
+    }
+  } catch (e) {
+    console.error('Instant push failed:', e);
+  }
 };
 
 const loadAgentSheets = () => {
@@ -243,86 +246,26 @@ const saveAgentSheets = (data) => {
   pushAppState('agent_sheets', data);
 };
 
-// --- Global rate limiter with queue ---
+// Real-time state tracking
 let lastRemoteUpdates = { cs: 0, agents: 0, users: 0 };
-const requestCache = new Map();
-const requestQueue = [];
-let isProcessingQueue = false;
-const MIN_REQUEST_INTERVAL = 2000; // Min 2s between ANY requests
-let lastRequestTime = 0;
-
-const rateLimitedRequest = async (fn) => {
-  return new Promise((resolve, reject) => {
-    requestQueue.push({ fn, resolve, reject });
-    processQueue();
-  });
-};
-
-const processQueue = async () => {
-  if (isProcessingQueue || requestQueue.length === 0) return;
-  isProcessingQueue = true;
-  
-  while (requestQueue.length > 0) {
-    const timeSinceLast = Date.now() - lastRequestTime;
-    if (timeSinceLast < MIN_REQUEST_INTERVAL) {
-      await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL - timeSinceLast));
-    }
-    
-    const { fn, resolve, reject } = requestQueue.shift();
-    try {
-      lastRequestTime = Date.now();
-      const result = await fn();
-      resolve(result);
-    } catch (e) {
-      reject(e);
-    }
-  }
-  
-  isProcessingQueue = false;
-};
-
-const getCacheKey = (fn, ...args) => `${fn.name}_${JSON.stringify(args)}`;
-
-const cachedRequest = async (fn, ttl, ...args) => {
-  const key = getCacheKey(fn, ...args);
-  const cached = requestCache.get(key);
-  if (cached && Date.now() - cached.time < ttl) {
-    return cached.data;
-  }
-  const result = await rateLimitedRequest(() => fn(...args));
-  requestCache.set(key, { data: result, time: Date.now() });
-  setTimeout(() => requestCache.delete(key), ttl + 5000);
-  return result;
-};
 
 const pushAppState = async (stateKey, payload) => {
   try {
-    const rows = await cachedRequest(
-      async (key) => await adn7.entities.AppState.filter({ state_key: key }),
-      10000,
-      stateKey
-    );
-    await rateLimitedRequest(async () => {
-      if (rows && rows[0]) {
-        await adn7.entities.AppState.update(rows[0].id, { data: payload });
-      } else {
-        await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
-      }
-    });
-    requestCache.delete(getCacheKey(adn7.entities.AppState.filter, { state_key: stateKey }));
+    const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
+    if (rows && rows[0]) {
+      await adn7.entities.AppState.update(rows[0].id, { data: payload });
+    } else {
+      await adn7.entities.AppState.create({ state_key: stateKey, data: payload });
+    }
   } catch (e) {
-    // ignore
+    console.error('Push state failed:', e);
   }
 };
 
 
 const pullAppState = async (stateKey) => {
   try {
-    const rows = await cachedRequest(
-      async (key) => await adn7.entities.AppState.filter({ state_key: key }),
-      10000,
-      stateKey
-    );
+    const rows = await adn7.entities.AppState.filter({ state_key: stateKey });
     return (rows && rows[0]) || null;
   } catch {
     return null;
@@ -2553,6 +2496,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   // Audit logs
   const [auditLogs, setAuditLogs] = useState([]);
   const [liveSessions, setLiveSessions] = useState([]);
+  const [realtimeStats, setRealtimeStats] = useState({});
   const filteredAuditLogs = useMemo(() => {
     const q = (auditSearch || '').toLowerCase().trim();
     if (!q) return auditLogs;
@@ -2656,7 +2600,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Poll live sessions
+  // INSTANT session monitoring - ultra-fast polling
   useEffect(() => {
     let stopped = false;
     const load = async () => {
@@ -2668,7 +2612,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       } catch {}
     };
     load();
-    const id = setInterval(load, 3000);
+    const id = setInterval(load, 500); // 500ms for instant session updates
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -2753,7 +2697,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Fast polling for database changes - cross-computer sync
+  // INSTANT user sync - ultra-fast polling for real-time user updates
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -2778,7 +2722,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           is_active: a.is_active
         })));
       } catch {}
-    }, 3000); // Poll every 3 seconds
+    }, 500); // Poll every 500ms for INSTANT user updates
     return () => clearInterval(interval);
   }, []);
 
@@ -2787,22 +2731,22 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Fast periodic sync - 2s interval for real-time updates
+  // ULTRA-FAST periodic sync - 500ms interval for INSTANT real-time updates
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const csRec = await pullAppState('cs_sheet');
-        if (csRec) {
-          const t = Date.parse(csRec.updated_date || csRec.updatedAt || csRec.updated_at || '');
-          if (t && t > lastRemoteUpdates.cs) {
+        if (csRec && csRec.data) {
+          const remoteUpdate = csRec.data.lastUpdate || 0;
+          if (remoteUpdate > lastRemoteUpdates.cs) {
             localStorage.setItem(CS_SHEET_KEY, JSON.stringify(csRec.data));
             setCSSheet(loadCSSheet());
-            lastRemoteUpdates.cs = t;
+            lastRemoteUpdates.cs = remoteUpdate;
             CHANNEL.postMessage({ type: 'app:sync' });
           }
         }
       } catch {}
-    }, 2000); // Poll every 2s for instant updates
+    }, 500); // Poll every 500ms for INSTANT updates globally
     return () => clearInterval(interval);
   }, []);
 
@@ -4141,6 +4085,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
+            {/* Real-time Stats Monitor */}
+            <RealtimeStatsMonitor onUpdate={(stats) => setRealtimeStats(stats)} />
+            
             {/* Fast Agent Manager */}
             <FastAgentManager 
               onUpdate={() => {
@@ -4335,6 +4282,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     <div className="space-y-2">
                         {agents.map((agent) => {
                         const metrics = allAgentMetrics[agent.username.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
+                        const realtimeAgentStats = realtimeStats[agent.username] || {};
                         const agentBreak = csSheet.agentBreaks?.[agent.username];
                         const breakActive = agentBreak?.active && agentBreak?.start;
                         const breakType = breakActive ? BREAK_TYPES.find((b) => b.id === agentBreak.type) : null;
@@ -4361,9 +4309,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                                   {breakActive && breakType &&
                                 <Badge className={`${breakType.color} text-[10px]`}>{breakType.label}</Badge>
                                 }
+                                  {/* Real-time counters */}
+                                  {realtimeAgentStats.started > 0 &&
+                                <Badge className="bg-blue-100 text-blue-800 text-[10px]">▶ {realtimeAgentStats.started}</Badge>
+                                }
                                 </div>
                                 <div className="text-xs text-black/50">
-                                  Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {metrics.rej} ({metrics.totalRejectedLines} lines)
+                                  Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {realtimeAgentStats.done || metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {realtimeAgentStats.rejected || metrics.rej} ({metrics.totalRejectedLines} lines)
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
