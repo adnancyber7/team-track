@@ -12,7 +12,7 @@ const FreeAnalytics = lazy(() => import('../components/analytics/FreeAnalytics')
 import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import CellEditorDialog from '../components/CellEditorDialog';
-import FastAgentManager from '../components/FastAgentManager';
+import UserManagementHub from '../components/UserManagementHub';
 import RealtimeStatsMonitor from '../components/RealtimeStatsMonitor';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -4088,11 +4088,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             {/* Real-time Stats Monitor */}
             <RealtimeStatsMonitor onUpdate={(stats) => setRealtimeStats(stats)} />
             
-            {/* Fast Agent Manager */}
-            <FastAgentManager 
+            {/* User Management Hub */}
+            <UserManagementHub 
               onUpdate={() => {
                 (async () => {
-                  const serverAgents = await adn7.entities.AgentUser.list();
+                  const [serverAgents, serverCS] = await Promise.all([
+                    adn7.entities.AgentUser.list(),
+                    adn7.entities.CSUser.list()
+                  ]);
                   setAgents((serverAgents || []).map((a) => ({ 
                     id: a.id,
                     username: a.username, 
@@ -4101,6 +4104,12 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                     email: a.email,
                     region: a.region,
                     notes: a.notes,
+                    is_active: a.is_active
+                  })));
+                  setCSAllocators((serverCS || []).map((a) => ({ 
+                    id: a.id,
+                    username: a.username, 
+                    password: a.password,
                     is_active: a.is_active
                   })));
                   CHANNEL.postMessage({ type: 'app:sync' });
@@ -4144,252 +4153,34 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               </>
             )}
 
-            
-            <div className="grid md:grid-cols-3 gap-4">
-              {/* Create Agent */}
-              <Card className="bg-white/95 border-black/10 shadow-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    Create Agent
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-black/60">Agent Username</Label>
-                    <Input
-                      value={newAgentUser}
-                      onChange={(e) => setNewAgentUser(e.target.value)}
-                      placeholder="e.g. agent01"
-                      className="mt-1" />
-
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">Agent Password</Label>
-                    <Input
-                      type="password"
-                      value={newAgentPass}
-                      onChange={(e) => setNewAgentPass(e.target.value)}
-                      placeholder="Min 4 characters"
-                      className="mt-1" />
-
-                  </div>
-                  <Button 
-                    onClick={createAgent} 
-                    disabled={creatingAgent}
-                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
-                    {creatingAgent ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create Agent'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Create CS Allocator */}
-              <Card className="bg-white/95 border-black/10 shadow-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    Create CS Allocator
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <Label className="text-xs text-black/60">CS Username</Label>
-                    <Input
-                      value={newCSUser}
-                      onChange={(e) => setNewCSUser(e.target.value)}
-                      placeholder="e.g. cs01"
-                      className="mt-1" />
-
-                  </div>
-                  <div>
-                    <Label className="text-xs text-black/60">CS Password</Label>
-                    <Input
-                      type="password"
-                      value={newCSPass}
-                      onChange={(e) => setNewCSPass(e.target.value)}
-                      placeholder="Min 4 characters"
-                      className="mt-1" />
-
-                  </div>
-                  <Button 
-                    onClick={createCSAllocator}
-                    disabled={creatingCS}
-                    className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
-                    {creatingCS ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create CS Allocator'
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Agents List */}
-              <Card className="bg-white/95 border-black/10 shadow-lg">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Agents List & Status
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[200px]">
-                    {agents.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-sm text-black/50 mb-2">No agents created yet</p>
-                        <Button 
-                          onClick={async () => {
-                            console.log('[DEBUG] Manual reload triggered');
-                            try {
-                              const list = await adn7.entities.AgentUser.list();
-                              console.log('[DEBUG] Database contains:', list?.length, 'agents');
-                              console.log('[DEBUG] Agent usernames:', list?.map(a => a.username));
-                              setAgents((list || []).map((a) => ({ 
-                                id: a.id,
-                                username: a.username, 
-                                password: a.password,
-                                full_name: a.full_name,
-                                email: a.email,
-                                region: a.region,
-                                notes: a.notes,
-                                is_active: a.is_active
-                              })));
-                              toast.success(`Reloaded: ${list?.length || 0} agents found`);
-                            } catch (e) {
-                              console.error('[DEBUG] Reload failed:', e);
-                              toast.error('Reload failed: ' + e.message);
-                            }
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="font-bold"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Reload from Database
-                        </Button>
-                      </div>
-                    ) : (
-                    <div className="space-y-2">
-                        {agents.map((agent) => {
-                        const metrics = allAgentMetrics[agent.username.toLowerCase()] || { awb: 0, lineSum: 0, done: 0, rej: 0, totalDoneLines: 0, totalRejectedLines: 0 };
-                        const realtimeAgentStats = realtimeStats[agent.username] || {};
-                        const agentBreak = csSheet.agentBreaks?.[agent.username];
-                        const breakActive = agentBreak?.active && agentBreak?.start;
-                        const breakType = breakActive ? BREAK_TYPES.find((b) => b.id === agentBreak.type) : null;
-                        const breakDuration = breakActive && agentBreak.start ?
-                        Math.floor((Date.now() - agentBreak.start) / 1000 / 60) : 0;
-
-                        return (
-                          <div key={agent.username} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <div className="font-bold">{agent.username}</div>
-                                  {/* Live status badge + dot */}
-                                  {(() => {
-                                  const status = getAgentStatus(agent.username);
-                                  const dotColor = status.label === 'Available' ? 'bg-green-500' : status.label === 'Busy' ? 'bg-blue-500' : 'bg-orange-500';
-                                  return (
-                                    <>
-                                        <div className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`} />
-                                        <Badge className={`${status.classes} text-xs`}>{status.label}{status.label === 'On Break' && breakActive ? ` • ${breakDuration}m` : ''}</Badge>
-                                      </>);
-
-                                })()}
-                                  {/* Detailed break type badge when on break */}
-                                  {breakActive && breakType &&
-                                <Badge className={`${breakType.color} text-[10px]`}>{breakType.label}</Badge>
-                                }
-                                  {/* Real-time counters */}
-                                  {realtimeAgentStats.started > 0 &&
-                                <Badge className="bg-blue-100 text-blue-800 text-[10px]">▶ {realtimeAgentStats.started}</Badge>
-                                }
-                                </div>
-                                <div className="text-xs text-black/50">
-                                  Pending: {metrics.awb} ({metrics.lineSum} lines) | Done: {realtimeAgentStats.done || metrics.done} ({metrics.totalDoneLines} lines) | Rejected: {realtimeAgentStats.rejected || metrics.rej} ({metrics.totalRejectedLines} lines)
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedAgent(agent.username)}
-                                className="font-bold bg-yellow-400/30 hover:bg-yellow-400/50">
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadAgentData(agent.username)}
-                                className="font-bold">
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => deleteAgent(agent.username)}
-                                disabled={deletingUser === agent.username}
-                                className="font-bold text-red-600 hover:bg-red-50">
-                                  {deletingUser === agent.username ? (
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="w-4 h-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            </div>);
-
-                      })}
-                      </div>
-                    )}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* CS Allocators List */}
-            <Card className="bg-white/95 border-black/10 shadow-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  CS Allocators ({csAllocators.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {csAllocators.length === 0 ?
-                <p className="text-sm text-black/50 text-center py-4">No CS Allocators created yet</p> :
-
-                <div className="grid md:grid-cols-3 gap-2">
-                    {csAllocators.map((cs) =>
-                  <div key={cs.username} className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200">
-                        <div className="font-bold">{cs.username}</div>
-                        <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteCSAllocator(cs.username)}
-                      disabled={deletingUser === cs.username}
-                      className="font-bold text-red-600 hover:bg-red-50 h-7 w-7 p-0">
-                          {deletingUser === cs.username ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3 h-3" />
-                          )}
-                        </Button>
-                      </div>
-                  )}
-                  </div>
-                }
-              </CardContent>
-            </Card>
+            {/* User Management Hub */}
+            <UserManagementHub 
+              onUpdate={() => {
+                (async () => {
+                  const [serverAgents, serverCS] = await Promise.all([
+                    adn7.entities.AgentUser.list(),
+                    adn7.entities.CSUser.list()
+                  ]);
+                  setAgents((serverAgents || []).map((a) => ({ 
+                    id: a.id,
+                    username: a.username, 
+                    password: a.password,
+                    full_name: a.full_name,
+                    email: a.email,
+                    region: a.region,
+                    notes: a.notes,
+                    is_active: a.is_active
+                  })));
+                  setCSAllocators((serverCS || []).map((a) => ({ 
+                    id: a.id,
+                    username: a.username, 
+                    password: a.password,
+                    is_active: a.is_active
+                  })));
+                  CHANNEL.postMessage({ type: 'app:sync' });
+                })();
+              }}
+            />
 
             {/* Agent Profile View */}
             {selectedAgent &&
