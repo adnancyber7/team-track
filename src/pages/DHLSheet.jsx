@@ -2473,6 +2473,9 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [csUploads, setCSUploads] = useState([]);
   const fileInputRef = useRef(null);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: '', message: '', onConfirm: () => {}, variant: 'warning' });
+  const [creatingAgent, setCreatingAgent] = useState(false);
+  const [creatingCS, setCreatingCS] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(null);
   const prevAgentStatuses = useRef({});
   // Role permissions config (stored in AppState: role_permissions)
   const [rolePerm, setRolePerm] = useState({
@@ -3004,38 +3007,55 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const password = String(newAgentPass || '');
     
     if (!username || !password) { 
-      toast.error('Please enter agent username and password'); 
+      toast.error('Username and password required'); 
       return; 
     }
     if (password.length < 4) { 
       toast.error('Password must be at least 4 characters'); 
       return; 
     }
+    if (creatingAgent) return;
 
+    setCreatingAgent(true);
     try {
-      await adn7.entities.AgentUser.create({ username, password, is_active: true });
-      
-      // Instant refresh
-      const list = await adn7.entities.AgentUser.list();
-      setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
+      // Immediate optimistic update
+      setAgents(prev => [...prev, { username, password }]);
       setNewAgentUser('');
       setNewAgentPass('');
       
-      await notifyUsersSync();
+      // Backend create
+      await adn7.entities.AgentUser.create({ username, password, is_active: true });
+      
+      // Background sync (don't block UI)
+      notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
       logAudit('create_agent', { username });
       toast.success(`✅ Agent "${username}" created`);
+      
+      // Verify with fresh data
+      setTimeout(async () => {
+        const list = await adn7.entities.AgentUser.list();
+        setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
+      }, 500);
     } catch (e) {
+      // Rollback optimistic update
+      const list = await adn7.entities.AgentUser.list();
+      setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
+      
       const msg = e?.message || String(e);
       if (msg.includes('duplicate') || msg.includes('unique')) {
         toast.error('Username already exists');
       } else {
         toast.error('Failed to create agent');
       }
+    } finally {
+      setCreatingAgent(false);
     }
   };
 
   const deleteAgent = async (username) => {
+    if (deletingUser === username) return;
+    
     setConfirmDialog({
       open: true,
       title: 'Delete Agent',
@@ -3043,35 +3063,41 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       variant: 'danger',
       confirmText: 'Delete',
       onConfirm: async () => {
+        setDeletingUser(username);
         try {
+          // Optimistic update
+          setAgents(prev => prev.filter(a => a.username !== username));
+          
           const rows = await adn7.entities.AgentUser.filter({ username });
           if (rows && rows[0]) {
             await adn7.entities.AgentUser.delete(rows[0].id);
           }
           
-          // Force logout deleted agent
-          try {
-            const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
-            const sessionData = sessionRows?.[0]?.data || {};
-            Object.keys(sessionData).forEach(key => {
-              if (sessionData[key]?.username === username && sessionData[key]?.role === 'agent') {
-                sessionData[key].kick = true;
-              }
-            });
-            if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
-          } catch {}
+          // Parallel background operations
+          Promise.all([
+            (async () => {
+              const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+              const sessionData = sessionRows?.[0]?.data || {};
+              Object.keys(sessionData).forEach(key => {
+                if (sessionData[key]?.username === username && sessionData[key]?.role === 'agent') {
+                  sessionData[key].kick = true;
+                }
+              });
+              if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+            })(),
+            cleanOrphanDataForAgent(username),
+            notifyUsersSync()
+          ]);
           
-          // Clean CS sheet assignments
-          await cleanOrphanDataForAgent(username);
-
-          const list = await adn7.entities.AgentUser.list();
-          setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
-          await notifyUsersSync();
           logAudit('delete_agent', { username });
           toast.success(`✅ Agent "${username}" deleted`);
           CHANNEL.postMessage({ type: 'app:sync' });
         } catch (e) {
+          const list = await adn7.entities.AgentUser.list();
+          setAgents((list || []).map((a) => ({ username: a.username, password: a.password })));
           toast.error('Failed to delete agent');
+        } finally {
+          setDeletingUser(null);
         }
       }
     });
@@ -3082,38 +3108,55 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     const password = String(newCSPass || '');
     
     if (!username || !password) { 
-      toast.error('Please enter CS username and password'); 
+      toast.error('Username and password required'); 
       return; 
     }
     if (password.length < 4) { 
       toast.error('Password must be at least 4 characters'); 
       return; 
     }
+    if (creatingCS) return;
 
+    setCreatingCS(true);
     try {
-      await adn7.entities.CSUser.create({ username, password, is_active: true });
-      
-      // Instant refresh
-      const list = await adn7.entities.CSUser.list();
-      setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
+      // Immediate optimistic update
+      setCSAllocators(prev => [...prev, { username, password }]);
       setNewCSUser('');
       setNewCSPass('');
       
-      await notifyUsersSync();
+      // Backend create
+      await adn7.entities.CSUser.create({ username, password, is_active: true });
+      
+      // Background sync
+      notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
       logAudit('create_cs_allocator', { username });
       toast.success(`✅ CS Allocator "${username}" created`);
+      
+      // Verify with fresh data
+      setTimeout(async () => {
+        const list = await adn7.entities.CSUser.list();
+        setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
+      }, 500);
     } catch (e) {
+      // Rollback optimistic update
+      const list = await adn7.entities.CSUser.list();
+      setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
+      
       const msg = e?.message || String(e);
       if (msg.includes('duplicate') || msg.includes('unique')) {
         toast.error('Username already exists');
       } else {
         toast.error('Failed to create CS allocator');
       }
+    } finally {
+      setCreatingCS(false);
     }
   };
 
   const deleteCSAllocator = async (username) => {
+    if (deletingUser === username) return;
+    
     setConfirmDialog({
       open: true,
       title: 'Delete CS Allocator',
@@ -3121,32 +3164,40 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       variant: 'danger',
       confirmText: 'Delete',
       onConfirm: async () => {
+        setDeletingUser(username);
         try {
+          // Optimistic update
+          setCSAllocators(prev => prev.filter(a => a.username !== username));
+          
           const rows = await adn7.entities.CSUser.filter({ username });
           if (rows && rows[0]) {
             await adn7.entities.CSUser.delete(rows[0].id);
           }
           
-          // Force logout deleted CS user
-          try {
-            const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
-            const sessionData = sessionRows?.[0]?.data || {};
-            Object.keys(sessionData).forEach(key => {
-              if (sessionData[key]?.username === username && sessionData[key]?.role === 'cs_allocator') {
-                sessionData[key].kick = true;
-              }
-            });
-            if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
-          } catch {}
+          // Parallel background operations
+          Promise.all([
+            (async () => {
+              const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
+              const sessionData = sessionRows?.[0]?.data || {};
+              Object.keys(sessionData).forEach(key => {
+                if (sessionData[key]?.username === username && sessionData[key]?.role === 'cs_allocator') {
+                  sessionData[key].kick = true;
+                }
+              });
+              if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
+            })(),
+            notifyUsersSync()
+          ]);
           
-          const list = await adn7.entities.CSUser.list();
-          setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
-          await notifyUsersSync();
           logAudit('delete_cs_allocator', { username });
           toast.success(`✅ CS "${username}" deleted`);
           CHANNEL.postMessage({ type: 'app:sync' });
         } catch (e) {
+          const list = await adn7.entities.CSUser.list();
+          setCSAllocators((list || []).map((a) => ({ username: a.username, password: a.password })));
           toast.error('Failed to delete CS allocator');
+        } finally {
+          setDeletingUser(null);
         }
       }
     });
@@ -4154,8 +4205,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       className="mt-1" />
 
                   </div>
-                  <Button onClick={createAgent} className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
-                    Create Agent
+                  <Button 
+                    onClick={createAgent} 
+                    disabled={creatingAgent}
+                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold">
+                    {creatingAgent ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Agent'
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -4188,8 +4249,18 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       className="mt-1" />
 
                   </div>
-                  <Button onClick={createCSAllocator} className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
-                    Create CS Allocator
+                  <Button 
+                    onClick={createCSAllocator}
+                    disabled={creatingCS}
+                    className="w-full bg-blue-400 hover:bg-blue-500 text-white font-bold">
+                    {creatingCS ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create CS Allocator'
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -4260,8 +4331,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => deleteAgent(agent.username)}
+                                disabled={deletingUser === agent.username}
                                 className="font-bold text-red-600 hover:bg-red-50">
-                                  <Trash2 className="w-4 h-4" />
+                                  {deletingUser === agent.username ? (
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
                                 </Button>
                               </div>
                             </div>);
@@ -4294,9 +4370,13 @@ const AdminDashboard = memo(({ username, onLogout }) => {
                       size="sm"
                       variant="outline"
                       onClick={() => deleteCSAllocator(cs.username)}
+                      disabled={deletingUser === cs.username}
                       className="font-bold text-red-600 hover:bg-red-50 h-7 w-7 p-0">
-
-                          <Trash2 className="w-3 h-3" />
+                          {deletingUser === cs.username ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
                         </Button>
                       </div>
                   )}
