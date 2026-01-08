@@ -115,21 +115,54 @@ Deno.serve(async (req) => {
         if (check.error) return check.res;
         const { username, password } = payload;
         if (!username || !password) return json({ error: 'username and password required' }, { status: 400 });
+        if (String(password).length < 4) return json({ error: 'Password must be at least 4 characters' }, { status: 400 });
+        
+        // Check if exists
         const exists = await adn7.asServiceRole.entities.AgentUser.filter({ username });
         if (exists && exists[0]) return json({ error: 'Agent already exists' }, { status: 409 });
-        const created = await adn7.asServiceRole.entities.AgentUser.create({ username, password });
+        
+        // Create with full profile support
+        const created = await adn7.asServiceRole.entities.AgentUser.create({ 
+          username, 
+          password,
+          is_active: true,
+          full_name: '',
+          email: '',
+          region: '',
+          notes: ''
+        });
+        
+        // Verify creation
+        const verify = await adn7.asServiceRole.entities.AgentUser.filter({ username });
+        if (!verify || !verify[0]) {
+          return json({ error: 'Database write failed - profile not found after creation' }, { status: 500 });
+        }
+        
         await upsertUsersSync(adn7);
-        return json({ agent: created });
+        return json({ success: true, agent: created });
       }
       case 'deleteAgent': {
         const check = await ensureAdminUser(adn7);
         if (check.error) return check.res;
         const { username } = payload;
         if (!username) return json({ error: 'username required' }, { status: 400 });
+        
+        // Find and delete
         const matches = await adn7.asServiceRole.entities.AgentUser.filter({ username });
-        if (matches && matches[0]) await adn7.asServiceRole.entities.AgentUser.delete(matches[0].id);
+        if (!matches || !matches[0]) {
+          return json({ error: 'Agent not found' }, { status: 404 });
+        }
+        
+        await adn7.asServiceRole.entities.AgentUser.delete(matches[0].id);
+        
+        // Verify deletion
+        const verify = await adn7.asServiceRole.entities.AgentUser.filter({ username });
+        if (verify && verify[0]) {
+          return json({ error: 'Database deletion failed - profile still exists' }, { status: 500 });
+        }
+        
         await upsertUsersSync(adn7);
-        return json({ success: true });
+        return json({ success: true, deleted: true });
       }
 
       // CS users
@@ -144,21 +177,50 @@ Deno.serve(async (req) => {
         if (check.error) return check.res;
         const { username, password } = payload;
         if (!username || !password) return json({ error: 'username and password required' }, { status: 400 });
+        if (String(password).length < 4) return json({ error: 'Password must be at least 4 characters' }, { status: 400 });
+        
+        // Check if exists
         const exists = await adn7.asServiceRole.entities.CSUser.filter({ username });
         if (exists && exists[0]) return json({ error: 'CS user already exists' }, { status: 409 });
-        const created = await adn7.asServiceRole.entities.CSUser.create({ username, password });
+        
+        // Create with full profile support
+        const created = await adn7.asServiceRole.entities.CSUser.create({ 
+          username, 
+          password,
+          is_active: true
+        });
+        
+        // Verify creation
+        const verify = await adn7.asServiceRole.entities.CSUser.filter({ username });
+        if (!verify || !verify[0]) {
+          return json({ error: 'Database write failed - profile not found after creation' }, { status: 500 });
+        }
+        
         await upsertUsersSync(adn7);
-        return json({ csUser: created });
+        return json({ success: true, csUser: created });
       }
       case 'deleteCS': {
         const check = await ensureAdminUser(adn7);
         if (check.error) return check.res;
         const { username } = payload;
         if (!username) return json({ error: 'username required' }, { status: 400 });
+        
+        // Find and delete
         const matches = await adn7.asServiceRole.entities.CSUser.filter({ username });
-        if (matches && matches[0]) await adn7.asServiceRole.entities.CSUser.delete(matches[0].id);
+        if (!matches || !matches[0]) {
+          return json({ error: 'CS user not found' }, { status: 404 });
+        }
+        
+        await adn7.asServiceRole.entities.CSUser.delete(matches[0].id);
+        
+        // Verify deletion
+        const verify = await adn7.asServiceRole.entities.CSUser.filter({ username });
+        if (verify && verify[0]) {
+          return json({ error: 'Database deletion failed - profile still exists' }, { status: 500 });
+        }
+        
         await upsertUsersSync(adn7);
-        return json({ success: true });
+        return json({ success: true, deleted: true });
       }
 
       // Export credentials as XML
