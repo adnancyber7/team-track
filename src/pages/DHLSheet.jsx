@@ -102,12 +102,10 @@ COL_REASON, COL_REGION, COL_CONF1, COL_AGENT2, COL_CONF2, COL_CONF3,
 COL_CONF4, COL_CONF5, COL_CONF6, COL_PRIORITY]
 );
 
-// CRITICAL: All user data now stored in localStorage with AppState sync
+// Session stored in localStorage - users stored in DATABASE entities
 const DEFAULT_STATE = {
   admin: { username: "admin", password: "admin123", email: "" },
-  session: { role: null, username: null },
-  agents: [],
-  csAllocators: []
+  session: { role: null, username: null }
 };
 
 // ============================================================================
@@ -135,7 +133,7 @@ const parseLineSum = (lineVal) => {
   return nums.reduce((a, b) => a + b, 0);
 };
 
-// Load all state from localStorage including users
+// Load state from localStorage (session only)
 const loadState = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -147,18 +145,17 @@ const loadState = () => {
     if (!parsed || typeof parsed !== "object") throw new Error("Bad");
     if (!parsed.admin) parsed.admin = DEFAULT_STATE.admin;
     if (!parsed.session) parsed.session = { role: null, username: null };
-    if (!parsed.agents) parsed.agents = [];
-    if (!parsed.csAllocators) parsed.csAllocators = [];
-    return parsed;
+    return { admin: parsed.admin, session: parsed.session };
   } catch {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_STATE));
     return deepCopy(DEFAULT_STATE);
   }
 };
 
-// Save all state including users
+// Save state (session only)
 const saveState = (s) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  const toSave = { admin: s.admin, session: s.session };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
 };
 
 const loadCSSheet = () => {
@@ -403,29 +400,9 @@ const checkKickAndLogout = async (onLogout) => {
   } catch {}
 };
 
-// Sync user profiles to AppState for cross-computer access
-const syncUserProfiles = async () => {
-  const state = loadState();
-  await pushAppState('user_profiles', {
-    agents: state.agents || [],
-    csAllocators: state.csAllocators || [],
-    ts: Date.now()
-  });
-};
-
-// Pull user profiles from AppState
-const pullUserProfiles = async () => {
-  try {
-    const rec = await pullAppState('user_profiles');
-    if (rec?.data) {
-      const state = loadState();
-      state.agents = rec.data.agents || [];
-      state.csAllocators = rec.data.csAllocators || [];
-      saveState(state);
-      return rec.data.ts || 0;
-    }
-  } catch {}
-  return 0;
+// Notify database change for cross-device sync
+const notifyUsersSync = async () => {
+  await pushAppState('users_sync', { ts: Date.now() });
 };
 
 const downloadCSV = (data, filename) => {
@@ -721,16 +698,22 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Authenticate against localStorage agents
-    const found = state.agents.find(a => a.username === agentUser && a.password === agentPass);
-    if (found) {
-      if (found.is_active === false) {
-        setError("This agent is inactive.");
+    // Authenticate against DATABASE
+    try {
+      const res = await adn7.entities.AgentUser.filter({ username: agentUser, password: agentPass });
+      const found = (res || [])[0];
+      if (found) {
+        if (found.is_active === false) {
+          setError("This agent is inactive.");
+          return;
+        }
+        state.session = { role: "agent", username: agentUser };
+        saveState(state);
+        onLogin("agent", agentUser);
         return;
       }
-      state.session = { role: "agent", username: agentUser };
-      saveState(state);
-      onLogin("agent", agentUser);
+    } catch (e) {
+      setError("Database error. Please try again.");
       return;
     }
 
@@ -757,16 +740,22 @@ const LoginScreen = ({ onLogin }) => {
       }
     } catch {}
 
-    // Authenticate against localStorage CS users
-    const found = state.csAllocators.find(c => c.username === csUser && c.password === csPass);
-    if (found) {
-      if (found.is_active === false) {
-        setError("This CS user is inactive.");
+    // Authenticate against DATABASE
+    try {
+      const res = await adn7.entities.CSUser.filter({ username: csUser, password: csPass });
+      const found = (res || [])[0];
+      if (found) {
+        if (found.is_active === false) {
+          setError("This CS user is inactive.");
+          return;
+        }
+        state.session = { role: "cs_allocator", username: csUser };
+        saveState(state);
+        onLogin("cs_allocator", csUser);
         return;
       }
-      state.session = { role: "cs_allocator", username: csUser };
-      saveState(state);
-      onLogin("cs_allocator", csUser);
+    } catch (e) {
+      setError("Database error. Please try again.");
       return;
     }
 
@@ -2723,10 +2712,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     setNewAdminUser(state.admin.username);
     setAdminEmail(state.admin.email || "");
 
-    // Load agents and CS from localStorage
-    setAgents(state.agents || []);
-    setCSAllocators(state.csAllocators || []);
-
     // Load env overview for Settings tab
     (async () => {
       try {
@@ -2741,12 +2726,32 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       } catch {}
     })();
 
-    // Pull from AppState to sync with other computers
+    // Load from DATABASE - source of truth for all computers
     (async () => {
-      await pullUserProfiles();
-      const updatedState = loadState();
-      setAgents(updatedState.agents || []);
-      setCSAllocators(updatedState.csAllocators || []);
+      try {
+        const [serverAgents, serverCS] = await Promise.all([
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()
+        ]);
+        setAgents((serverAgents || []).map((a) => ({ 
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          full_name: a.full_name,
+          email: a.email,
+          region: a.region,
+          notes: a.notes,
+          is_active: a.is_active
+        })));
+        setCSAllocators((serverCS || []).map((a) => ({ 
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          is_active: a.is_active
+        })));
+      } catch (e) {
+        console.error('Failed to load users:', e);
+      }
     })();
 
     const sheets = loadAgentSheets();
@@ -2756,20 +2761,32 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Fast polling for cross-computer sync via AppState
+  // Fast polling for database changes - cross-computer sync
   useEffect(() => {
-    let lastSync = 0;
     const interval = setInterval(async () => {
       try {
-        const ts = await pullUserProfiles();
-        if (ts > lastSync) {
-          lastSync = ts;
-          const state = loadState();
-          setAgents(state.agents || []);
-          setCSAllocators(state.csAllocators || []);
-        }
+        const [serverAgents, serverCS] = await Promise.all([
+          adn7.entities.AgentUser.list(),
+          adn7.entities.CSUser.list()
+        ]);
+        setAgents((serverAgents || []).map((a) => ({ 
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          full_name: a.full_name,
+          email: a.email,
+          region: a.region,
+          notes: a.notes,
+          is_active: a.is_active
+        })));
+        setCSAllocators((serverCS || []).map((a) => ({ 
+          id: a.id,
+          username: a.username, 
+          password: a.password,
+          is_active: a.is_active
+        })));
       } catch {}
-    }, 2000); // Poll every 2 seconds
+    }, 3000); // Poll every 3 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -2830,10 +2847,31 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       if (ev?.data?.type === "app:sync") {
         setCSSheet(loadCSSheet());
         setAgentSheets(loadAgentSheets());
-        // Refresh users from localStorage
-        const state = loadState();
-        setAgents(state.agents || []);
-        setCSAllocators(state.csAllocators || []);
+        // Refresh users from DATABASE
+        (async () => {
+          try {
+            const [serverAgents, serverCS] = await Promise.all([
+              adn7.entities.AgentUser.list(),
+              adn7.entities.CSUser.list()
+            ]);
+            setAgents((serverAgents || []).map((a) => ({ 
+              id: a.id,
+              username: a.username, 
+              password: a.password,
+              full_name: a.full_name,
+              email: a.email,
+              region: a.region,
+              notes: a.notes,
+              is_active: a.is_active
+            })));
+            setCSAllocators((serverCS || []).map((a) => ({ 
+              id: a.id,
+              username: a.username, 
+              password: a.password,
+              is_active: a.is_active
+            })));
+          } catch {}
+        })();
       }
     };
     CHANNEL.addEventListener('message', handleSync);
@@ -2960,43 +2998,42 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }
     if (creatingAgent) return;
 
-    const state = loadState();
-    
-    // Check if agent already exists
-    if (state.agents.find(a => a.username.toLowerCase() === username.toLowerCase())) {
-      toast.error('Agent already exists');
-      return;
-    }
-
     setCreatingAgent(true);
     
     try {
-      const newAgent = {
-        id: `agent_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      // Create in DATABASE - this persists globally
+      const created = await adn7.entities.AgentUser.create({
         username,
         password,
         full_name: '',
         email: '',
         region: '',
         notes: '',
-        is_active: true,
-        created_date: new Date().toISOString()
-      };
+        is_active: true
+      });
       
-      state.agents.push(newAgent);
-      saveState(state);
-      setAgents([...state.agents]);
+      // Immediately reload from database
+      const serverAgents = await adn7.entities.AgentUser.list();
+      setAgents((serverAgents || []).map((a) => ({ 
+        id: a.id,
+        username: a.username, 
+        password: a.password,
+        full_name: a.full_name,
+        email: a.email,
+        region: a.region,
+        notes: a.notes,
+        is_active: a.is_active
+      })));
       
-      // Sync to other computers via AppState
-      await syncUserProfiles();
+      await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
       
       setNewAgentUser('');
       setNewAgentPass('');
       
-      toast.success(`✅ Agent "${username}" created! Total: ${state.agents.length}`);
+      toast.success(`✅ Agent "${username}" created globally!`);
     } catch (e) {
-      toast.error('Failed to create agent: ' + e.message);
+      toast.error('Failed: ' + (e.message || 'Database error'));
     } finally {
       setCreatingAgent(false);
     }
@@ -3014,13 +3051,24 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       onConfirm: async () => {
         setDeletingUser(username);
         try {
-          const state = loadState();
-          state.agents = state.agents.filter(a => a.username !== username);
-          saveState(state);
-          setAgents([...state.agents]);
+          // Delete from DATABASE
+          const matches = await adn7.entities.AgentUser.filter({ username });
+          if (matches && matches[0]) {
+            await adn7.entities.AgentUser.delete(matches[0].id);
+          }
           
-          // Sync to other computers
-          await syncUserProfiles();
+          // Reload from database
+          const serverAgents = await adn7.entities.AgentUser.list();
+          setAgents((serverAgents || []).map((a) => ({ 
+            id: a.id,
+            username: a.username, 
+            password: a.password,
+            full_name: a.full_name,
+            email: a.email,
+            region: a.region,
+            notes: a.notes,
+            is_active: a.is_active
+          })));
           
           // Background cleanup
           Promise.all([
@@ -3034,13 +3082,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               });
               if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
             })(),
-            cleanOrphanDataForAgent(username)
+            cleanOrphanDataForAgent(username),
+            notifyUsersSync()
           ]);
           
           CHANNEL.postMessage({ type: 'app:sync' });
-          toast.success(`✅ Agent "${username}" deleted`);
+          toast.success(`✅ Agent "${username}" deleted globally`);
         } catch (e) {
-          toast.error('Failed to delete agent: ' + e.message);
+          toast.error('Failed: ' + (e.message || 'error'));
         } finally {
           setDeletingUser(null);
         }
@@ -3062,39 +3111,34 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }
     if (creatingCS) return;
 
-    const state = loadState();
-    
-    // Check if CS user already exists
-    if (state.csAllocators.find(c => c.username.toLowerCase() === username.toLowerCase())) {
-      toast.error('CS user already exists');
-      return;
-    }
-
     setCreatingCS(true);
     
     try {
-      const newCS = {
-        id: `cs_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      // Create in DATABASE - this persists globally
+      await adn7.entities.CSUser.create({
         username,
         password,
-        is_active: true,
-        created_date: new Date().toISOString()
-      };
+        is_active: true
+      });
       
-      state.csAllocators.push(newCS);
-      saveState(state);
-      setCSAllocators([...state.csAllocators]);
+      // Immediately reload from database
+      const serverCS = await adn7.entities.CSUser.list();
+      setCSAllocators((serverCS || []).map((a) => ({ 
+        id: a.id,
+        username: a.username, 
+        password: a.password,
+        is_active: a.is_active
+      })));
       
-      // Sync to other computers via AppState
-      await syncUserProfiles();
+      await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
       
       setNewCSUser('');
       setNewCSPass('');
       
-      toast.success(`✅ CS "${username}" created! Total: ${state.csAllocators.length}`);
+      toast.success(`✅ CS "${username}" created globally!`);
     } catch (e) {
-      toast.error('Failed to create CS: ' + e.message);
+      toast.error('Failed: ' + (e.message || 'Database error'));
     } finally {
       setCreatingCS(false);
     }
@@ -3112,13 +3156,20 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       onConfirm: async () => {
         setDeletingUser(username);
         try {
-          const state = loadState();
-          state.csAllocators = state.csAllocators.filter(c => c.username !== username);
-          saveState(state);
-          setCSAllocators([...state.csAllocators]);
+          // Delete from DATABASE
+          const matches = await adn7.entities.CSUser.filter({ username });
+          if (matches && matches[0]) {
+            await adn7.entities.CSUser.delete(matches[0].id);
+          }
           
-          // Sync to other computers
-          await syncUserProfiles();
+          // Reload from database
+          const serverCS = await adn7.entities.CSUser.list();
+          setCSAllocators((serverCS || []).map((a) => ({ 
+            id: a.id,
+            username: a.username, 
+            password: a.password,
+            is_active: a.is_active
+          })));
           
           // Kick out active sessions
           try {
@@ -3132,10 +3183,11 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             if (sessionRows?.[0]) await adn7.entities.AppState.update(sessionRows[0].id, { data: sessionData });
           } catch {}
           
+          await notifyUsersSync();
           CHANNEL.postMessage({ type: 'app:sync' });
-          toast.success(`✅ CS "${username}" deleted`);
+          toast.success(`✅ CS "${username}" deleted globally`);
         } catch (e) {
-          toast.error('Failed to delete CS: ' + e.message);
+          toast.error('Failed: ' + (e.message || 'error'));
         } finally {
           setDeletingUser(null);
         }
