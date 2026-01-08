@@ -191,11 +191,11 @@ const loadCSSheet = () => {
   }
 };
 
-// Maximum batching - 15s minimum interval
+// Real-time sync - instant updates for critical actions
 let saveTimeout = null;
 let pendingBackendSync = null;
 let lastSyncTime = 0;
-const MIN_SYNC_INTERVAL = 15000; // Minimum 15s between backend syncs
+const MIN_SYNC_INTERVAL = 3000; // Reduced to 3s for faster sync
 
 const saveCSSheet = (data) => {
   const optimizedData = {
@@ -209,12 +209,20 @@ const saveCSSheet = (data) => {
   if (pendingBackendSync) clearTimeout(pendingBackendSync);
   
   const timeSinceLastSync = Date.now() - lastSyncTime;
-  const delay = Math.max(MIN_SYNC_INTERVAL - timeSinceLastSync, 2000);
+  const delay = Math.max(MIN_SYNC_INTERVAL - timeSinceLastSync, 1000);
   
   pendingBackendSync = setTimeout(() => {
     lastSyncTime = Date.now();
     pushAppState('cs_sheet', optimizedData);
   }, delay);
+};
+
+// Instant push for critical actions (bypasses rate limiting)
+const pushCSInstant = async (data) => {
+  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(data));
+  CHANNEL.postMessage({ type: 'app:sync' });
+  // Immediate backend push
+  pushAppState('cs_sheet', data).catch(() => {});
 };
 
 const loadAgentSheets = () => {
@@ -307,23 +315,7 @@ const pushAppState = async (stateKey, payload) => {
   }
 };
 
-// Maximum batching - 10s minimum interval
-let lastPushTime = 0;
-let pendingPush = null;
-const pushCSImmediate = async (data) => { 
-  localStorage.setItem(CS_SHEET_KEY, JSON.stringify(data));
-  CHANNEL.postMessage({ type: 'app:sync' });
-  
-  if (pendingPush) clearTimeout(pendingPush);
-  
-  const timeSinceLast = Date.now() - lastPushTime;
-  const delay = Math.max(10000 - timeSinceLast, 2000);
-  
-  pendingPush = setTimeout(() => {
-    lastPushTime = Date.now();
-    pushAppState('cs_sheet', data).catch(() => {});
-  }, delay);
-};
+
 const pullAppState = async (stateKey) => {
   try {
     const rows = await cachedRequest(
@@ -2795,7 +2787,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     return () => {};
   }, []);
 
-  // Minimal periodic sync - 60s interval only
+  // Fast periodic sync - 2s interval for real-time updates
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -2810,7 +2802,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           }
         }
       } catch {}
-    }, 60000);
+    }, 2000); // Poll every 2s for instant updates
     return () => clearInterval(interval);
   }, []);
 
@@ -2946,8 +2938,8 @@ const AdminDashboard = memo(({ username, onLogout }) => {
     }
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // trigger instant cross-device update
-    pushCSImmediate(newSheet);
+    // Instant cross-device update
+    pushCSInstant(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
 
@@ -3513,7 +3505,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
       setCSSheet(newSheet);
       saveCSSheet(newSheet);
-      pushCSImmediate(newSheet);
+      pushCSInstant(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
       toast.success(`Uploaded ${rowsAdded} rows successfully${duplicatesSkipped ? ", skipped " + duplicatesSkipped + " duplicates" : ''}`);
     } catch (error) {
@@ -5338,8 +5330,8 @@ const CSAllocatorDashboard = memo(({ username, onLogout }) => {
     }
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // trigger instant cross-device update
-    pushCSImmediate(newSheet);
+    // Instant cross-device update
+    pushCSInstant(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   };
 
@@ -5668,7 +5660,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    pushCSImmediate(newSheet);
+    pushCSInstant(newSheet);
 
     // Send break update notification immediately
     CHANNEL.postMessage({
@@ -5755,8 +5747,8 @@ const AgentDashboard = memo(({ username, onLogout }) => {
     newSheet.timers[r] = { ...(newSheet.timers[r] || {}), updatedAt: Date.now() };
     setCSSheet(newSheet);
     saveCSSheet(newSheet);
-    // trigger instant cross-device update
-    pushCSImmediate(newSheet);
+    // Instant cross-device update
+    pushCSInstant(newSheet);
     CHANNEL.postMessage({ type: "app:sync" });
   }, [csSheet, username]);
 
@@ -5773,7 +5765,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
         newSheet.timers[r] = timer;
         setCSSheet(newSheet);
         saveCSSheet(newSheet);
-        pushCSImmediate(newSheet);
+        pushCSInstant(newSheet);
         CHANNEL.postMessage({ type: "app:sync" });
         toast.success("Timer started");
       }
@@ -5860,7 +5852,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
 
       // Persist and sync
       saveCSSheet(newSheet);
-      pushCSImmediate(newSheet);
+      pushCSInstant(newSheet);
       CHANNEL.postMessage({ type: "app:sync" });
       
       toast.success(`✅ AWB ${awb} marked as DONE (Total Done: ${doneCount})`, { duration: 4000 });
@@ -5945,7 +5937,7 @@ const AgentDashboard = memo(({ username, onLogout }) => {
       
       // Persist and sync
       saveCSSheet(newSheet);
-      pushCSImmediate(newSheet);
+      pushCSInstant(newSheet);
       CHANNEL.postMessage({
         type: "app:sync",
         rejectionNotification: { agent: username, awb: awb, timestamp: new Date().toISOString() }
