@@ -3005,11 +3005,28 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
     setCreatingAgent(true);
     try {
-      // Create in database FIRST
-      await adn7.entities.AgentUser.create({ username, password, is_active: true });
+      // Use backend API for atomic transaction with confirmation
+      const response = await adn7.functions.invoke('adminSettingsApi', {
+        action: 'createAgent',
+        payload: { username, password }
+      });
       
-      // Then refresh from database to get complete record
+      // Check for errors in response
+      if (response.data?.error) {
+        toast.error(response.data.error);
+        return;
+      }
+      
+      // Wait for database confirmation - reload from database
       const serverAgents = await adn7.entities.AgentUser.list();
+      const created = serverAgents.find(a => a.username === username);
+      
+      if (!created) {
+        toast.error('Profile creation failed - not found in database');
+        return;
+      }
+      
+      // Update UI with complete database records
       setAgents((serverAgents || []).map((a) => ({ 
         id: a.id,
         username: a.username, 
@@ -3024,13 +3041,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       setNewAgentUser('');
       setNewAgentPass('');
       
-      // Background sync
-      notifyUsersSync();
+      // Sync to other devices
+      await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
-      logAudit('create_agent', { username });
-      toast.success(`✅ Agent "${username}" created permanently in database`);
+      await logAudit('create_agent', { username });
+      
+      toast.success(`✅ Agent "${username}" created and verified in database`);
     } catch (e) {
-      // Reload from database on error
+      const msg = e?.response?.data?.error || e?.message || String(e);
+      toast.error('Failed to create agent: ' + msg);
+      
+      // Always reload from database on error
       try {
         const list = await adn7.entities.AgentUser.list();
         setAgents((list || []).map((a) => ({ 
@@ -3044,13 +3065,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           is_active: a.is_active
         })));
       } catch {}
-      
-      const msg = e?.message || String(e);
-      if (msg.includes('duplicate') || msg.includes('unique')) {
-        toast.error('Username already exists');
-      } else {
-        toast.error('Failed to create agent: ' + msg);
-      }
     } finally {
       setCreatingAgent(false);
     }
@@ -3068,13 +3082,28 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       onConfirm: async () => {
         setDeletingUser(username);
         try {
-          const rows = await adn7.entities.AgentUser.filter({ username });
-          if (rows && rows[0]) {
-            await adn7.entities.AgentUser.delete(rows[0].id);
+          // Use backend API for atomic deletion with confirmation
+          const response = await adn7.functions.invoke('adminSettingsApi', {
+            action: 'deleteAgent',
+            payload: { username }
+          });
+          
+          // Check for errors
+          if (response.data?.error) {
+            toast.error(response.data.error);
+            return;
           }
           
-          // Refresh from database to confirm deletion
+          // Verify deletion - reload from database
           const serverAgents = await adn7.entities.AgentUser.list();
+          const stillExists = serverAgents.find(a => a.username === username);
+          
+          if (stillExists) {
+            toast.error('Deletion failed - profile still exists in database');
+            return;
+          }
+          
+          // Update UI with verified database state
           setAgents((serverAgents || []).map((a) => ({ 
             id: a.id,
             username: a.username, 
@@ -3086,7 +3115,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             is_active: a.is_active
           })));
           
-          // Background operations
+          // Background cleanup
           Promise.all([
             (async () => {
               const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
@@ -3102,10 +3131,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             notifyUsersSync()
           ]);
           
-          logAudit('delete_agent', { username });
-          toast.success(`✅ Agent "${username}" permanently deleted from database`);
+          await logAudit('delete_agent', { username });
+          toast.success(`✅ Agent "${username}" permanently deleted and verified`);
           CHANNEL.postMessage({ type: 'app:sync' });
         } catch (e) {
+          const msg = e?.response?.data?.error || e?.message || String(e);
+          toast.error('Failed to delete agent: ' + msg);
+          
+          // Always reload from database
           try {
             const list = await adn7.entities.AgentUser.list();
             setAgents((list || []).map((a) => ({ 
@@ -3119,7 +3152,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               is_active: a.is_active
             })));
           } catch {}
-          toast.error('Failed to delete agent: ' + (e.message || 'Unknown error'));
         } finally {
           setDeletingUser(null);
         }
@@ -3143,11 +3175,28 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
     setCreatingCS(true);
     try {
-      // Create in database FIRST
-      await adn7.entities.CSUser.create({ username, password, is_active: true });
+      // Use backend API for atomic transaction with confirmation
+      const response = await adn7.functions.invoke('adminSettingsApi', {
+        action: 'createCS',
+        payload: { username, password }
+      });
       
-      // Then refresh from database to get complete record
+      // Check for errors in response
+      if (response.data?.error) {
+        toast.error(response.data.error);
+        return;
+      }
+      
+      // Wait for database confirmation - reload from database
       const serverCS = await adn7.entities.CSUser.list();
+      const created = serverCS.find(a => a.username === username);
+      
+      if (!created) {
+        toast.error('Profile creation failed - not found in database');
+        return;
+      }
+      
+      // Update UI with complete database records
       setCSAllocators((serverCS || []).map((a) => ({ 
         id: a.id,
         username: a.username, 
@@ -3158,13 +3207,17 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       setNewCSUser('');
       setNewCSPass('');
       
-      // Background sync
-      notifyUsersSync();
+      // Sync to other devices
+      await notifyUsersSync();
       CHANNEL.postMessage({ type: 'app:sync' });
-      logAudit('create_cs_allocator', { username });
-      toast.success(`✅ CS Allocator "${username}" created permanently in database`);
+      await logAudit('create_cs_allocator', { username });
+      
+      toast.success(`✅ CS Allocator "${username}" created and verified in database`);
     } catch (e) {
-      // Reload from database on error
+      const msg = e?.response?.data?.error || e?.message || String(e);
+      toast.error('Failed to create CS allocator: ' + msg);
+      
+      // Always reload from database on error
       try {
         const list = await adn7.entities.CSUser.list();
         setCSAllocators((list || []).map((a) => ({ 
@@ -3174,13 +3227,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
           is_active: a.is_active
         })));
       } catch {}
-      
-      const msg = e?.message || String(e);
-      if (msg.includes('duplicate') || msg.includes('unique')) {
-        toast.error('Username already exists');
-      } else {
-        toast.error('Failed to create CS allocator: ' + msg);
-      }
     } finally {
       setCreatingCS(false);
     }
@@ -3198,13 +3244,28 @@ const AdminDashboard = memo(({ username, onLogout }) => {
       onConfirm: async () => {
         setDeletingUser(username);
         try {
-          const rows = await adn7.entities.CSUser.filter({ username });
-          if (rows && rows[0]) {
-            await adn7.entities.CSUser.delete(rows[0].id);
+          // Use backend API for atomic deletion with confirmation
+          const response = await adn7.functions.invoke('adminSettingsApi', {
+            action: 'deleteCS',
+            payload: { username }
+          });
+          
+          // Check for errors
+          if (response.data?.error) {
+            toast.error(response.data.error);
+            return;
           }
           
-          // Refresh from database to confirm deletion
+          // Verify deletion - reload from database
           const serverCS = await adn7.entities.CSUser.list();
+          const stillExists = serverCS.find(a => a.username === username);
+          
+          if (stillExists) {
+            toast.error('Deletion failed - profile still exists in database');
+            return;
+          }
+          
+          // Update UI with verified database state
           setCSAllocators((serverCS || []).map((a) => ({ 
             id: a.id,
             username: a.username, 
@@ -3212,7 +3273,7 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             is_active: a.is_active
           })));
           
-          // Background operations
+          // Background cleanup
           Promise.all([
             (async () => {
               const sessionRows = await adn7.entities.AppState.filter({ state_key: 'active_sessions' });
@@ -3227,10 +3288,14 @@ const AdminDashboard = memo(({ username, onLogout }) => {
             notifyUsersSync()
           ]);
           
-          logAudit('delete_cs_allocator', { username });
-          toast.success(`✅ CS "${username}" permanently deleted from database`);
+          await logAudit('delete_cs_allocator', { username });
+          toast.success(`✅ CS "${username}" permanently deleted and verified`);
           CHANNEL.postMessage({ type: 'app:sync' });
         } catch (e) {
+          const msg = e?.response?.data?.error || e?.message || String(e);
+          toast.error('Failed to delete CS allocator: ' + msg);
+          
+          // Always reload from database
           try {
             const list = await adn7.entities.CSUser.list();
             setCSAllocators((list || []).map((a) => ({ 
@@ -3240,7 +3305,6 @@ const AdminDashboard = memo(({ username, onLogout }) => {
               is_active: a.is_active
             })));
           } catch {}
-          toast.error('Failed to delete CS allocator: ' + (e.message || 'Unknown error'));
         } finally {
           setDeletingUser(null);
         }
