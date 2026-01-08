@@ -2521,6 +2521,10 @@ const AdminDashboard = memo(({ username, onLogout }) => {
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [newAgentUser, setNewAgentUser] = useState("");
   const [newAgentPass, setNewAgentPass] = useState("");
+  const [newAgentFullName, setNewAgentFullName] = useState("");
+  const [newAgentEmail, setNewAgentEmail] = useState("");
+  const [newAgentRegion, setNewAgentRegion] = useState("");
+  const [newAgentNotes, setNewAgentNotes] = useState("");
   const [newAdminUser, setNewAdminUser] = useState("");
   const [newAdminPass, setNewAdminPass] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
