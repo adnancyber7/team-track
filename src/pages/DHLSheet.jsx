@@ -12,6 +12,7 @@ const FreeAnalytics = lazy(() => import('../components/analytics/FreeAnalytics')
 import ConfirmDialog from '../components/ConfirmDialog';
 import AdvancedAdminControls from '../components/AdvancedAdminControls';
 import CellEditorDialog from '../components/CellEditorDialog';
+import FastAgentManager from '../components/FastAgentManager';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -4337,6 +4338,26 @@ const AdminDashboard = memo(({ username, onLogout }) => {
 
           {/* Agents Tab */}
           <TabsContent value="agents" className="mt-4 space-y-4">
+            {/* Fast Agent Manager */}
+            <FastAgentManager 
+              onUpdate={() => {
+                (async () => {
+                  const serverAgents = await adn7.entities.AgentUser.list();
+                  setAgents((serverAgents || []).map((a) => ({ 
+                    id: a.id,
+                    username: a.username, 
+                    password: a.password,
+                    full_name: a.full_name,
+                    email: a.email,
+                    region: a.region,
+                    notes: a.notes,
+                    is_active: a.is_active
+                  })));
+                  CHANNEL.postMessage({ type: 'app:sync' });
+                })();
+              }}
+            />
+
             <Suspense fallback={<div className="text-sm text-black/50">Loading analytics…</div>}>
               <FreeAnalytics
                 agents={agents}
